@@ -1,0 +1,12 @@
+# Local browser profiles and temporary build artifacts
+.browser-test/
+build/
+node_modules/
+
+# Rasterized visual checks; keep SVG examples versioned
+samples/*.png
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+*.log

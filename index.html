@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分子线刻 · Mol Engraver</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #25282b; background: #eceeef; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { max-width: 1400px; margin: auto; padding: 30px 32px 22px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: .06em; }
+    header p { margin: 0; color: #676c71; font-size: 13px; }
+    main { max-width: 1400px; margin: auto; padding: 0 32px 30px; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; align-items: start; }
+    .artboard { background: #fff; border: 1px solid #d9dde0; min-width: 0; }
+    #preview { width: 100%; aspect-ratio: 9 / 7; display: grid; place-items: center; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+    #preview.dragging { cursor: grabbing; }
+    #preview svg { display: block; width: 100%; height: auto; max-height: 100%; }
+    #preview p { padding: 24px; color: #73787c; text-align: center; }
+    .board-footer { padding: 13px 18px; border-top: 1px solid #edf0f2; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: #72777b; font-size: 12px; }
+    aside { padding: 23px; background: #e2e5e7; border: 1px solid #d4d8db; border-radius: 6px; }
+    h2 { margin: 0 0 22px; font-size: 15px; font-weight: 650; }
+    .control { margin-bottom: 23px; }
+    .control-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+    output { color: #5b636a; font-variant-numeric: tabular-nums; }
+    select, button { font: inherit; }
+    select { width: 100%; padding: 9px 10px; border: 1px solid #bfc5c9; background: #fff; color: #25282b; border-radius: 4px; font-size: 14px; }
+    input[type="range"] { width: 100%; margin: 0; accent-color: #566571; cursor: pointer; }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 15px 0; cursor: pointer; }
+    input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: #566571; }
+    .label-settings { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .label-settings:disabled { opacity: .5; }
+    .label-settings input[type="text"] { width: 100%; padding: 8px; border: 1px solid #bfc5c9; border-radius: 4px; font: inherit; font-size: 13px; }
+    .color-control { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 14px; }
+    .color-control input { width: 48px; height: 29px; padding: 2px; border: 1px solid #bfc5c9; background: white; }
+    .actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 25px; }
+    button { padding: 10px 6px; border: 1px solid #b8c0c6; border-radius: 4px; background: #f7f8f9; color: #303b44; font-size: 13px; cursor: pointer; }
+    button:hover:not(:disabled) { background: #fff; border-color: #82929e; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    :focus-visible { outline: 2px solid #57778f; outline-offset: 4px; }
+    .note { margin: 22px 0 0; border-top: 1px solid #cbd1d5; padding-top: 17px; color: #656d73; font-size: 12px; line-height: 1.9; }
+    #error { margin: 12px 0 0; color: #9d3434; font-size: 13px; line-height: 1.6; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) {
+      header { padding: 22px 16px 18px; display: block; }
+      header p { margin-top: 8px; }
+      main { padding: 0 16px 22px; grid-template-columns: 1fr; gap: 16px; }
+      aside { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1>分子线刻</h1><p>几何形体 · 黑白排线 · 矢量图版</p></header>
+  <main>
+    <section class="artboard" aria-label="分子图版">
+      <div id="preview" aria-label="分子预览，可拖拽旋转；也可使用右侧角度滑块"><p>正在准备图版…</p></div>
+      <div class="board-footer"><span id="model-info">900 × 700 · SVG</span><span id="timing" role="status">等待渲染</span><span>拖拽图版旋转</span></div>
+    </section>
+    <aside aria-label="渲染控制">
+      <h2>图版设置</h2>
+      <div class="control"><label class="control-heading" for="model">示例模型</label><select id="model" aria-label="示例模型"></select></div>
+      <div class="control"><div class="control-heading"><label for="yaw">水平旋转</label><output id="yaw-value" for="yaw">25°</output></div><input id="yaw" type="range" min="-180" max="180" step="1" value="25"></div>
+      <div class="control"><div class="control-heading"><label for="pitch">俯仰角度</label><output id="pitch-value" for="pitch">−15°</output></div><input id="pitch" type="range" min="-90" max="90" step="1" value="-15"></div>
+      <div class="control"><div class="control-heading"><label for="density">排线密度</label><output id="density-value" for="density">24</output></div><input id="density" type="range" min="12" max="40" step="1" value="24"></div>
+      <div class="control"><div class="control-heading"><label for="outline-width">轮廓线宽</label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8" aria-describedby="width-help"></div>
+      <div class="control"><div class="control-heading"><label for="line-width">排线线宽</label><output id="line-width-value" for="line-width">0.80</output></div><input id="line-width" type="range" min="0" max="4" step="0.05" value="0.8" aria-describedby="width-help"></div>
+      <p id="width-help" style="font-size:12px;color:#656d73;line-height:1.7">轮廓与排线独立调节，设为 0 可分别关闭；两项都为 0 时不画分子墨线。</p>
+      <div class="control"><div class="control-heading"><label for="light-azimuth">光源方位</label><output id="light-azimuth-value" for="light-azimuth">−29°</output></div><input id="light-azimuth" type="range" min="-180" max="180" step="1" value="-29" aria-describedby="light-help"></div>
+      <div class="control"><div class="control-heading"><label for="light-elevation">光源仰角</label><output id="light-elevation-value" for="light-elevation">32°</output></div><input id="light-elevation" type="range" min="-90" max="90" step="1" value="32" aria-describedby="light-help"></div>
+      <label class="check"><input id="point-light" type="checkbox" aria-describedby="light-help">点光源</label>
+      <div class="control"><div class="control-heading"><label for="light-distance">光源距离</label><output id="light-distance-value" for="light-distance">∞</output></div><input id="light-distance" type="range" min="1.2" max="12" step="0.1" value="3" disabled aria-describedby="light-help"></div>
+      <p id="light-help" style="font-size:12px;color:#656d73;line-height:1.7">方位 0° 为正前方，负值向左、正值向右，±180° 为背后；仰角正值向上。光源独立于分子旋转。默认平行光；点光源距离以场景包围半径 R 为单位，沿当前方向从模型中心移近移远（不是独立 Z 轴），仅改变逐点光照方向，不模拟距离亮度衰减。光源无投射阴影。</p>
+      <label class="check"><input id="color-wash" type="checkbox" checked>元素填色</label>
+      <div class="control"><div class="control-heading"><label for="wash-strength">填色浓度</label><output id="wash-strength-value" for="wash-strength">65%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="65" aria-describedby="wash-help"></div>
+      <div class="control"><div class="control-heading"><label for="color-saturation">填色饱和度</label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="400" step="5" value="100" aria-describedby="wash-help"></div>
+      <div class="control"><div class="control-heading"><label for="wash-offset-x">填色 X 偏移</label><output id="wash-offset-x-value" for="wash-offset-x">0.0</output></div><input id="wash-offset-x" type="range" min="-20" max="20" step="0.5" value="0" aria-describedby="wash-help"></div>
+      <div class="control"><div class="control-heading"><label for="wash-offset-y">填色 Y 偏移</label><output id="wash-offset-y-value" for="wash-offset-y">0.0</output></div><input id="wash-offset-y" type="range" min="-20" max="20" step="0.5" value="0" aria-describedby="wash-help"></div>
+      <p id="wash-help" style="font-size:12px;color:#656d73;line-height:1.7">碳：暖灰 · 氢：白 · 氧：朱红<br>氮：灰蓝 · 硫：赭黄 · 磷：橙<br>浓度与白色混合：0% 白、100% 当前配色；饱和度：0% 灰度、100% 原配色、400% 鲜明。偏移以 SVG 单位整体移动色层，正 X 向右、正 Y 向下，越出轮廓也保留，模拟套色印刷；墨线、标签与遮挡计算不移动。键保持白色。</p>
+      <label class="check"><input id="variable-width" type="checkbox" checked>渐变线宽（亮细暗粗）</label>
+      <label class="check"><input id="cross-hatch" type="checkbox" checked>交叉排线</label>
+      <label class="check"><input id="labels" type="checkbox">元素标签</label>
+      <fieldset id="label-settings" class="label-settings" disabled aria-label="元素标签样式">
+        <div class="control"><div class="control-heading"><label for="label-size">标签字号</label><output id="label-size-value" for="label-size">17</output></div><input id="label-size" type="range" min="6" max="96" step="1" value="17"></div>
+        <div class="control"><label class="control-heading" for="label-font">标签字体（可输入本机字体）</label><input id="label-font" type="text" list="label-font-options" maxlength="200" value="Georgia, 'Times New Roman', serif" aria-describedby="label-help">
+          <datalist id="label-font-options">
+            <option value="Georgia, 'Times New Roman', serif"></option>
+            <option value="'Times New Roman', serif"></option>
+            <option value="'EB Garamond', Garamond, serif"></option>
+            <option value="Baskerville, 'Baskerville Old Face', serif"></option>
+            <option value="Arial, sans-serif"></option>
+            <option value="'Courier New', monospace"></option>
+          </datalist>
+        </div>
+        <label class="check"><input id="label-bold" type="checkbox">粗体</label>
+        <label class="check"><input id="label-italic" type="checkbox" checked>斜体</label>
+        <div class="color-control"><label for="label-color">文字颜色</label><input id="label-color" type="color" value="#161616"></div>
+        <div class="control"><div class="control-heading"><label for="label-stroke-width">描边宽度</label><output id="label-stroke-width-value" for="label-stroke-width">4.0</output></div><input id="label-stroke-width" type="range" min="0" max="16" step="0.5" value="4"></div>
+        <label class="check"><input id="label-match-fill" type="checkbox" checked>描边自动匹配原子底色</label>
+        <div class="color-control"><label for="label-stroke-color">描边颜色</label><input id="label-stroke-color" type="color" value="#ffffff"></div>
+      </fieldset>
+      <p id="label-help" style="font-size:12px;color:#656d73;line-height:1.7">字号、描边为 SVG 图版单位；描边设为 0 可关闭。默认白色描边隔开排线。字体须在本机安装，未安装会回退；导出不嵌入字体。</p>
+      <div class="actions"><button id="reset" type="button">重置</button><button id="download" type="button" disabled>下载 SVG</button></div>
+      <p id="error" role="alert" hidden></p>
+      <p class="note">示例使用示意坐标，非优化构象。<br>本工具不是 SMILES 引擎。<br>本地运行，无需上传或联网。</p>
+    </aside>
+  </main>
+  <noscript>请启用 JavaScript 以生成分子图版。</noscript>
+  <script src="wash.js"></script>
+  <script src="renderer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
