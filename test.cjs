@@ -108,7 +108,12 @@ check('UI light controls convert angles, update and reset',()=>{
  const vm=require('node:vm');
  const html=fs.readFileSync('index.html','utf8'),elements={};
  for(const match of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)){
-  const tag=match[0];elements[match[1]]={value:(tag.match(/\bvalue="([^"]*)"/)||[])[1]||'',checked:/\bchecked\b/.test(tag),textContent:'',listeners:{},addEventListener(e,f){this.listeners[e]=f;},appendChild(o){if(!this.value)this.value=o.value;}};
+  const tag=match[0];elements[match[1]]={value:(tag.match(/\bvalue="([^"]*)"/)||[])[1]||'',checked:/\bchecked\b/.test(tag),disabled:/\bdisabled\b/.test(tag),textContent:'',listeners:{},addEventListener(e,f){this.listeners[e]=f;},appendChild(o){if(!this.value)this.value=o.value;}};
+ }
+ for(const match of html.matchAll(/<select\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)){
+  const options=[...match[2].matchAll(/<option\b[^>]*>/g)].map(m=>m[0]);
+   const selected=options.find(tag=>/\bselected\b/.test(tag))||options[0];
+   if(selected)elements[match[1]].value=selected.match(/\bvalue="([^"]+)"/)[1];
  }
  elements.preview.querySelector=()=>({hasAttribute:()=>true,setAttribute(){}});
  let queued,opts;
@@ -119,6 +124,11 @@ check('UI light controls convert angles, update and reset',()=>{
   XMLSerializer:class{serializeToString(){return '<svg></svg>';}}
  });
  queued();assert.ok(Math.abs(opts.lightAzimuth-(-29*Math.PI/180))<1e-12);
+  assert.equal(elements['color-mode'].value,'wash');assert.equal(opts.colorMode,'wash');
+  assert.equal(elements['color-mode'].disabled,false);
+  const colorModeOptions=html.match(/<select\b[^>]*id="color-mode"[^>]*>([\s\S]*?)<\/select>/)[1];
+  assert.match(colorModeOptions,/<option value="wash" selected>/);
+  assert.match(colorModeOptions,/<option value="ink">/);
  elements['light-azimuth'].value='90';elements['light-elevation'].value='-45';
  elements['light-azimuth'].listeners.input();queued();
  assert.equal(opts.lightAzimuth,Math.PI/2);assert.equal(opts.lightElevation,-Math.PI/4);
@@ -148,24 +158,70 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(opts.labelFont,"Georgia, 'Times New Roman', serif");
  assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,.65);assert.equal(opts.labelMatchFill,true);
  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
- assert.equal(opts.colorWash,false);assert.equal(elements['wash-strength'].disabled,true);
+ assert.equal(opts.colorWash,false);assert.equal(opts.colorMode,'wash');
+  const colorIds=['color-mode','wash-strength','color-saturation','wash-offset-x','wash-offset-y'];
+  for(const id of colorIds)assert.equal(elements[id].disabled,true);
+  elements['color-wash'].checked=true;elements['color-wash'].listeners.change();queued();
+  for(const mode of ['ink','wash','ink']){
+   elements['color-mode'].value=mode;elements['color-mode'].listeners.change();queued();
+   assert.equal(opts.colorMode,mode);assert.equal(opts.colorWash,true);
+   for(const id of colorIds)assert.equal(elements[id].disabled,false);
+  }
+  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
+  assert.equal(opts.colorWash,false);assert.equal(opts.colorMode,'ink');
+  assert.equal(elements['color-mode'].value,'ink');
+  for(const id of colorIds)assert.equal(elements[id].disabled,true);
  elements['color-wash'].checked=true;elements['color-wash'].listeners.change();queued();
- elements['wash-strength'].value='40';elements['wash-strength'].listeners.input();queued();
+ assert.equal(opts.colorMode,'ink');assert.equal(elements['color-mode'].value,'ink');
+  for(const id of colorIds)assert.equal(elements[id].disabled,false);
+  elements['wash-strength'].value='40';elements['wash-strength'].listeners.input();queued();
  assert.equal(opts.washStrength,.4);assert.equal(elements['wash-strength-value'].textContent,'40%');
  elements['label-stroke-width'].value='4';elements['label-stroke-width'].listeners.input();queued();
  assert.equal(elements['label-stroke-color'].disabled,true);
  elements['label-match-fill'].checked=false;elements['label-match-fill'].listeners.change();queued();
  assert.equal(opts.labelMatchFill,false);assert.equal(elements['label-stroke-color'].disabled,false);
- for(const [id,value] of [['line-width','0'],['outline-width','1.2'],['color-saturation','250'],['wash-offset-x','4.5'],['wash-offset-y','-3']]){
+ for(const [id,value] of [['shading-size','0'],['outline-width','1.2'],['color-saturation','250'],['wash-offset-x','4.5'],['wash-offset-y','-3']]){
   elements[id].value=value;elements[id].listeners.input();queued();
  }
- assert.equal(opts.hatchWidth,0);assert.equal(opts.outlineWidth,1.2);assert.equal(opts.colorSaturation,2.5);
+ assert.equal(opts.shadingSize,0);assert.equal(opts.outlineWidth,1.2);assert.equal(opts.colorSaturation,2.5);
  assert.equal(opts.washOffsetX,4.5);assert.equal(opts.washOffsetY,-3);
  elements['outline-width'].value='0';elements['outline-width'].listeners.input();queued();assert.equal(opts.outlineWidth,0);
  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
- for(const id of ['wash-strength','color-saturation','wash-offset-x','wash-offset-y'])assert.equal(elements[id].disabled,true);
+ for(const id of colorIds)assert.equal(elements[id].disabled,true);
+  assert.equal(opts.colorMode,'ink');assert.equal(elements['color-mode'].value,'ink');
+  assert.deepEqual(colorIds.map(id=>elements[id].value),['ink','40','250','4.5','-3']);
+ assert.equal(opts.shadingMode,'hatch');
+ for(const id of ['dot-spacing','dot-size','dot-contrast','density','line-width'])assert.equal(elements[id],undefined);
+ const sharedIds=['shading-density','shading-size','shading-contrast'];
+ for(const [id,min,max,step,value] of [['shading-density','40','250','5','100'],['shading-size','0','150','5','100'],['shading-contrast','0.5','2.5','0.1','1.2']]){
+  const tag=html.match(new RegExp('<input[^>]*id="'+id+'"[^>]*>'))[0];
+  for(const [attr,expected] of Object.entries({min,max,step,value}))assert.ok(tag.includes(attr+'="'+expected+'"'));
+ }
+ for(const [id,value] of [['shading-density','175'],['shading-size','65'],['shading-contrast','2']]){elements[id].value=value;elements[id].listeners.input();queued();}
+ for(const mode of ['stipple','halftone','hatch']){
+  elements['shading-mode'].value=mode;elements['shading-mode'].listeners.change();queued();
+  assert.equal(opts.shadingMode,mode);
+  for(const id of ['cross-hatch','variable-width'])assert.equal(elements[id].disabled,mode!=='hatch');
+  for(const id of sharedIds)assert.equal(elements[id].disabled,false);
+  assert.deepEqual(sharedIds.map(id=>elements[id].value),['175','65','2']);
+  assert.equal(opts.shadingDensity,1.75);assert.equal(opts.shadingSize,.65);assert.equal(opts.shadingContrast,2);
+  assert.equal(elements['shading-density-value'].textContent,'175%');
+  assert.equal(elements['shading-size-value'].textContent,'65%');
+  assert.equal(elements['shading-contrast-value'].textContent,'2.0');
+  for(const key of ['density','hatchWidth','dotSpacing','dotSize','dotContrast'])assert.ok(!Object.hasOwn(opts,key));
+  assert.equal(elements['outline-width'].disabled,false);assert.equal(opts.outlineWidth,0);
+  elements['shading-size'].value='0';elements['shading-size'].listeners.input();queued();
+  assert.equal(opts.shadingSize,0);assert.equal(elements['shading-size-value'].textContent,'0%');
+  elements['shading-size'].value='65';elements['shading-size'].listeners.input();queued();
+ }
  elements.reset.listeners.click();queued();
- assert.equal(opts.hatchWidth,.8);assert.equal(opts.outlineWidth,.8);assert.equal(opts.colorSaturation,1);
+  assert.equal(opts.colorMode,'wash');assert.equal(elements['color-mode'].value,'wash');
+  for(const id of colorIds)assert.equal(elements[id].disabled,false);
+ assert.equal(opts.shadingMode,'hatch');assert.equal(opts.shadingDensity,1);assert.equal(opts.shadingSize,1);assert.equal(opts.shadingContrast,1.2);
+ assert.deepEqual(sharedIds.map(id=>elements[id].value),['100','100','1.2']);
+ assert.deepEqual(sharedIds.map(id=>elements[id+'-value'].textContent),['100%','100%','1.2']);
+ for(const id of [...sharedIds,'cross-hatch','variable-width'])assert.equal(elements[id].disabled,false);
+ assert.equal(opts.outlineWidth,.8);assert.equal(opts.colorSaturation,1);
  assert.equal(opts.washOffsetX,0);assert.equal(opts.washOffsetY,0);
  assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,.65);assert.equal(opts.labelMatchFill,true);
  assert.equal(opts.labels,false);assert.equal(opts.labelSize,17);assert.equal(opts.labelStrokeWidth,4);

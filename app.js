@@ -15,11 +15,14 @@
   var pointLight = byId('point-light');
   var lightDistance = byId('light-distance');
   var variableWidth = byId('variable-width');
-  var density = byId('density');
-  var lineWidth = byId('line-width');
+  var shadingMode = byId('shading-mode');
+  var shadingDensity = byId('shading-density');
+  var shadingSize = byId('shading-size');
+  var shadingContrast = byId('shading-contrast');
   var outlineWidth = byId('outline-width');
   var crossHatch = byId('cross-hatch');
   var colorWash = byId('color-wash');
+  var colorMode = byId('color-mode');
   var washStrength = byId('wash-strength');
   var colorSaturation = byId('color-saturation');
   var washOffsetX = byId('wash-offset-x');
@@ -73,10 +76,15 @@
     byId('light-elevation-value').textContent = lightElevation.value + '°';
     lightDistance.disabled = !pointLight.checked;
     byId('light-distance-value').textContent = pointLight.checked ? Number(lightDistance.value).toFixed(1) + ' R' : '∞';
-    byId('density-value').textContent = density.value;
-    byId('line-width-value').textContent = Number(lineWidth.value).toFixed(2);
+    var isHatch = shadingMode.value === 'hatch';
+    [crossHatch, variableWidth].forEach(function (input) {
+      input.disabled = !isHatch;
+    });
+    byId('shading-density-value').textContent = shadingDensity.value + '%';
+    byId('shading-size-value').textContent = shadingSize.value + '%';
+    byId('shading-contrast-value').textContent = Number(shadingContrast.value).toFixed(1);
     byId('outline-width-value').textContent = Number(outlineWidth.value).toFixed(2);
-    [washStrength, colorSaturation, washOffsetX, washOffsetY].forEach(function (input) {
+    [colorMode, washStrength, colorSaturation, washOffsetX, washOffsetY].forEach(function (input) {
       input.disabled = !colorWash.checked;
     });
     byId('wash-strength-value').textContent = washStrength.value + '%';
@@ -103,12 +111,15 @@
         lightElevation: Number(lightElevation.value) * Math.PI / 180,
         lightType: pointLight.checked ? 'point' : 'directional',
         lightDistance: Number(lightDistance.value),
+        shadingMode: shadingMode.value,
+        shadingDensity: Number(shadingDensity.value) / 100,
+        shadingSize: Number(shadingSize.value) / 100,
+        shadingContrast: Number(shadingContrast.value),
         variableWidth: variableWidth.checked,
-        density: Number(density.value),
-        hatchWidth: Number(lineWidth.value),
         outlineWidth: Number(outlineWidth.value),
         crossHatch: crossHatch.checked,
         colorWash: colorWash.checked,
+        colorMode: colorMode.value,
         washStrength: Number(washStrength.value) / 100,
         colorSaturation: Number(colorSaturation.value) / 100,
         washOffsetX: Number(washOffsetX.value),
@@ -151,10 +162,10 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [yaw, pitch, lightAzimuth, lightElevation, lightDistance, density, lineWidth, outlineWidth, washStrength, colorSaturation, washOffsetX, washOffsetY, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [yaw, pitch, lightAzimuth, lightElevation, lightDistance, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, washOffsetX, washOffsetY, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [model, pointLight, variableWidth, crossHatch, colorWash, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
+  [model, shadingMode, pointLight, variableWidth, crossHatch, colorWash, colorMode, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
@@ -166,12 +177,15 @@
     lightElevation.value = '32';
     pointLight.checked = false;
     lightDistance.value = '3';
+    shadingMode.value = 'hatch';
+    shadingDensity.value = '100';
+    shadingSize.value = '100';
+    shadingContrast.value = '1.2';
     variableWidth.checked = true;
-    density.value = '24';
-    lineWidth.value = '0.8';
     outlineWidth.value = '0.8';
     crossHatch.checked = true;
     colorWash.checked = true;
+    colorMode.value = 'wash';
     washStrength.value = '65';
     colorSaturation.value = '100';
     washOffsetX.value = '0';
