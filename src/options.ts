@@ -2,7 +2,7 @@ import type { RenderOptions } from './types.js';
 export type NormalizedOptions = Required<Omit<RenderOptions,'shadingDensity'|'shadingSize'>> & Pick<RenderOptions,'shadingDensity'|'shadingSize'>;
 const defaults: NormalizedOptions = {
   width:900,height:700,scale:60,atomRadiusScale:1,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
-  lightType:'directional',lightDistance:3,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
+  lightType:'directional',lightDistance:3,lightAttenuation:0,castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
   variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',shadingContrast:1.2,
   dotSpacing:5,dotSize:1,dotContrast:1.2,crossHatch:true,colorWash:false,colorMode:'wash',washStrength:.65,
   colorSaturation:1,labelMatchFill:false,labels:false,labelSize:17,labelStrokeWidth:4,labelStrokeColor:'#ffffff',
@@ -26,6 +26,9 @@ export function normalizeOptions(options: RenderOptions): NormalizedOptions {
     if(!Number.isFinite(o[k]))throw new Error('Invalid option: '+k);
   if(!Number.isFinite(o.scale)||o.scale<=0)throw new Error('Invalid scale: expected positive finite SVG units per angstrom');
   if(!Number.isFinite(o.atomRadiusScale)||o.atomRadiusScale<=0)throw new Error('Invalid atomRadiusScale: expected a positive finite multiplier');
+  if(!Number.isFinite(o.lightAttenuation)||o.lightAttenuation<0)throw new Error('Invalid lightAttenuation: expected a nonnegative finite strength');
+  if(typeof o.castShadows!=='boolean')throw new Error('Invalid castShadows');
+  if(!Number.isFinite(o.shadowStrength)||o.shadowStrength<0||o.shadowStrength>1)throw new Error('Invalid shadowStrength: expected 0–1');
   if(!['wash','ink'].includes(o.colorMode))throw new Error('Invalid colorMode');
   if(!['hatch','stipple','halftone'].includes(o.shadingMode))throw new Error('Invalid shadingMode');
   if(o.dotSpacing<2||o.dotSpacing>14||o.dotSize<0||o.dotSize>1.5||o.dotContrast<.5||o.dotContrast>2.5)throw new Error('Invalid dot settings');

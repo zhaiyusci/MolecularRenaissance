@@ -15,7 +15,10 @@
   var lightAzimuth = byId('light-azimuth');
   var lightElevation = byId('light-elevation');
   var pointLight = byId('point-light');
+  var castShadows = byId('cast-shadows');
+  var shadowStrength = byId('shadow-strength');
   var lightDistance = byId('light-distance');
+  var lightAttenuation = byId('light-attenuation');
   var variableWidth = byId('variable-width');
   var shadingMode = byId('shading-mode');
   var shadingDensity = byId('shading-density');
@@ -77,7 +80,11 @@
     byId('pitch-value').textContent = pitch.value + '°';
     byId('light-azimuth-value').textContent = lightAzimuth.value + '°';
     byId('light-elevation-value').textContent = lightElevation.value + '°';
+    shadowStrength.disabled = !castShadows.checked;
+    byId('shadow-strength-value').textContent = shadowStrength.value + '%';
     lightDistance.disabled = !pointLight.checked;
+    lightAttenuation.disabled = !pointLight.checked;
+    byId('light-attenuation-value').textContent = Number(lightAttenuation.value).toFixed(3);
     byId('light-distance-value').textContent = pointLight.checked ? Number(lightDistance.value).toFixed(1) + ' R' : '∞';
     var isHatch = shadingMode.value === 'hatch';
     [crossHatch, variableWidth].forEach(function (input) {
@@ -117,6 +124,9 @@
         lightElevation: Number(lightElevation.value) * Math.PI / 180,
         lightType: pointLight.checked ? 'point' : 'directional',
         lightDistance: Number(lightDistance.value),
+        lightAttenuation: Number(lightAttenuation.value),
+        castShadows: castShadows.checked,
+        shadowStrength: Number(shadowStrength.value) / 100,
         shadingMode: shadingMode.value,
         shadingDensity: Number(shadingDensity.value) / 100,
         shadingSize: Number(shadingSize.value) / 100,
@@ -139,7 +149,7 @@
         labelItalic: labelItalic.checked
       };
       // Transient lightweight frame only; never overwrite the user's settings.
-      var svg = engine.render(molecule, interacting ? Object.assign({}, options, { shadingSize: 0 }) : options);
+      var svg = engine.render(molecule, interacting ? Object.assign({}, options, { shadingSize: 0, castShadows: false }) : options);
       if (typeof svg !== 'string' || !/<svg[\s>]/i.test(svg)) {
         throw new Error('渲染器没有返回有效的 SVG。');
       }
@@ -171,16 +181,16 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [model, shadingMode, pointLight, variableWidth, crossHatch, colorWash, colorMode, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
+  [model, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorMode, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
   // Native range inputs keep their own drag/capture behavior. Window release
   // handlers also cover releasing outside the slider. No idle timer/debounce.
-  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
+  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
     input.addEventListener('pointerdown', function (event) {
       if (event.button !== 0 || input.disabled || controlPointer) return;
       controlPointer = { id: event.pointerId, input: input };
@@ -211,7 +221,10 @@
     lightAzimuth.value = '-29';
     lightElevation.value = '32';
     pointLight.checked = false;
+    castShadows.checked = true;
+    shadowStrength.value = '80';
     lightDistance.value = '3';
+    lightAttenuation.value = '0';
     shadingMode.value = 'hatch';
     shadingDensity.value = '100';
     shadingSize.value = '100';

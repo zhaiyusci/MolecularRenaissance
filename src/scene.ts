@@ -2,6 +2,7 @@ import type { Molecule, Sphere, Cylinder, Primitive, Project, Illumination, Vect
 import type { NormalizedOptions } from './options.js';
 import { add, sub, mul, dot, norm, rotate } from './math.js';
 import { atomRadius } from './radii.js';
+import { shadowBlocked } from './shadows.js';
 
 /** Frontmost orthographic intersection with a closed sphere/finite cylinder. */
 export function depthAt(s: Primitive,x: number,y: number): number {
@@ -54,6 +55,26 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
   const light=[Math.sin(o.lightAzimuth)*Math.cos(o.lightElevation),Math.sin(o.lightElevation),Math.cos(o.lightAzimuth)*Math.cos(o.lightElevation)];
   const sceneRadius=Math.max(...spheres.map(s=>Math.hypot(...s.c)+s.r));
   const lightPosition=mul(light,o.lightDistance*sceneRadius);
-  const illumination: Illumination=(n,p)=>dot(n,o.lightType==='point'?norm(sub(lightPosition,p)):light);
+  const shadowBias=Math.max(1e-9,Math.min(sceneRadius*1e-6,...scene.map(s=>s.r*1e-4)));
+  const traceShadows=o.castShadows&&o.shadowStrength>0&&o.shadingSize!==0;
+  const illumination: Illumination=(n,p)=>{
+    const point=o.lightType==='point',delta=point?sub(lightPosition,p):light;
+    const direction=point?norm(delta):light;
+    const distance=point?Math.hypot(...delta):Infinity;
+    const facing=dot(n,direction);
+    let lit=facing;
+    if(point&&o.lightAttenuation>0){
+      // Soft inverse-square falloff in model units, independent of screen zoom.
+      const relativeDistance=distance/sceneRadius;
+      const attenuation=1/(1+o.lightAttenuation*relativeDistance*relativeDistance);
+      lit=(Math.max(-1,Math.min(1,lit))+1)*attenuation-1;
+    }
+    if(traceShadows&&facing>0&&shadowBlocked(scene,p,n,direction,distance,shadowBias)){
+      // Signed engraving brightness maps to [0,1] before shadow attenuation.
+      // At strength .8, keep 20% of the local brightness instead of solid black.
+      lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;
+    }
+    return lit;
+  };
   return {spheres,cylinders,scene,scale,project,illumination};
 }

@@ -22,6 +22,12 @@ export interface RenderOptions {
   /** User-controlled sphere-radius multiplier, default 1; never changes atom centers or bonds. */
   atomRadiusScale?: number;
   lightAzimuth?: number; lightElevation?: number; lightType?: LightType; lightDistance?: number;
+  /** Point-light falloff k: 1/(1+k*(distance/sceneRadius)^2). Default 0 disables it. */
+  lightAttenuation?: number;
+  /** Hard shadows from spheres and closed bond cylinders; default false. */
+  castShadows?: boolean;
+  /** Fraction of light removed by an occluder, 0–1; default 0.8. */
+  shadowStrength?: number;
   quality?: RenderQuality; shadingMode?: ShadingMode;
   shadingDensity?: number; shadingSize?: number; shadingContrast?: number;
   outlineWidth?: number; hatchWidth?: number; variableWidth?: boolean; crossHatch?: boolean;

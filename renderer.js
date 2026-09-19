@@ -20,7 +20,7 @@ var MolEngraver = (function (exports) {
 
     const defaults = {
         width: 900, height: 700, scale: 60, atomRadiusScale: 1, yaw: .25, pitch: -0.16, lightAzimuth: -29 * Math.PI / 180, lightElevation: 32 * Math.PI / 180,
-        lightType: 'directional', lightDistance: 3, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
+        lightType: 'directional', lightDistance: 3, lightAttenuation: 0, castShadows: false, shadowStrength: .8, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
         variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', shadingContrast: 1.2,
         dotSpacing: 5, dotSize: 1, dotContrast: 1.2, crossHatch: true, colorWash: false, colorMode: 'wash', washStrength: .65,
         colorSaturation: 1, labelMatchFill: false, labels: false, labelSize: 17, labelStrokeWidth: 4, labelStrokeColor: '#ffffff',
@@ -57,6 +57,12 @@ var MolEngraver = (function (exports) {
             throw new Error('Invalid scale: expected positive finite SVG units per angstrom');
         if (!Number.isFinite(o.atomRadiusScale) || o.atomRadiusScale <= 0)
             throw new Error('Invalid atomRadiusScale: expected a positive finite multiplier');
+        if (!Number.isFinite(o.lightAttenuation) || o.lightAttenuation < 0)
+            throw new Error('Invalid lightAttenuation: expected a nonnegative finite strength');
+        if (typeof o.castShadows !== 'boolean')
+            throw new Error('Invalid castShadows');
+        if (!Number.isFinite(o.shadowStrength) || o.shadowStrength < 0 || o.shadowStrength > 1)
+            throw new Error('Invalid shadowStrength: expected 0–1');
         if (!['wash', 'ink'].includes(o.colorMode))
             throw new Error('Invalid colorMode');
         if (!['hatch', 'stipple', 'halftone'].includes(o.shadingMode))
@@ -106,6 +112,61 @@ var MolEngraver = (function (exports) {
         if (!Object.hasOwn(covalentRadii, atom.element))
             throw new Error('No covalent radius for element ' + atom.element + '; provide atom.radius in angstrom');
         return covalentRadii[atom.element];
+    }
+
+    /** Any solid intersecting the ray toward the light (finite for a point source).
+     * Normal bias avoids self-shadow acne; closed cylinders include both end caps.
+     */
+    function shadowBlocked(scene, p, n, d, maxDistance, bias) {
+        const x = p[0] + n[0] * bias, y = p[1] + n[1] * bias, z = p[2] + n[2] * bias;
+        const limit = maxDistance - bias;
+        for (const s of scene) {
+            if (s.kind === 'sphere') {
+                const ox = x - s.c[0], oy = y - s.c[1], oz = z - s.c[2];
+                const b = ox * d[0] + oy * d[1] + oz * d[2];
+                const c = ox * ox + oy * oy + oz * oz - s.r * s.r, disc = b * b - c;
+                if (disc <= 0)
+                    continue;
+                const root = Math.sqrt(disc), near = -b - root, far = -b + root;
+                if (Math.min(far, limit) > Math.max(near, bias))
+                    return true;
+            }
+            else {
+                const ox = x - s.a[0], oy = y - s.a[1], oz = z - s.a[2];
+                const along = ox * s.u[0] + oy * s.u[1] + oz * s.u[2];
+                const slope = d[0] * s.u[0] + d[1] * s.u[1] + d[2] * s.u[2];
+                let near = bias, far = limit;
+                if (Math.abs(slope) < 1e-12) {
+                    if (along <= 0 || along >= s.length)
+                        continue;
+                }
+                else {
+                    const t0 = -along / slope, t1 = (s.length - along) / slope;
+                    near = Math.max(near, Math.min(t0, t1));
+                    far = Math.min(far, Math.max(t0, t1));
+                    if (far <= near)
+                        continue;
+                }
+                const a = Math.max(0, 1 - slope * slope);
+                const b = ox * d[0] + oy * d[1] + oz * d[2] - along * slope;
+                const c = ox * ox + oy * oy + oz * oz - along * along - s.r * s.r;
+                if (a < 1e-12) {
+                    if (c >= 0)
+                        continue;
+                }
+                else {
+                    const disc = b * b - a * c;
+                    if (disc <= 0)
+                        continue;
+                    const root = Math.sqrt(disc);
+                    near = Math.max(near, (-b - root) / a);
+                    far = Math.min(far, (-b + root) / a);
+                }
+                if (far > near)
+                    return true;
+            }
+        }
+        return false;
     }
 
     /** Frontmost orthographic intersection with a closed sphere/finite cylinder. */
@@ -163,7 +224,27 @@ var MolEngraver = (function (exports) {
         const light = [Math.sin(o.lightAzimuth) * Math.cos(o.lightElevation), Math.sin(o.lightElevation), Math.cos(o.lightAzimuth) * Math.cos(o.lightElevation)];
         const sceneRadius = Math.max(...spheres.map(s => Math.hypot(...s.c) + s.r));
         const lightPosition = mul(light, o.lightDistance * sceneRadius);
-        const illumination = (n, p) => dot(n, o.lightType === 'point' ? norm(sub(lightPosition, p)) : light);
+        const shadowBias = Math.max(1e-9, Math.min(sceneRadius * 1e-6, ...scene.map(s => s.r * 1e-4)));
+        const traceShadows = o.castShadows && o.shadowStrength > 0 && o.shadingSize !== 0;
+        const illumination = (n, p) => {
+            const point = o.lightType === 'point', delta = point ? sub(lightPosition, p) : light;
+            const direction = point ? norm(delta) : light;
+            const distance = point ? Math.hypot(...delta) : Infinity;
+            const facing = dot(n, direction);
+            let lit = facing;
+            if (point && o.lightAttenuation > 0) {
+                // Soft inverse-square falloff in model units, independent of screen zoom.
+                const relativeDistance = distance / sceneRadius;
+                const attenuation = 1 / (1 + o.lightAttenuation * relativeDistance * relativeDistance);
+                lit = (Math.max(-1, Math.min(1, lit)) + 1) * attenuation - 1;
+            }
+            if (traceShadows && facing > 0 && shadowBlocked(scene, p, n, direction, distance, shadowBias)) {
+                // Signed engraving brightness maps to [0,1] before shadow attenuation.
+                // At strength .8, keep 20% of the local brightness instead of solid black.
+                lit = (Math.max(-1, Math.min(1, lit)) + 1) * (1 - o.shadowStrength) - 1;
+            }
+            return lit;
+        };
         return { spheres, cylinders, scene, scale, project, illumination };
     }
 
