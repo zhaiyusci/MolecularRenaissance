@@ -1,0 +1,43 @@
+{
+  "name": "molplotter",
+  "version": "0.2.0",
+  "private": true,
+  "description": "DOM-free molecular engraving renderer returning editable SVG",
+  "main": "renderer.js",
+  "module": "dist/molplotter.mjs",
+  "types": "dist/types/renderer.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/renderer.d.ts",
+      "import": "./dist/molplotter.mjs",
+      "require": "./renderer.js"
+    },
+    "./renderer.js": {
+      "types": "./dist/types/renderer.d.ts",
+      "import": "./dist/molplotter.mjs",
+      "require": "./renderer.js"
+    }
+  },
+  "files": [
+    "renderer.js",
+    "boundaries.js",
+    "dot-regions.js",
+    "wash.js",
+    "dots.js",
+    "dist/",
+    "src/",
+    "README.md",
+    "RENDERER.md",
+    "RADII.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "pretest": "npm run build",
+    "test": "node scripts/test.mjs"
+  },
+  "devDependencies": {
+    "rollup": "^4.59.0",
+    "typescript": "^5.9.3"
+  }
+}

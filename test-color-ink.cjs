@@ -5,8 +5,9 @@ const { render, depthAt, elementInkColor, elementInkPalette } = require('./rende
 const { buildDots } = require('./dots.js');
 const elements = ['C', 'H', 'O', 'N', 'S', 'P', 'Xx'];
 const molecule = {
-  name: 'Ink <ownership> & registration',
-  atoms: elements.map((element, i) => ({ element, position: [(i % 4) * 1.8, Math.floor(i / 4) * 1.8, 0] })),
+  name: 'Ink <ownership> & geometry',
+  // Xx is a fictitious palette test element, so its physical radius is explicit.
+  atoms: elements.map((element, i) => ({ element, position: [(i % 4) * 1.8, Math.floor(i / 4) * 1.8, 0], ...(element==='Xx'?{radius:.48}:{}) })),
   bonds: [[0, 1], [1, 2], [4, 5], [5, 6]]
 };
 const base = { width: 740, height: 540, yaw: 0, pitch: 0, labels: true,
@@ -67,6 +68,39 @@ function checkPalette() {
   console.log('PASS ink palette, defaults, gray/white endpoints and neutral H/bonds/unknown');
 }
 checkPalette();
+
+// Removed offset regression: former options are now ordinary ignored unknown keys.
+function checkRemovedOffset() {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(require.resolve('./index.html'), 'utf8');
+  const app = fs.readFileSync(require.resolve('./app.js'), 'utf8');
+  assert.doesNotMatch(html, /\b(?:id|for)="wash-offset-[xy](?:-value)?"/, 'removed UI controls and outputs stay absent');
+  assert.doesNotMatch(app, /wash-offset-[xy]|washOffset[XY]/, 'app neither references removed controls nor passes old options');
+  const formerOptions = [
+    { washOffsetX: 0, washOffsetY: 0 },
+    { washOffsetX: 7.25, washOffsetY: -4.5 },
+    { washOffsetX: -20, washOffsetY: 20 },
+    { washOffsetX: Number.MAX_VALUE, washOffsetY: -Number.MAX_VALUE },
+    { washOffsetX: NaN, washOffsetY: Infinity },
+    { washOffsetX: -Infinity, washOffsetY: NaN },
+    { washOffsetX: 'invalid', washOffsetY: null },
+    { washOffsetX: undefined, washOffsetY: {} }
+  ];
+  for (const colorMode of ['wash', 'ink']) for (const shadingMode of ['hatch', 'stipple', 'halftone']) {
+    for (const colorWash of [true, false]) {
+      const options = { ...base, colorMode, shadingMode, colorWash, labelMatchFill: true };
+      const expected = render(molecule, options);
+      assert.ok(!expected.includes('color-registration'), 'no registration wrapper in baseline');
+      for (const oldOptions of formerOptions) {
+        const actual = render(molecule, { ...options, ...oldOptions });
+        assert.equal(actual, expected, `${colorMode}/${shadingMode}/${colorWash}: removed options leave every output byte unchanged`);
+        assert.ok(!actual.includes('color-registration'), 'removed options never create a registration wrapper');
+      }
+    }
+  }
+  console.log('PASS removed offset regression: two color modes × three shading modes, extremes ignored, no wrapper/UI/app options');
+}
+checkRemovedOffset();
 for (const mode of modes) {
   const name = mode.shadingMode + (mode.shadingMode === 'hatch' ? (mode.variableWidth ? '/ribbon' : '/stroke') : '');
   const make = options => render(molecule, { ...base, ...mode, ...options });
@@ -95,13 +129,6 @@ for (const mode of modes) {
       else { assert.ok(attr(mark, 'stroke')); assert.equal(attr(mark, 'fill'), undefined); }
     }
   } else assert.ok(marks(texture).every(mark => mark.startsWith('<circle') && attr(mark, 'fill')), 'every dot has explicit color');
-  const shifted = make({ ...inkOptions, washOffsetX: 7.25, washOffsetY: -4.5 });
-  const wrapper = group(shifted, 'color-registration');
-  assert.equal(wrapper, `<g data-role="color-registration" transform="translate(7.25 -4.5)">${texture}</g>`, 'offset only wraps existing texture');
-  assert.equal(shifted.replace(wrapper, texture), ink, 'all other bytes unchanged by registration');
-  assert.deepEqual(labels(shifted), labels(ink));
-  assert.equal(group(shifted, 'engraving'), outline);
-  assert.equal(group(ink, 'color-registration'), '');
   for (const [key, value] of [['colorSaturation', 0], ['washStrength', 0], ['colorSaturation', 2], ['washStrength', 1]]) {
     const changed = make({ ...inkOptions, [key]: value });
     const changedTexture = group(changed, 'color-texture');
@@ -121,14 +148,13 @@ for (const mode of modes) {
   assert.equal(marks(zero).length, marks(outline).length, 'size zero leaves only outlines');
   assert.equal(make({ colorWash: true }), wash, 'implicit default wash is byte-identical to explicit wash');
   assert.equal(make({ colorWash: false, colorMode: 'ink' }), make({ colorWash: false, colorMode: 'wash' }), 'master false mode selection is byte-identical');
-  assert.equal(make({ colorWash: false, colorMode: 'ink', washOffsetX: 8, washOffsetY: 3 }), make({ colorWash: false }), 'disabled master ignores registration');
   for (const match of [true, false]) {
     const svg = make({ ...inkOptions, labelMatchFill: match, labelStrokeColor: '#abcdef' });
     for (const label of labels(svg).filter(tag => tag.includes('element-label'))) assert.equal(attr(label, 'stroke'), match ? '#ffffff' : '#abcdef');
   }
   // Isolated surfaces give an independent, unambiguous ownership oracle for all modes.
   for (const element of elements) {
-    const single = render({ atoms: [{ element, position: [0, 0, 0] }], bonds: [] }, { ...base, ...mode, ...inkOptions, width: 260, height: 260 });
+    const single = render({ atoms: [{ element, position: [0, 0, 0], ...(element==='Xx'?{radius:.48}:{}) }], bonds: [] }, { ...base, ...mode, ...inkOptions, width: 260, height: 260 });
     const actual = colors(group(single, 'color-texture'));
     assert.ok(actual.length > 0);
     assert.ok(actual.every(color => color === elementInkColor(element)), `${name}: isolated ${element} owns its texture`);
@@ -136,7 +162,7 @@ for (const mode of modes) {
   // Unknowns and bonds are both neutral; known O endpoints isolate cylinder coloring.
   const bonded = render({ atoms: [{ element: 'O', position: [-1, 0, 0] }, { element: 'O', position: [1, 0, 0] }], bonds: [[0, 1]] }, { ...base, ...mode, ...inkOptions });
   assert.ok(colors(group(bonded, 'color-texture')).includes(elementInkColor(null)), `${name}: visible bond is neutral nonwhite ink`);
-  console.log(`PASS ${name}: geometry, ownership, outlines, registration, controls, halos, legacy defaults`);
+  console.log(`PASS ${name}: geometry, ownership, outlines, controls, halos, legacy defaults`);
 }
 for (const colorMode of ['', 'INK', 'unknown', null, 0]) assert.throws(() => render(molecule, { colorMode }), /colorMode/);
 

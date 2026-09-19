@@ -184,7 +184,7 @@ for (const variableWidth of [false, true]) {
   console.log(`PASS straight cylinder variableWidth=${variableWidth}: ${outlines} outlines, ${hatches} equal-width hatches`);
 }
 for (const optimizePaths of [false, true]) for (const variableWidth of [false, true]) {
-  const options = { optimizePaths, variableWidth, colorWash: true, washOffsetX: 2, washOffsetY: -1 };
+  const options = { optimizePaths, variableWidth, colorWash: true };
   const none = render(examples.pair, { ...options, outlineWidth: 0, hatchWidth: 0 });
   assert.equal(paths(none).length, 0, 'zero widths emit no ink or degenerate ribbons');
   assert.ok(none.includes('class="mol-wash"'), 'zero ink still preserves color');
@@ -195,8 +195,8 @@ for (const optimizePaths of [false, true]) for (const variableWidth of [false, t
   assert.ok(hatches.every(p => !p.attributes.includes('stroke-width="1.120"')), 'zero outline width removes outline');
 }
 for (const name of ['sphere', 'pair', 'ethanol']) {
-  const options = { colorWash: true, washOffsetX: 2, washOffsetY: -1, labels: true, labelMatchFill: true };
+  const options = { colorWash: true, labels: true, labelMatchFill: true };
   const old = render(examples[name], { ...options, optimizePaths: false }), now = render(examples[name], { ...options, optimizePaths: true });
-  assert.equal(now.replace(ink(now), '<INK/>'), old.replace(ink(old), '<INK/>'), name + ': color plate, registration, labels and SVG shell unchanged');
+  assert.equal(now.replace(ink(now), '<INK/>'), old.replace(ink(old), '<INK/>'), name + ': color plate, labels and SVG shell unchanged');
 }
 console.log('PASS all optimize-path regressions (no output files written).');

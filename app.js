@@ -8,6 +8,8 @@
   var timing = byId('timing');
   var error = byId('error');
   var download = byId('download');
+  var scale = byId('scale');
+  var atomRadiusScale = byId('atom-radius-scale');
   var yaw = byId('yaw');
   var pitch = byId('pitch');
   var lightAzimuth = byId('light-azimuth');
@@ -25,8 +27,6 @@
   var colorMode = byId('color-mode');
   var washStrength = byId('wash-strength');
   var colorSaturation = byId('color-saturation');
-  var washOffsetX = byId('wash-offset-x');
-  var washOffsetY = byId('wash-offset-y');
   var labelMatchFill = byId('label-match-fill');
   var labels = byId('labels');
   var labelSize = byId('label-size');
@@ -39,15 +39,16 @@
   var defaultLabelFont = "Georgia, 'Times New Roman', serif";
   var engine = window.MolEngraver;
   var frame = null;
-  var lastSVG = '';
+  var lastRender = null;
   var drag = null;
+  var controlPointer = null;
 
   function showError(message) {
     error.textContent = message;
     error.hidden = false;
     timing.textContent = '渲染未完成';
     download.disabled = true;
-    lastSVG = '';
+    lastRender = null;
   }
 
   if (!engine || typeof engine.render !== 'function' || !engine.examples) {
@@ -70,6 +71,8 @@
   });
 
   function syncOutputs() {
+    byId('scale-value').textContent = scale.value;
+    byId('atom-radius-scale-value').textContent = Number(atomRadiusScale.value).toFixed(2) + '×';
     byId('yaw-value').textContent = yaw.value + '°';
     byId('pitch-value').textContent = pitch.value + '°';
     byId('light-azimuth-value').textContent = lightAzimuth.value + '°';
@@ -84,13 +87,11 @@
     byId('shading-size-value').textContent = shadingSize.value + '%';
     byId('shading-contrast-value').textContent = Number(shadingContrast.value).toFixed(1);
     byId('outline-width-value').textContent = Number(outlineWidth.value).toFixed(2);
-    [colorMode, washStrength, colorSaturation, washOffsetX, washOffsetY].forEach(function (input) {
+    [colorMode, washStrength, colorSaturation].forEach(function (input) {
       input.disabled = !colorWash.checked;
     });
     byId('wash-strength-value').textContent = washStrength.value + '%';
     byId('color-saturation-value').textContent = colorSaturation.value + '%';
-    byId('wash-offset-x-value').textContent = Number(washOffsetX.value).toFixed(1);
-    byId('wash-offset-y-value').textContent = Number(washOffsetY.value).toFixed(1);
     byId('label-settings').disabled = !labels.checked;
     byId('label-size-value').textContent = labelSize.value;
     byId('label-stroke-width-value').textContent = Number(labelStrokeWidth.value).toFixed(1);
@@ -99,12 +100,17 @@
 
   function renderNow() {
     frame = null;
-    var molecule = engine.examples[model.value];
+    var modelKey = model.value;
+    var molecule = engine.examples[modelKey];
     var start = performance.now();
+    var interacting = !!drag || !!controlPointer;
     try {
-      var svg = engine.render(molecule, {
+      var options = {
+        quality: 'preview',
         width: 900,
         height: 700,
+        scale: Number(scale.value),
+        atomRadiusScale: Number(atomRadiusScale.value),
         yaw: Number(yaw.value) * Math.PI / 180,
         pitch: Number(pitch.value) * Math.PI / 180,
         lightAzimuth: Number(lightAzimuth.value) * Math.PI / 180,
@@ -122,8 +128,6 @@
         colorMode: colorMode.value,
         washStrength: Number(washStrength.value) / 100,
         colorSaturation: Number(colorSaturation.value) / 100,
-        washOffsetX: Number(washOffsetX.value),
-        washOffsetY: Number(washOffsetY.value),
         labelMatchFill: labelMatchFill.checked,
         labels: labels.checked,
         labelSize: Number(labelSize.value),
@@ -133,7 +137,9 @@
         labelStrokeColor: labelStrokeColor.value,
         labelBold: labelBold.checked,
         labelItalic: labelItalic.checked
-      });
+      };
+      // Transient lightweight frame only; never overwrite the user's settings.
+      var svg = engine.render(molecule, interacting ? Object.assign({}, options, { shadingSize: 0 }) : options);
       if (typeof svg !== 'string' || !/<svg[\s>]/i.test(svg)) {
         throw new Error('渲染器没有返回有效的 SVG。');
       }
@@ -144,12 +150,15 @@
       root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       root.setAttribute('role', 'img');
       root.setAttribute('aria-label', (molecule.name || model.value) + '分子线刻图');
-      lastSVG = new XMLSerializer().serializeToString(root);
+      var caption = byId('molecule-caption');
+      if (caption) caption.textContent = molecule.name || model.value;
+      // Keep the successful preview inputs, not its sampled SVG geometry.
+      lastRender = interacting ? null : { key: modelKey, model: molecule, options: options };
       byId('model-info').textContent = molecule.atoms.length + ' 个原子 · ' + molecule.bonds.length + ' 个键 · 900 × 700';
-      timing.textContent = '渲染 ' + (performance.now() - start).toFixed(1) + ' ms';
+      timing.textContent = (interacting ? '拖动预览（无纹理） ' : '渲染 ') + (performance.now() - start).toFixed(1) + ' ms';
       error.hidden = true;
       error.textContent = '';
-      download.disabled = false;
+      download.disabled = interacting;
     } catch (cause) {
       preview.textContent = '图版生成失败，请调整设置后重试。';
       showError(cause && cause.message ? cause.message : '未知渲染错误');
@@ -162,15 +171,41 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [yaw, pitch, lightAzimuth, lightElevation, lightDistance, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, washOffsetX, washOffsetY, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
   [model, shadingMode, pointLight, variableWidth, crossHatch, colorWash, colorMode, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
+  // Native range inputs keep their own drag/capture behavior. Window release
+  // handlers also cover releasing outside the slider. No idle timer/debounce.
+  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
+    input.addEventListener('pointerdown', function (event) {
+      if (event.button !== 0 || input.disabled || controlPointer) return;
+      controlPointer = { id: event.pointerId, input: input };
+      scheduleRender();
+    });
+    input.addEventListener('lostpointercapture', endControl);
+  });
+  function endControl(event) {
+    if (!controlPointer || (event && event.pointerId !== controlPointer.id)) return;
+    controlPointer = null;
+    scheduleRender();
+  }
+  window.addEventListener('pointerup', endControl);
+  window.addEventListener('pointercancel', endControl);
+  window.addEventListener('blur', function () {
+    endControl();
+    if (drag) endDrag({ pointerId: drag.id });
+  });
+
   byId('reset').addEventListener('click', function () {
+    endControl();
+    if (drag) endDrag({ pointerId: drag.id });
     model.value = keys[0];
+    scale.value = '60';
+    atomRadiusScale.value = '1';
     yaw.value = '25';
     pitch.value = '-15';
     lightAzimuth.value = '-29';
@@ -188,8 +223,6 @@
     colorMode.value = 'wash';
     washStrength.value = '65';
     colorSaturation.value = '100';
-    washOffsetX.value = '0';
-    washOffsetY.value = '0';
     labelMatchFill.checked = true;
     labels.checked = false;
     labelSize.value = '17';
@@ -214,17 +247,35 @@
   }
 
   download.addEventListener('click', function () {
-    if (!lastSVG || frame !== null) return;
-    var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', lastSVG], { type: 'image/svg+xml;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = safeFilename(model.value);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    // Allow the browser to finish opening the download before revoking its URL.
-    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    if (!lastRender || frame !== null) return;
+    var snapshot = lastRender;
+    var url;
+    var link;
+    download.disabled = true;
+    try {
+      // Export is deliberately independent of the displayed preview DOM.
+      var svg = engine.render(snapshot.model, Object.assign({}, snapshot.options, { quality: 'export' }));
+      if (typeof svg !== 'string' || !/<svg[\s>]/i.test(svg)) {
+        throw new Error('渲染器没有返回有效的 SVG。');
+      }
+      var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', svg], { type: 'image/svg+xml;charset=utf-8' });
+      url = URL.createObjectURL(blob);
+      link = document.createElement('a');
+      link.href = url;
+      link.download = safeFilename(snapshot.key);
+      document.body.appendChild(link);
+      link.click();
+      error.hidden = true;
+      error.textContent = '';
+    } catch (cause) {
+      error.textContent = 'SVG 导出失败：' + (cause && cause.message ? cause.message : '未知导出错误');
+      error.hidden = false;
+    } finally {
+      if (link) link.remove();
+      // Allow the browser to finish opening the download before revoking its URL.
+      if (url) setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      download.disabled = frame !== null || !lastRender;
+    }
   });
 
   preview.addEventListener('pointerdown', function (event) {
@@ -232,6 +283,7 @@
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, yaw: Number(yaw.value), pitch: Number(pitch.value) };
     preview.setPointerCapture(event.pointerId);
     preview.classList.add('dragging');
+    scheduleRender();
     event.preventDefault();
   });
   preview.addEventListener('pointermove', function (event) {
@@ -246,6 +298,7 @@
     drag = null;
     preview.classList.remove('dragging');
     if (preview.hasPointerCapture(event.pointerId)) preview.releasePointerCapture(event.pointerId);
+    scheduleRender();
   }
   preview.addEventListener('pointerup', endDrag);
   preview.addEventListener('pointercancel', endDrag);

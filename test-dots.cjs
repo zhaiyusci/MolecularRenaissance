@@ -111,7 +111,7 @@ for(const mode of modes) {
     assert.equal(circles(zero).length,0); assert.equal(layer(zero,'dots'),''); assert.equal(layer(zero,'engraving'),outline);
     const noOutline=render(examples.ethanol,{...options,outlineWidth:0});
     assert(!layer(noOutline,'engraving').includes('<path')); assert.equal(layer(noOutline,'dots'),layer(svg,'dots'));
-    for(const wash of [{colorWash:true},{colorWash:true,washOffsetX:12,washOffsetY:-9,washStrength:.9,colorSaturation:2}]) {
+    for(const wash of [{colorWash:true},{colorWash:true,washStrength:.9,colorSaturation:2}]) {
       assert.equal(layer(render(examples.ethanol,{...options,...wash}),'dots'),layer(svg,'dots'));
     }
     const directional=layer(render(examples.sphere,options),'dots');

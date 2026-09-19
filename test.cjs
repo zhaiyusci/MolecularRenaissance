@@ -119,7 +119,7 @@ check('UI light controls convert angles, update and reset',()=>{
  let queued,opts;
  vm.runInNewContext(fs.readFileSync('app.js','utf8'),{
   document:{getElementById:id=>elements[id],createElement:()=>({})},
-  window:{MolEngraver:{examples,render(m,o){opts=o;return '<svg></svg>';}}},
+  window:{addEventListener(){},MolEngraver:{examples,render(m,o){opts=o;return '<svg></svg>';}}},
   requestAnimationFrame:f=>{queued=f;return 1;},performance:{now:()=>0},
   XMLSerializer:class{serializeToString(){return '<svg></svg>';}}
  });
@@ -159,7 +159,7 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,.65);assert.equal(opts.labelMatchFill,true);
  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
  assert.equal(opts.colorWash,false);assert.equal(opts.colorMode,'wash');
-  const colorIds=['color-mode','wash-strength','color-saturation','wash-offset-x','wash-offset-y'];
+  const colorIds=['color-mode','wash-strength','color-saturation'];
   for(const id of colorIds)assert.equal(elements[id].disabled,true);
   elements['color-wash'].checked=true;elements['color-wash'].listeners.change();queued();
   for(const mode of ['ink','wash','ink']){
@@ -180,16 +180,15 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(elements['label-stroke-color'].disabled,true);
  elements['label-match-fill'].checked=false;elements['label-match-fill'].listeners.change();queued();
  assert.equal(opts.labelMatchFill,false);assert.equal(elements['label-stroke-color'].disabled,false);
- for(const [id,value] of [['shading-size','0'],['outline-width','1.2'],['color-saturation','250'],['wash-offset-x','4.5'],['wash-offset-y','-3']]){
+ for(const [id,value] of [['shading-size','0'],['outline-width','1.2'],['color-saturation','250']]){
   elements[id].value=value;elements[id].listeners.input();queued();
  }
  assert.equal(opts.shadingSize,0);assert.equal(opts.outlineWidth,1.2);assert.equal(opts.colorSaturation,2.5);
- assert.equal(opts.washOffsetX,4.5);assert.equal(opts.washOffsetY,-3);
  elements['outline-width'].value='0';elements['outline-width'].listeners.input();queued();assert.equal(opts.outlineWidth,0);
  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
  for(const id of colorIds)assert.equal(elements[id].disabled,true);
   assert.equal(opts.colorMode,'ink');assert.equal(elements['color-mode'].value,'ink');
-  assert.deepEqual(colorIds.map(id=>elements[id].value),['ink','40','250','4.5','-3']);
+  assert.deepEqual(colorIds.map(id=>elements[id].value),['ink','40','250']);
  assert.equal(opts.shadingMode,'hatch');
  for(const id of ['dot-spacing','dot-size','dot-contrast','density','line-width'])assert.equal(elements[id],undefined);
  const sharedIds=['shading-density','shading-size','shading-contrast'];
@@ -222,7 +221,6 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.deepEqual(sharedIds.map(id=>elements[id+'-value'].textContent),['100%','100%','1.2']);
  for(const id of [...sharedIds,'cross-hatch','variable-width'])assert.equal(elements[id].disabled,false);
  assert.equal(opts.outlineWidth,.8);assert.equal(opts.colorSaturation,1);
- assert.equal(opts.washOffsetX,0);assert.equal(opts.washOffsetY,0);
  assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,.65);assert.equal(opts.labelMatchFill,true);
  assert.equal(opts.labels,false);assert.equal(opts.labelSize,17);assert.equal(opts.labelStrokeWidth,4);
  assert.equal(opts.labelColor,'#161616');assert.equal(opts.labelStrokeColor,'#ffffff');
@@ -289,26 +287,19 @@ check('saturation changes chroma independently of concentration',()=>{
  assert.equal(elementColor('H',1,4),'#ffffff');assert.equal(elementColor('O',0,4),'#ffffff');
  for(const colorSaturation of [-1,5,NaN])assert.throws(()=>render(examples.sphere,{colorSaturation}));
 });
-check('registration shifts only the color plate and preserves ink and labels',()=>{
- const base=render(examples.ethanol,{colorWash:true,labels:true,labelMatchFill:true});
- const moved=render(examples.ethanol,{colorWash:true,labels:true,labelMatchFill:true,washOffsetX:4.5,washOffsetY:-3});
- assert.ok(moved.includes('transform="translate(4.5 -3)"'));
- const inkAndText=s=>s.slice(s.indexOf('<g data-role="engraving"'));
- assert.equal(inkAndText(base),inkAndText(moved));
- const wash=s=>s.match(/<g class="mol-wash"[\s\S]*?<\/g>/)[0];assert.equal(wash(base),wash(moved));
- assert.equal(render(examples.ethanol,{washOffsetX:10}),render(examples.ethanol));
- assert.ok(!render(examples.sphere,{colorWash:true}).includes('color-registration'));
- for(const opts of [{washOffsetX:NaN},{washOffsetY:Infinity},{washOffsetX:21}])assert.throws(()=>render(examples.sphere,opts));
-});
-check('fill-only and offset exports retain smooth cubic boundaries',()=>{
+check('fill-only exports retain the same smooth cubic color boundaries',()=>{
  const opts={colorWash:true,outlineWidth:0,hatchWidth:0};
- const plain=render(examples.ethanol,opts),shifted=render(examples.ethanol,{...opts,washOffsetX:3,washOffsetY:-2});
+ const plain=render(examples.ethanol,opts),outlined=render(examples.ethanol,{colorWash:true});
  const plate=s=>s.match(/<g class="mol-wash"[\s\S]*?<\/g>/)[0];
  assert.match(plate(plain),/C[-\d]/);
- assert.equal(plate(plain),plate(shifted));
+ assert.equal(plate(plain),plate(outlined));
  assert.ok(!/<image|<filter|feGaussianBlur/.test(plain));
  assert.ok(!plain.match(/<g data-role="engraving"[\s\S]*?<\/g>/)[0].includes('<path'));
 });
-fs.mkdirSync('samples',{recursive:true});
-for(const [key,m] of Object.entries(examples))fs.writeFileSync(`samples/${key}.svg`,render(m));
-console.log(`${checks} tests passed; SVG samples written to samples/`);
+const writeSamples=!process.argv.includes('--no-samples');
+if(writeSamples)fs.mkdirSync('samples',{recursive:true});
+for(const [key,m] of Object.entries(examples)){
+ const svg=render(m);
+ if(writeSamples)fs.writeFileSync(`samples/${key}.svg`,svg);
+}
+console.log(`${checks} tests passed${writeSamples?'; SVG samples written to samples/':''}`);
