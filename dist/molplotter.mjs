@@ -2039,6 +2039,9 @@ function render(molecule, options = {}) {
             wash = helper.buildWash(scene, depthAt, project, scale, fillFor, { fitCurves: o.quality !== 'preview' });
         }
     }
+    // Density is a screen-space style: enlarge geometry by adding hatches,
+    // never by stretching their spacing. Calibrate to the existing scale=60 look.
+    const hatchDensity = o.density * scale / 60;
     for (const s of spheres) {
         if (boundaries)
             paths.push(boundaries.outline(s, o.quality === 'preview' || !o.optimizePaths, o.outlineWidth * 1.4));
@@ -2056,9 +2059,9 @@ function render(molecule, options = {}) {
                 }, Math.max(120, Math.ceil(2 * Math.PI * s.r * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, p, lit) => n[2] >= -1e-12 && lit < (secondary ? .12 : (j % 2 === 0 ? .88 : .58)), true, true, s.element, boundaries?.clipCircle ? () => boundaries.clipCircle(s, add$2(s.c, mul$1(axis, h * s.r)), mul$1(e, r * s.r), mul$1(f, r * s.r)) : null);
             }
         }
-        hatch([.12, 1, .40], Math.max(10, Math.round(o.density * s.r / .48)), false);
+        hatch([.12, 1, .40], Math.max(2, Math.round(hatchDensity * s.r / .48)), false);
         if (o.crossHatch)
-            hatch([1, .22, -0.32], Math.max(8, Math.round(o.density * .8 * s.r / .48)), true);
+            hatch([1, .22, -0.32], Math.max(2, Math.round(hatchDensity * .8 * s.r / .48)), true);
     }
     for (const s of cylinders) {
         const e = norm$1(cross$1(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross$1(s.u, e);
@@ -2071,7 +2074,7 @@ function render(molecule, options = {}) {
             line(edge, o.outlineWidth * 1.1);
             line(mul$1(edge, -1), o.outlineWidth * 1.1);
         }
-        const count = Math.round(o.density * .8);
+        const count = Math.max(3, Math.round(hatchDensity * .8 * s.r / .115));
         for (let j = 0; j < count; j++) {
             const a = j / count * 2 * Math.PI, n = add$2(mul$1(e, Math.cos(a)), mul$1(f, Math.sin(a)));
             if (n[2] > 0)

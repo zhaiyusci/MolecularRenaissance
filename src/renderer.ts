@@ -36,6 +36,9 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
       wash=helper.buildWash(scene,depthAt,project,scale,fillFor,{fitCurves:o.quality!=='preview'});
     }
   }
+  // Density is a screen-space style: enlarge geometry by adding hatches,
+  // never by stretching their spacing. Calibrate to the existing scale=60 look.
+  const hatchDensity=o.density*scale/60;
   for(const s of spheres){
     if(boundaries)paths.push(boundaries.outline(s,o.quality==='preview'||!o.optimizePaths,o.outlineWidth*1.4));
     else curve(t=>{const a=t*Math.PI*2,n=[Math.cos(a),Math.sin(a),0];return {p:add(s.c,mul(n,s.r)),n};},Math.ceil(2*Math.PI*s.r*scale/0.65),o.outlineWidth*1.4);
@@ -52,8 +55,8 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
           boundaries?.clipCircle?()=>boundaries.clipCircle(s,add(s.c,mul(axis,h*s.r)),mul(e,r*s.r),mul(f,r*s.r)):null);
       }
     }
-    hatch([.12,1,.40],Math.max(10,Math.round(o.density*s.r/.48)),false);
-    if(o.crossHatch)hatch([1,.22,-.32],Math.max(8,Math.round(o.density*.8*s.r/.48)),true);
+    hatch([.12,1,.40],Math.max(2,Math.round(hatchDensity*s.r/.48)),false);
+    if(o.crossHatch)hatch([1,.22,-.32],Math.max(2,Math.round(hatchDensity*.8*s.r/.48)),true);
   }
   for(const s of cylinders){
     const e=norm(cross(s.u,Math.abs(s.u[2])<.95?[0,0,1]:[0,1,0])),f=cross(s.u,e);
@@ -63,7 +66,7 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
         engrave&&boundaries?.clipLine?()=>boundaries.clipLine(s,a,b):null);
     };
     if(Math.hypot(s.u[0],s.u[1])>1e-8){const edge=norm([-s.u[1],s.u[0],0]);line(edge,o.outlineWidth*1.1);line(mul(edge,-1),o.outlineWidth*1.1);}
-    const count=Math.round(o.density*.8);
+    const count=Math.max(3,Math.round(hatchDensity*.8*s.r/.115));
     for(let j=0;j<count;j++){
       const a=j/count*2*Math.PI,n=add(mul(e,Math.cos(a)),mul(f,Math.sin(a)));
       if(n[2]>0)line(n,o.hatchWidth*.68,true);
