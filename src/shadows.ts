@@ -6,12 +6,18 @@ export function directionalShadowContext(scene:Scene,light:Vector,bias:number){
   const bounds=scene.map(s=>s.kind==='sphere'?{c:s.c,r:s.r}:{c:s.a.map((v,i)=>v+s.u[i]*s.length/2),r:Math.hypot(s.length/2,s.r)});
   const lists=scene.map((receiver,i)=>scene.filter((caster,j)=>{
     if(i===j)return false;
-    const a=bounds[i],b=bounds[j],d=b.c.map((v,k)=>v-a.c[k]),ahead=d.reduce((sum,v,k)=>sum+v*light[k],0),r=a.r+b.r;
-    if(ahead+r<=0||d.reduce((sum,v)=>sum+v*v,0)-ahead*ahead>r*r)return false;
-    if(receiver.kind==='sphere'&&Math.hypot(...d)+b.r<receiver.r-bias)return false;
+    const a=bounds[i],b=bounds[j],d=b.c.map((v,k)=>v-a.c[k]),ahead=d.reduce((sum,v,k)=>sum+v*light[k],0);
+    // The ray starts at p+n*bias, not p. Pad the receiver bound for that
+    // displacement and roundoff (including the almost-unit light vector).
+    const padding=bias+128*Number.EPSILON*Math.max(1,...a.c.map(Math.abs),...b.c.map(Math.abs),a.r,b.r);
+    const r=a.r+b.r+padding;
+    if(ahead+r<0||d.reduce((sum,v)=>sum+v*v,0)-ahead*ahead>r*r)return false;
+    if(receiver.kind==='sphere'&&Math.hypot(...d)+b.r<receiver.r-padding)return false;
     return true;
   }));
   return {
+    /** Same conservative lists for physical surface illumination; scene order is retained. */
+    candidates:lists as readonly (readonly Primitive[])[],
     mayShadow:lists.map(list=>list.length>0),
     shadowed:(id:number,n:Vector,p:Vector)=>n.reduce((sum,v,k)=>sum+v*light[k],0)>0&&shadowBlocked(lists[id],p,n,light,Infinity,bias)
   };

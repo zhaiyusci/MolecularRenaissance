@@ -1,7 +1,8 @@
 /* Closed visible-surface regions from MolBoundaries' already labelled arrangement.
  * No visibility/depth tests, colour merging, or invented closing edges.
  */
-import type { Scene, Vector, Project, DotRegions } from './types';
+import type { Scene, Vector, Project, DotRegions, SurfaceRegion } from './types';
+import { createRegion } from './region-clipping';
 
 /** Minimal projected geometry accepted from the labelled arrangement builder. */
 export interface ProjectedCurve {
@@ -123,6 +124,15 @@ function build(scene: Scene, segments: readonly RegionSegment[], nodes: readonly
     if (!attach(s.left, s.start, s.end, poly, false) || !attach(s.right, s.end, s.start, poly, true)) return null;
   }
   var active: OwnerIndex[] = [], totalRowRefs = 0;
+  // Retain exactly the validated owner polygons; build each clipping BVH lazily.
+  var surfaceEdges = new Map<number, Edge[]>(), surfaces = new Map<number, SurfaceRegion>();
+  function surface(id: number): SurfaceRegion | null {
+    var polygon = surfaceEdges.get(id);
+    if (!polygon) return null;
+    var region = surfaces.get(id);
+    if (!region) { region = createRegion(polygon, owners[id].bounds); surfaces.set(id, region); }
+    return region;
+  }
   for (var oi = 0; oi < owners.length; oi++) {
     var o = owners[oi];
     if (!o.directed.length) continue; // valid fully occluded source, even white
@@ -149,14 +159,15 @@ function build(scene: Scene, segments: readonly RegionSegment[], nodes: readonly
       if (totalRowRefs > MAX_REFS) return null;
       for (var ri = lo; ri <= hi; ri++) { if (!o.rows[ri]) o.rows[ri] = []; o.rows[ri]!.push(e); }
     }
-    // Only row index + bbox survives construction; graph traversal is not
-    // repeated by query, and loops/holes use the same evenodd rule.
-    // The build-only fields are discarded after the index has been populated.
+    // Dot queries keep their unchanged row index. Clipping retains the same
+    // polygon edges, including every disconnected component and hole.
+    surfaceEdges.set(o.id, o.edges);
+    // The build-only graph fields are discarded after indexing.
     delete (o as Partial<OwnerBuild>).starts; delete (o as Partial<OwnerBuild>).ins;
     delete (o as Partial<OwnerBuild>).directed; delete (o as Partial<OwnerBuild>).edges;
     active.push(o as OwnerIndex);
   }
-  if (!active.length) return { query: function () { return null; } };
+  if (!active.length) return { query: function () { return null; }, surface: surface };
   if (!(bounds[2] > bounds[0]) || !(bounds[3] > bounds[1])) return null;
   error += 128 * Number.EPSILON * Math.max(1, Math.abs(bounds[0]), Math.abs(bounds[1]), Math.abs(bounds[2]), Math.abs(bounds[3]));
   var ownerGrid = grid(bounds, active.length * 16), edgeGrid = grid(bounds, edges.length);
@@ -173,7 +184,7 @@ function build(scene: Scene, segments: readonly RegionSegment[], nodes: readonly
     }
     return yes;
   }
-  return { query: function (x, y, maxRadius) {
+  return { surface: surface, query: function (x, y, maxRadius) {
     if (!finite(x) || !finite(y) || !finite(maxRadius) || !(maxRadius > 0) || !insideBox(bounds, x, y)) return null;
     var candidates = ownerGrid.cells[ownerGrid.iy(y) * ownerGrid.nx + ownerGrid.ix(x)] || [], owner = -1;
     for (var i = 0; i < candidates.length; i++) {

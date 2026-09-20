@@ -82,6 +82,15 @@ function marks(svg) {
     if(a['clip-path'])assert(clip&&clips.has(clip),'clip reference must resolve');
     const active=clip?[...inherited,clips.get(clip)]:inherited;
     if(/^<g\b/.test(tag)){if(!tag.endsWith('/>'))stack.push(active);continue;}
+    if(/^<path\b/.test(tag)&&a['data-stipple-radius']){
+      const r=+a['data-stipple-radius'];
+      assert.equal(a['stroke-linecap'],'round');assert.equal(a.fill,'none');assert.equal(a.stroke,'#161616');
+      assert(Math.abs(+a['stroke-width']-2*r)<1e-10);
+      const points=[...a.d.matchAll(/M(-?[\d.]+) (-?[\d.]+)h0/g)];
+      assert.equal(points.map(p=>p[0]).join(''),a.d,'only isolated zero-length round subpaths');
+      for(const p of points){const x=+p[1],y=+p[2];out.push({box:[x-r,y-r,x+r,y+r],contains:(px,py)=>(px-x)**2+(py-y)**2<=r*r&&active.every(c=>c(px,py))});}
+      continue;
+    }
     let mark;
     if(/^<circle\b/.test(tag))mark=shape(tag);
     else if(/^<path\b/.test(tag)&&a.fill==='#161616')mark=shape(tag);
@@ -147,6 +156,7 @@ function coverage(svg,box,mask=()=>true){
   }
   return ink/total;
 }
+if(require.main===module){
 const scene=[{kind:'sphere',c:[0,0,0],r:1}];
 for(const mode of ['stipple','halftone'])for(const target of [.1,.35,.65]){
   const svg=buildDots(scene,()=>0,p=>[p[0]*60,-p[1]*60],60,()=>0,
@@ -173,3 +183,5 @@ for(const mode of ['stipple','halftone'])for(const target of [.1,.35,.65]){
   console.log('Sphere mean texture coverage (excluding outlines):',result);
   for(const mode of ['stipple','halftone'])assert(Math.abs(result[mode]-result.hatch)<.04,'style means should agree within 4 percentage points');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+}
+module.exports={coverage,marks};

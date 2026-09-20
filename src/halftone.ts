@@ -129,6 +129,8 @@ export function sampledTonePaths(bounds:Bounds,sample:(x:number,y:number)=>numbe
 }
 
 export interface SurfacePatternLayer {
+  /** Required for per-surface emission; optional for the legacy combined output. */
+  sourceId?:number;
   /** Exact visible surface, or empty for a sampled-ownership fallback. */
   clip:string;
   bounds?:Bounds;
@@ -137,7 +139,7 @@ export interface SurfacePatternLayer {
 }
 
 /** Paint precomputed geometric contours with a shared aligned pattern palette. */
-export function buildSurfacePatterns(o:{bounds:Bounds;pitch:number;silhouette:string;layers:readonly SurfacePatternLayer[];method:string}):string{
+export function buildSurfacePatterns(o:{bounds:Bounds;pitch:number;silhouette:string;layers:readonly SurfacePatternLayer[];method:string},emitSurface?:(id:number,svg:string)=>void):string{
   const [left,top,right,bottom]=o.bounds;
   if(!(right>left&&bottom>top))return '';
   const used=new Set<number>();let hash1=2166136261,hash2=5381;
@@ -169,6 +171,14 @@ export function buildSurfacePatterns(o:{bounds:Bounds;pitch:number;silhouette:st
     if(layer.shadow)body+=paint(layer.shadow,index+'s');
     if(body&&layer.clip){const id=prefix+'-face-'+index;clip(id,layer.clip);body=`<g clip-path="url(#${id})">${body}</g>`;}
     return body;
+  }
+  if(emitSurface){
+    for(const [i,layer] of o.layers.entries()){
+      if(layer.sourceId===undefined||!Number.isSafeInteger(layer.sourceId)||layer.sourceId<0)throw new Error('Per-surface patterns require a primitive sourceId');
+      const body=paint(layer,String(i));
+      emitSurface(layer.sourceId,`<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${LEVELS}" stroke="none"><g clip-path="url(#${prefix}-surface)">${body}</g></g>`);
+    }
+    return `<defs>${defs.join('')}</defs>`;
   }
   const body=o.layers.map((layer,i)=>paint(layer,String(i))).join('');
   return `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${LEVELS}" stroke="none"><defs>${defs.join('')}</defs><g clip-path="url(#${prefix}-surface)">${body}</g></g>`;

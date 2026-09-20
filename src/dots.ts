@@ -25,12 +25,12 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
   });
   const minX=Math.min(...shapes.map(s=>s.b[0])),minY=Math.min(...shapes.map(s=>s.b[1]));
   const maxX=Math.max(...shapes.map(s=>s.b[2])),maxY=Math.max(...shapes.map(s=>s.b[3]));
-  function hit(x:number,y:number):Hit|null{
+  function hit(x:number,y:number,queryRadius=maxRadius*1.03):Hit|null{
     const wx=(x-origin[0])/scale,wy=(origin[1]-y)/scale;
     if(regions&&o.shadingMode!=='halftone'){
       // Visibility/occlusion is already solved. The one surface intersection
       // below only reconstructs this known owner's position for its normal.
-      const region=regions.query(x,y,maxRadius*1.03);if(!region)return null;
+      const region=regions.query(x,y,queryRadius);if(!region)return null;
       const s=scene[region.id],z=depthAt(s,wx,wy);
       return Number.isFinite(z)?{id:region.id,s,p:[wx,wy,z],clearance:region.clearance}:null;
     }
@@ -73,6 +73,8 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
   // projected crowding, or the thresholds that turn hatch families on/off.
   const exponent=referenceCoverage?o.dotContrast/1.2:o.dotContrast;
   const smoothTone=(lit:number)=>Math.pow(clamp((1-lit)/2,0,1),exponent);
+  const surfaceIllumination=surfaces?.illumination;
+  const lightAt=(h:Hit,n:Vector)=>surfaceIllumination?surfaceIllumination(h.s,n,h.p):illumination(n,h.p);
   let toneGain=1;
   if(referenceCoverage){
     const left=o.width===undefined?minX:Math.max(0,minX),right=o.width===undefined?maxX:Math.min(o.width,maxX);
@@ -81,7 +83,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
     let target=0;
     for(let y=top+.61*step;y<bottom;y+=step)for(let x=left+.37*step;x<right;x+=step){
       const h=hit(x,y);if(!h)continue;
-      const n=normal(h),lit=clamp(illumination(n,h.p),-1,1);
+      const n=normal(h),lit=clamp(lightAt(h,n),-1,1);
       tones.push(smoothTone(lit));target+=clamp(referenceCoverage(h.s,n,lit),0,1);
     }
     const total=(gain:number)=>tones.reduce((sum,t)=>sum+Math.min(1,gain*t),0);
@@ -96,7 +98,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
     }
   }
   function coverage(h:Hit):number{
-    const lit=clamp(illumination(normal(h),h.p),-1,1);
+    const lit=clamp(lightAt(h,normal(h)),-1,1);
     return clamp(toneGain*smoothTone(lit),0,1);
   }
   if(o.shadingMode==='halftone'){
@@ -129,7 +131,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       if(surfaces?.light&&visiblePath){
         const light=surfaces.light;
         const threshold=(ink:number)=>1-2*Math.pow(ink/toneGain,1/exponent)-2*brightness;
-        const layer:SurfacePatternLayer={clip:visiblePath,bounds:box,tones:thresholds.map(t=>t>toneGain?'':directionalTonePath(s,project,light,threshold(t)))};
+        const layer:SurfacePatternLayer={sourceId:id,clip:visiblePath,bounds:box,tones:thresholds.map(t=>t>toneGain?'':directionalTonePath(s,project,light,threshold(t)))};
         // Only one binary shadow contour is sampled locally. Its shaded tone
         // boundaries remain analytic, with the shadow attenuation inverted.
         if(surfaces.shadowed&&surfaces.mayShadow?.[id]){
@@ -138,7 +140,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
           if(mask){
             const strength=o.shadowStrength??.8;
             const constant=clamp(toneGain*smoothTone(clamp(-1+2*brightness,-1,1)),0,1);
-            layer.shadow={clip:mask,bounds:box,tones:thresholds.map(t=>{
+            layer.shadow={sourceId:id,clip:mask,bounds:box,tones:thresholds.map(t=>{
               if(strength>=1)return constant>=t?visiblePath:'';
               return t>toneGain?'':directionalTonePath(s,project,light,(threshold(t)+1)/(1-strength)-1);
             })};
@@ -148,30 +150,48 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       }else{
         // Point-light attenuation, unsupported visibility arrangements, and
         // custom low-level light callbacks stay local to each primitive.
-        layers.push({clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step)});
+        layers.push({sourceId:id,clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step)});
       }
     }
     return buildSurfacePatterns({bounds,pitch:g*Math.SQRT2/5,silhouette:projectedSilhouette(scene,project,scale),layers,
-      method:surfaces?.paths?(surfaces.light?(surfaces.shadowed?'analytic-local-shadows':'analytic'):'surface-sampled'):'local-fallback'});
+      method:surfaces?.paths?(surfaces.light?(surfaces.shadowed?'analytic-local-shadows':'analytic'):'surface-sampled'):'local-fallback'},surfaces?.emitSurface);
   }
-  const circles:string[]=[];
-  function emit(x:number,y:number){
+  const circles:string[]=[],batches=surfaces?.compactStipple?new Map<number,string[]>():null;
+  const emitSurface=surfaces?.emitSurface;
+  const owners=new Map<number,{circles:string[];batches:Map<number,string[]>|null}>();
+  let markCount=0;
+  function emit(x:number,y:number,certifiedCell=false,cellOwner=-1){
     if(x<minX||y<minY||x>maxX||y>maxY)return;
-    const h=hit(x,y);if(!h)return;
+    const h=certifiedCell?null:hit(x,y);if(!certifiedCell&&!h)return;
     let radius=o.dotSize;
     if(radius<minRadius)return;
     // Contract only near actual boundaries, not every interior mark: a global
     // radius contraction would silently reduce the calibrated coverage.
-    const clearance=regions?h.clearance!:safeRadius(x,y,radius*1.03,h.id);
+    const clearance=certifiedCell?maxRadius*1.03:regions?h!.clearance!:safeRadius(x,y,radius*1.03,h!.id);
     radius=Math.floor(Math.min(radius,Math.max(0,clearance*Math.cos(Math.PI/16)-.003*fineScale))*1000)/1000;
     if(radius<minRadius)return;
-    circles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"/>`);
+    markCount++;
+    let targetCircles=circles,targetBatches=batches;
+    if(emitSurface){
+      const owner=certifiedCell?cellOwner:h!.id;
+      let target=owners.get(owner);
+      if(!target){target={circles:[],batches:batches?new Map<number,string[]>():null};owners.set(owner,target);}
+      targetCircles=target.circles;targetBatches=target.batches;
+    }
+    if(targetBatches){
+      let batch=targetBatches.get(radius);if(!batch){batch=[];targetBatches.set(radius,batch);}
+      batch.push(`M${x.toFixed(3)} ${y.toFixed(3)}h0`);
+    }else targetCircles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"/>`);
   }
-  if(o.shadingMode==='stipple'){
+  if(o.shadingMode==='stipple'&&toneGain>0){
+    // Certify a whole candidate cell plus its largest disk once. Interior
+    // Poisson marks then need neither owner/depth nor boundary-distance queries.
+    const cellRadius=Math.SQRT1_2*g+maxRadius*1.03;
     const i0=Math.floor(minX/g)-1,i1=Math.ceil(maxX/g)+1,j0=Math.floor(minY/g)-1,j1=Math.ceil(maxY/g)+1;
     if((i1-i0+1)*(j1-j0+1)>1000000)throw new Error('Dot screen too large; increase spacing or reduce output size');
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
-      const h=hit((i+.5)*g,(j+.5)*g);if(!h)continue;
+      const h=hit((i+.5)*g,(j+.5)*g,regions?cellRadius:maxRadius*1.03);if(!h)continue;
+      const certifiedCell=!!regions&&h.clearance!>=cellRadius-1e-12;
       // Equal-radius Poisson marks. Account for overlap using
       // coverage = 1-exp(-numberDensity * diskArea), rather than adding areas.
       const ink=Math.min(.995,coverage(h));if(ink<=0)continue;
@@ -180,10 +200,20 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       const stop=Math.exp(-mean);let product=1,count=0;
       while((product*=1-hash(i,j,100+count))>stop)count++;
       for(let k=0;k<count;k++){
-        emit((i+hash(i,j,10000+2*k))*g,(j+hash(i,j,10001+2*k))*g);
-        if(circles.length>1000000)throw new Error('Too many stipple marks; use a coarser texture');
+        emit((i+hash(i,j,10000+2*k))*g,(j+hash(i,j,10001+2*k))*g,certifiedCell,h.id);
+        if(markCount>1000000)throw new Error('Too many stipple marks; use a coarser texture');
       }
     }
   }
+  // SVG round caps on zero-length subpaths are exact disks. This batches
+  // serialization/DOM nodes, not positions: there is no tile or repeated motif.
+  if(emitSurface){
+    for(const [id,target] of owners){
+      if(target.batches)for(const [r,points] of target.batches)target.circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2*r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+      emitSurface(id,`<g data-role="dots" data-mode="stipple" fill="#161616" stroke="none">${target.circles.join('')}</g>`);
+    }
+    return '';
+  }
+  if(batches)for(const [r,points] of batches)circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2*r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
   return `<g data-role="dots" data-mode="${o.shadingMode}" fill="#161616" stroke="none">${circles.join('')}</g>`;
 }

@@ -168,14 +168,20 @@ var MolEngraver = (function (exports) {
         const lists = scene.map((receiver, i) => scene.filter((caster, j) => {
             if (i === j)
                 return false;
-            const a = bounds[i], b = bounds[j], d = b.c.map((v, k) => v - a.c[k]), ahead = d.reduce((sum, v, k) => sum + v * light[k], 0), r = a.r + b.r;
-            if (ahead + r <= 0 || d.reduce((sum, v) => sum + v * v, 0) - ahead * ahead > r * r)
+            const a = bounds[i], b = bounds[j], d = b.c.map((v, k) => v - a.c[k]), ahead = d.reduce((sum, v, k) => sum + v * light[k], 0);
+            // The ray starts at p+n*bias, not p. Pad the receiver bound for that
+            // displacement and roundoff (including the almost-unit light vector).
+            const padding = bias + 128 * Number.EPSILON * Math.max(1, ...a.c.map(Math.abs), ...b.c.map(Math.abs), a.r, b.r);
+            const r = a.r + b.r + padding;
+            if (ahead + r < 0 || d.reduce((sum, v) => sum + v * v, 0) - ahead * ahead > r * r)
                 return false;
-            if (receiver.kind === 'sphere' && Math.hypot(...d) + b.r < receiver.r - bias)
+            if (receiver.kind === 'sphere' && Math.hypot(...d) + b.r < receiver.r - padding)
                 return false;
             return true;
         }));
         return {
+            /** Same conservative lists for physical surface illumination; scene order is retained. */
+            candidates: lists,
             mayShadow: lists.map(list => list.length > 0),
             shadowed: (id, n, p) => n.reduce((sum, v, k) => sum + v * light[k], 0) > 0 && shadowBlocked(lists[id], p, n, light, Infinity, bias)
         };
@@ -292,7 +298,9 @@ var MolEngraver = (function (exports) {
         const lightPosition = mul(light, o.lightDistance * sceneRadius);
         const shadowBias = Math.max(1e-9, Math.min(sceneRadius * 1e-6, ...scene.map(s => s.r * 1e-4)));
         const traceShadows = o.castShadows && o.shadowStrength > 0 && o.shadingSize !== 0;
-        const illumination = (n, p) => {
+        // Share the evaluator so broad-phase specialization cannot drift from the
+        // generic callback's physical formulas or arithmetic order.
+        const lighting = (casters) => (n, p) => {
             const point = o.lightType === 'point', delta = point ? sub(lightPosition, p) : light;
             const direction = point ? norm(delta) : light;
             const distance = point ? Math.hypot(...delta) : Infinity;
@@ -304,14 +312,41 @@ var MolEngraver = (function (exports) {
                 const attenuation = 1 / (1 + o.lightAttenuation * relativeDistance * relativeDistance);
                 lit = (Math.max(-1, Math.min(1, lit)) + 1) * attenuation - 1;
             }
-            if (traceShadows && facing > 0 && shadowBlocked(scene, p, n, direction, distance, shadowBias)) {
+            if (casters.length && traceShadows && facing > 0 && shadowBlocked(casters, p, n, direction, distance, shadowBias)) {
                 // Signed engraving brightness maps to [0,1] before shadow attenuation.
                 // At strength .8, keep 20% of the local brightness instead of solid black.
                 lit = (Math.max(-1, Math.min(1, lit)) + 1) * (1 - o.shadowStrength) - 1;
             }
             return lit;
         };
-        return { spheres, cylinders, scene, scale, project, illumination, lightDirection: light, shadowBias };
+        const illumination = lighting(scene), unshadowedIllumination = lighting([]), cache = new WeakMap();
+        const ids = new Map(scene.map((s, id) => [s, id]));
+        let directional;
+        const directionalShadows = () => directional ??= directionalShadowContext(scene, light, shadowBias);
+        const lightingFor = (source) => {
+            const cached = cache.get(source);
+            if (cached)
+                return cached;
+            const id = ids.get(source);
+            let result = illumination;
+            if (traceShadows && o.lightType === 'directional' && id !== undefined) {
+                result = lighting(directionalShadows().candidates[id]);
+            }
+            // Point rays vary across a receiver: retain the complete caster list,
+            // including self, rather than apply an unsafe directional broad phase.
+            // Unknown primitives also keep the fully generic behavior.
+            cache.set(source, result);
+            return result;
+        };
+        const mayShadow = (source) => {
+            if (!traceShadows)
+                return false;
+            const id = ids.get(source);
+            if (o.lightType !== 'directional' || id === undefined)
+                return scene.length > 0;
+            return directionalShadows().mayShadow[id];
+        };
+        return { spheres, cylinders, scene, scale, project, illumination, unshadowedIllumination, lightingFor, mayShadow, directionalShadows, lightDirection: light, shadowBias };
     }
 
     const root = globalThis;
@@ -325,6 +360,90 @@ var MolEngraver = (function (exports) {
         return typeof module !== 'undefined' && module.exports ? require('./dots.js') : root.MolDots;
     }
 
+    const TAU$1 = 2 * Math.PI;
+    const fmt$1 = (p) => p.slice(0, 2).map(v => String(Number(v.toFixed(4)))).join(' ');
+    /** Intervals in normalized circle parameter where k+a*cos+b*sin < limit. */
+    function trigSpans(k, a, b, limit) {
+        const radius = Math.hypot(a, b), cuts = [0, 1];
+        if (radius === 0)
+            return k < limit ? [[0, 1]] : [];
+        if (limit <= k - radius)
+            return [];
+        if (limit >= k + radius)
+            return [[0, 1]];
+        if (Math.abs(limit - k) < radius) {
+            const phase = Math.atan2(b, a), delta = Math.acos((limit - k) / radius);
+            for (const t of [phase - delta, phase + delta])
+                cuts.push(((t / TAU$1) % 1 + 1) % 1);
+        }
+        cuts.sort((x, y) => x - y);
+        const result = [];
+        for (let i = 1; i < cuts.length; i++) {
+            const x = cuts[i - 1], y = cuts[i], t = (x + y) / 2 * TAU$1;
+            if (y > x && k + a * Math.cos(t) + b * Math.sin(t) < limit)
+                result.push([x, y]);
+        }
+        return result;
+    }
+    function intersectSpans(a, b) {
+        const result = [];
+        let i = 0, j = 0;
+        while (i < a.length && j < b.length) {
+            const lo = Math.max(a[i][0], b[j][0]), hi = Math.min(a[i][1], b[j][1]);
+            if (hi > lo + 1e-12)
+                result.push([lo, hi]);
+            if (a[i][1] < b[j][1])
+                i++;
+            else
+                j++;
+        }
+        return result;
+    }
+    function unionSpans(...sets) {
+        const result = [];
+        for (const [a, b] of sets.flat().sort((x, y) => x[0] - y[0])) {
+            const last = result.at(-1);
+            if (last && a <= last[1] + 1e-12)
+                last[1] = Math.max(last[1], b);
+            else
+                result.push([a, b]);
+        }
+        return result;
+    }
+    function complementSpans(spans) {
+        const result = [];
+        let end = 0;
+        for (const [a, b] of spans) {
+            if (a > end)
+                result.push([end, a]);
+            end = Math.max(end, b);
+        }
+        if (end < 1)
+            result.push([end, 1]);
+        return result;
+    }
+    /** A projected circle stays an ellipse; do not sample and refit its centerline. */
+    function projectedCircle(project, center, u, v) {
+        const c = project(center), pu = project(center.map((x, i) => x + u[i])), pv = project(center.map((x, i) => x + v[i]));
+        const U = pu.map((x, i) => x - c[i]), V = pv.map((x, i) => x - c[i]);
+        const point = (t) => { const a = t * TAU$1; return c.map((x, i) => x + U[i] * Math.cos(a) + V[i] * Math.sin(a)); };
+        const tangent = (t) => { const a = t * TAU$1; return U.map((x, i) => TAU$1 * (-x * Math.sin(a) + V[i] * Math.cos(a))); };
+        return { point, tangent, clip: region => region.clipEllipse(c, U, V), path: (a, b) => {
+                const count = Math.max(1, Math.ceil(Math.abs(b - a) * 8)), step = (b - a) / count, k = 4 / 3 * Math.tan(step * TAU$1 / 4) / TAU$1;
+                let path = 'M' + fmt$1(point(a));
+                for (let i = 0; i < count; i++) {
+                    const t0 = a + i * step, t1 = i === count - 1 ? b : a + (i + 1) * step, p = point(t0), q = point(t1), d0 = tangent(t0), d1 = tangent(t1);
+                    path += 'C' + fmt$1(p.map((x, j) => x + k * d0[j])) + ' ' + fmt$1(q.map((x, j) => x - k * d1[j])) + ' ' + fmt$1(q);
+                }
+                return path;
+            } };
+    }
+    function projectedLine(project, a, b) {
+        const p = project(a), q = project(b), d = q.map((x, i) => x - p[i]);
+        const point = (t) => p.map((x, i) => x + t * d[i]);
+        return { point, tangent: () => d, clip: region => region.clipLine(p, q), path: (a, b) => 'M' + fmt$1(point(a)) + 'L' + fmt$1(point(b)) };
+    }
+
     function engravingWidth(base, illumination) {
         const darkness = (1 - Math.max(-1, Math.min(1, illumination))) / 2;
         return base * (.4 + 1.15 * darkness);
@@ -335,7 +454,8 @@ var MolEngraver = (function (exports) {
         const fitter = o.optimizePaths ? getWash() : null;
         if (o.optimizePaths && (!fitter || typeof fitter.fitContour !== 'function'))
             throw new Error('Load updated wash.js before renderer.js');
-        const coord = (p) => p.map(v => String(Number(v.toFixed(3)))).join(' ');
+        const rounded = (v) => String(Math.round(v * 1000) / 1000);
+        const coord = (p) => p.map(rounded).join(' ');
         function compactPath(points, tolerance = .015) {
             const a = points[0], b = points.at(-1), dx = b[0] - a[0], dy = b[1] - a[1], length2 = dx * dx + dy * dy;
             if (length2 > 1e-12 && points.every(p => {
@@ -359,69 +479,168 @@ var MolEngraver = (function (exports) {
                 curves = fitter.fitContour(points, tolerance);
             return 'M' + coord(a) + curves.map(c => c.length === 2 ? 'L' + coord(c[1]) : 'C' + c.slice(1).map(coord).join(' ')).join('');
         }
-        return function curve(fn, steps, width, accept = () => true, engrave = false, closed = false, clip = null) {
-            if (width === 0 || (engrave && o.shadingMode !== 'hatch'))
+        return function curve(fn, steps, width, accept = () => true, engrave = false, closed = false, clip = null, hints = {}) {
+            if (width === 0 || (engrave && o.shadingMode !== 'hatch') || hints.spans?.length === 0)
                 return;
             let run = [];
             const runs = [];
             const flush = () => { if (run.length > 1)
                 runs.push(run); run = []; };
-            function sample(t, index, knownVisible) {
+            function evaluate(t) {
                 const { p, n } = fn(t);
-                let lit = illumination(n, p);
+                let lit = hints.ignoreLighting ? 0 : (hints.illumination || illumination)(n, p);
                 if (engrave && o.shadingContrast !== 1.2) {
                     const darkness = (1 - Math.max(-1, Math.min(1, lit))) / 2;
                     lit = 1 - 2 * Math.pow(darkness, o.shadingContrast / 1.2);
                 }
-                if (accept(n, p, lit) && (knownVisible || visible(p)))
-                    run.push({ xy: project(p), lit, index });
+                return { p, n, lit, xy: hints.geometry ? hints.geometry.point(t) : project(p), index: t * steps };
+            }
+            function sample(t, knownVisible) {
+                const value = evaluate(t);
+                if (accept(value.n, value.p, value.lit) && (knownVisible || visible(value.p)))
+                    run.push(value);
                 else
                     flush();
             }
-            const spans = clip ? clip() : null;
+            const visibleSpans = clip ? clip() : null;
+            const spans = hints.spans ? intersectSpans(hints.spans, visibleSpans || [[0, 1]]) : visibleSpans;
             if (spans !== null) {
                 for (const [a, b] of spans) {
-                    sample(a, a * steps, true);
-                    const first = Math.floor(a * steps) + 1, last = Math.ceil(b * steps) - 1;
-                    if (first > last)
-                        sample((a + b) / 2, (a + b) * steps / 2, true);
-                    else
-                        for (let i = first; i <= last; i++)
-                            sample(i / steps, i, true);
-                    sample(b, b * steps, true);
-                    flush();
+                    if (hints.spans && visibleSpans !== null && hints.geometry) {
+                        if (!o.variableWidth) {
+                            run.push(evaluate(a), evaluate(b));
+                            flush();
+                            continue;
+                        }
+                        // Known topology and smooth directional lighting: refine geometry
+                        // and width error, rather than stepping every ~0.7 screen units.
+                        const tolerance = Math.min(.02, width * .025);
+                        function refine(lo, hi, depth) {
+                            const t = (lo.index + hi.index) / (2 * steps), mid = evaluate(t);
+                            const error = Math.hypot(mid.xy[0] - (lo.xy[0] + hi.xy[0]) / 2, mid.xy[1] - (lo.xy[1] + hi.xy[1]) / 2);
+                            const widthError = width * .575 * Math.abs(mid.lit - (lo.lit + hi.lit) / 2);
+                            if (depth < 16 && ((hi.index - lo.index) / steps > 1 / 8 || error > tolerance || widthError > tolerance)) {
+                                refine(lo, mid, depth + 1);
+                                refine(mid, hi, depth + 1);
+                            }
+                            else
+                                run.push(hi);
+                        }
+                        const cuts = [a, ...(hints.breaks || []).filter(t => t > a + 1e-10 && t < b - 1e-10), b].sort((x, y) => x - y);
+                        for (let i = 1; i < cuts.length; i++) {
+                            const lo = cuts[i - 1], hi = cuts[i];
+                            if (hi <= lo)
+                                continue;
+                            const epsilon = Math.min(1e-8, (hi - lo) * .0001);
+                            const first = evaluate(lo), last = evaluate(hi);
+                            // Keep both one-sided widths at a shadow edge. It is a width
+                            // jump, not a new stroke end; only real accepted-span ends taper.
+                            first.lit = evaluate(lo + epsilon).lit;
+                            last.lit = evaluate(hi - epsilon).lit;
+                            run.push(first);
+                            refine(first, last, 0);
+                        }
+                        flush();
+                    }
+                    else {
+                        sample(a, visibleSpans !== null);
+                        const first = Math.floor(a * steps) + 1, last = Math.ceil(b * steps) - 1;
+                        if (first > last)
+                            sample((a + b) / 2, visibleSpans !== null);
+                        else
+                            for (let i = first; i <= last; i++)
+                                sample(i / steps, visibleSpans !== null);
+                        sample(b, visibleSpans !== null);
+                        flush();
+                    }
                 }
             }
             else {
+                // Unknown topology / shadow changes retain the original discovery grid.
                 for (let i = 0; i <= steps; i++)
-                    sample(i / steps, i, false);
+                    sample(i / steps, false);
                 flush();
             }
             // Join periodic seams without adding a tapered tip.
             if (closed && runs.length > 1 && runs[0][0].index === 0 && runs.at(-1).at(-1).index === steps) {
                 const last = runs.pop();
-                runs[0] = last.concat(runs[0].slice(1));
+                runs[0] = last.concat(runs[0].slice(1).map(p => ({ ...p, index: p.index + steps })));
             }
             for (const points of runs) {
                 if (!engrave || !o.variableWidth) {
-                    const d = o.optimizePaths ? compactPath(points.map(q => q.xy)) : points.map(({ xy: p }, i) => (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join('');
+                    const d = hints.geometry ? hints.geometry.path(points[0].index / steps, points.at(-1).index / steps) : o.optimizePaths ? compactPath(points.map(q => q.xy)) : points.map(({ xy: p }, i) => (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join('');
                     paths.push(`<path stroke-width="${width.toFixed(3)}" d="${d}"/>`);
                     continue;
                 }
-                const clean = points.filter((q, i) => i === 0 || Math.hypot(q.xy[0] - points[i - 1].xy[0], q.xy[1] - points[i - 1].xy[1]) > 1e-6);
+                let clean = points.filter((q, i) => i === 0 || Math.hypot(q.xy[0] - points[i - 1].xy[0], q.xy[1] - points[i - 1].xy[1]) > 1e-6 || Math.abs(q.lit - points[i - 1].lit) > 1e-8);
                 if (clean.length < 2)
                     continue;
-                const loop = closed && clean[0].index === 0 && clean.at(-1).index === steps;
+                const loop = closed && Math.abs(clean.at(-1).index - clean[0].index - steps) < 1e-8;
                 const distances = [0];
                 for (let i = 1; i < clean.length; i++)
                     distances.push(distances[i - 1] + Math.hypot(clean[i].xy[0] - clean[i - 1].xy[0], clean[i].xy[1] - clean[i - 1].xy[1]));
                 const total = distances.at(-1), tipLength = Math.min(5, total * .25), left = [], right = [];
+                clean.forEach((p, i) => p.distance = distances[i]);
+                if (hints.geometry) {
+                    if (hints.spans && visibleSpans !== null && !loop) {
+                        // Smoothstep tips need their own samples even along a straight line.
+                        const extra = [];
+                        for (const end of [false, true])
+                            for (let k = 1; k <= 8; k++) {
+                                const d = end ? total - tipLength * k / 8 : tipLength * k / 8;
+                                let i = 1;
+                                while (i < distances.length - 1 && distances[i] < d)
+                                    i++;
+                                const span = distances[i] - distances[i - 1], f = span ? (d - distances[i - 1]) / span : 0;
+                                const point = evaluate((clean[i - 1].index + (clean[i].index - clean[i - 1].index) * f) / steps);
+                                extra.push({ ...point, distance: d });
+                            }
+                        clean = clean.concat(extra).sort((a, b) => a.index - b.index).filter((p, i, a) => !i || p.index - a[i - 1].index > 1e-10 || Math.abs(p.lit - a[i - 1].lit) > 1e-8);
+                    }
+                    else {
+                        // Shadow/point-light discovery stays dense for correctness; simplify
+                        // only after topology and the original sampled width changes are known.
+                        const keep = new Uint8Array(clean.length), tolerance = Math.min(.02, width * .025), stack = [];
+                        keep[0] = keep[clean.length - 1] = 1;
+                        let start = 0;
+                        for (let i = 1; i < clean.length; i++)
+                            if (i === clean.length - 1 || (!loop && (clean[i].distance <= tipLength || total - clean[i].distance <= tipLength))) {
+                                keep[i] = 1;
+                                stack.push([start, i]);
+                                start = i;
+                            }
+                        while (stack.length) {
+                            const [a, b] = stack.pop();
+                            if (b - a < 2)
+                                continue;
+                            const p = clean[a], q = clean[b], dx = q.xy[0] - p.xy[0], dy = q.xy[1] - p.xy[1], length2 = dx * dx + dy * dy;
+                            let worst = 1, at = -1;
+                            for (let i = a + 1; i < b; i++) {
+                                const v = clean[i], t = length2 ? Math.max(0, Math.min(1, ((v.xy[0] - p.xy[0]) * dx + (v.xy[1] - p.xy[1]) * dy) / length2)) : (v.index - p.index) / (q.index - p.index);
+                                const geometry = Math.hypot(v.xy[0] - p.xy[0] - t * dx, v.xy[1] - p.xy[1] - t * dy);
+                                const lighting = width * .575 * Math.abs(v.lit - p.lit - (q.lit - p.lit) * t), error = Math.max(geometry, lighting) / tolerance;
+                                if (error > worst) {
+                                    worst = error;
+                                    at = i;
+                                }
+                            }
+                            if (at >= 0) {
+                                keep[at] = 1;
+                                stack.push([a, at], [at, b]);
+                            }
+                        }
+                        clean = clean.filter((_, i) => keep[i]);
+                    }
+                }
                 for (let i = 0; i < clean.length; i++) {
                     const p = clean[i].xy;
                     const prev = clean[i === 0 ? (loop ? clean.length - 2 : 0) : i - 1].xy;
                     const next = clean[i === clean.length - 1 ? (loop ? 1 : i) : i + 1].xy;
-                    const dx = next[0] - prev[0], dy = next[1] - prev[1], length = Math.hypot(dx, dy) || 1;
-                    const t = loop ? 1 : Math.min(1, distances[i] / tipLength, (total - distances[i]) / tipLength);
+                    const tangent = hints.geometry?.tangent(clean[i].index / steps);
+                    const direction = tangent && Math.hypot(tangent[0], tangent[1]) > 1e-9 ? tangent : [next[0] - prev[0], next[1] - prev[1]];
+                    const dx = direction[0], dy = direction[1], length = Math.hypot(dx, dy) || 1;
+                    const distance = clean[i].distance;
+                    const t = loop ? 1 : Math.min(1, distance / tipLength, (total - distance) / tipLength);
                     const taper = t * t * (3 - 2 * t), half = engravingWidth(width, clean[i].lit) * taper / 2;
                     left.push([p[0] - dy / length * half, p[1] + dx / length * half]);
                     right.push([p[0] + dy / length * half, p[1] - dx / length * half]);
@@ -434,11 +653,493 @@ var MolEngraver = (function (exports) {
                 }
                 else {
                     const outline = left.concat(right);
-                    d = outline.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(3) + ' ' + p[1].toFixed(3)).join('') + 'Z';
+                    d = outline.map((p, i) => (i ? 'L' : 'M') + rounded(p[0]) + ' ' + rounded(p[1])).join('') + 'Z';
                 }
                 paths.push(`<path fill="#161616" stroke="none" d="${d}"/>`);
             }
         };
+    }
+
+    const LEVELS = 16;
+    const fmt = (n) => String(Number(n.toFixed(4)));
+    /** Marching-squares contours of a cumulative tone region. Shared grid edges
+     * have shared vertices. Evenodd filling preserves holes/disconnected islands. */
+    function contour(values, nx, ny, x0, y0, step, threshold, refine) {
+        const nodes = new Map();
+        const pairs = [
+            [], [[0, 3]], [[0, 1]], [[1, 3]], [[1, 2]], [], [[0, 2]], [[2, 3]],
+            [[2, 3]], [[0, 2]], [], [[1, 2]], [[1, 3]], [[0, 1]], [[0, 3]], []
+        ];
+        for (let y = 0; y < ny - 1; y++)
+            for (let x = 0; x < nx - 1; x++) {
+                const at = y * nx + x, a = values[at], b = values[at + 1], c = values[at + nx + 1], d = values[at + nx];
+                const code = (a >= threshold ? 1 : 0) | (b >= threshold ? 2 : 0) | (c >= threshold ? 4 : 0) | (d >= threshold ? 8 : 0);
+                if (code === 0 || code === 15)
+                    continue;
+                function node(edge) {
+                    const vertical = edge === 1 || edge === 3;
+                    const start = at + (edge === 1 ? 1 : edge === 2 ? nx : 0), end = start + (vertical ? nx : 1);
+                    const id = 2 * start + (vertical ? 1 : 0);
+                    if (!nodes.has(id)) {
+                        const t = (threshold - values[start]) / (values[end] - values[start]);
+                        const a = [x0 + (start % nx) * step, y0 + Math.floor(start / nx) * step];
+                        const b = [a[0] + (vertical ? 0 : step), a[1] + (vertical ? step : 0)];
+                        const p = refine ? refine(a, b, threshold) : [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+                        nodes.set(id, { p, links: [] });
+                    }
+                    return id;
+                }
+                let connections = pairs[code];
+                if (code === 5 || code === 10) {
+                    const center = (a + b + c + d) / 4 >= threshold;
+                    connections = (code === 5 ? center : !center) ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]];
+                }
+                for (const [first, last] of connections) {
+                    const u = node(first), v = node(last);
+                    nodes.get(u).links.push(v);
+                    nodes.get(v).links.push(u);
+                }
+            }
+        const used = new Set(), paths = [];
+        for (const [start] of nodes) {
+            if (used.has(start))
+                continue;
+            const points = [];
+            let current = start, previous = -1;
+            do {
+                if (used.has(current))
+                    throw new Error('Open halftone tone contour');
+                used.add(current);
+                const item = nodes.get(current);
+                if (item.links.length !== 2)
+                    throw new Error('Invalid halftone tone topology');
+                points.push(item.p);
+                const next = item.links[0] === previous ? item.links[1] : item.links[0];
+                previous = current;
+                current = next;
+            } while (current !== start);
+            if (points.length < 3)
+                continue;
+            // Remove exactly collinear grid runs, without fitting across sharp shadows.
+            const simple = points.filter((p, i) => {
+                const a = points[(i + points.length - 1) % points.length], b = points[(i + 1) % points.length];
+                return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-9;
+            });
+            if (simple.length >= 3)
+                paths.push('M' + simple.map(p => p.map(fmt).join(' ')).join('L') + 'Z');
+        }
+        return paths.join('');
+    }
+    /** Local numerical fallback for point lights or a BINARY shadow boundary.
+     * It never allocates a full-frame ownership/lighting raster. Optional bisection
+     * refines hard shadow edges independently of the coarse discovery grid. */
+    function sampledTonePaths(bounds, sample, step, thresholds = Array.from({ length: LEVELS }, (_, i) => (i + .5) / LEVELS), refine = false) {
+        const [left, top, right, bottom] = bounds;
+        if (!(right > left && bottom > top))
+            return thresholds.map(() => '');
+        step = Math.max(step, Math.sqrt((right - left) * (bottom - top) / 120000), (right - left) / 120000, (bottom - top) / 120000);
+        let nx = Math.ceil((right - left) / step) + 3, ny = Math.ceil((bottom - top) / step) + 3;
+        while (nx * ny > 130000) {
+            step *= 1.1;
+            nx = Math.ceil((right - left) / step) + 3;
+            ny = Math.ceil((bottom - top) / step) + 3;
+        }
+        const x0 = left - step, y0 = top - step, values = new Float32Array(nx * ny);
+        values.fill(-1);
+        const valueAt = (x, y) => { const v = sample(x, y); return v !== null && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : -1; };
+        let maximum = -1;
+        for (let y = 1; y < ny - 1; y++)
+            for (let x = 1; x < nx - 1; x++) {
+                const px = x0 + x * step, py = y0 + y * step;
+                if (px > right || py > bottom)
+                    continue;
+                const value = valueAt(px, py);
+                values[y * nx + x] = value;
+                maximum = Math.max(maximum, value);
+            }
+        const refineEdge = refine ? (a, b, threshold) => {
+            const inside = valueAt(a[0], a[1]) >= threshold;
+            let lo = 0, hi = 1;
+            for (let k = 0; k < 9; k++) {
+                const t = (lo + hi) / 2;
+                if ((valueAt(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) >= threshold) === inside)
+                    lo = t;
+                else
+                    hi = t;
+            }
+            const t = (lo + hi) / 2;
+            return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        } : undefined;
+        return thresholds.map(t => maximum < t ? '' : contour(values, nx, ny, x0, y0, step, t, refineEdge));
+    }
+
+    const TAU = 2 * Math.PI, EPS = Number.EPSILON;
+    function overlaps(a, b) {
+        return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+    }
+    function box(edges) {
+        const b = [Infinity, Infinity, -Infinity, -Infinity];
+        for (const e of edges)
+            for (let k = 0; k < 4; k++)
+                b[k] = k < 2 ? Math.min(b[k], e.bounds[k]) : Math.max(b[k], e.bounds[k]);
+        return b;
+    }
+    function index(edges) {
+        const bounds = box(edges);
+        if (edges.length <= 12)
+            return { bounds, edges };
+        const axis = bounds[2] - bounds[0] >= bounds[3] - bounds[1] ? 0 : 1;
+        edges.sort((a, b) => (a.bounds[axis] + a.bounds[axis + 2]) - (b.bounds[axis] + b.bounds[axis + 2]));
+        const half = edges.length >>> 1;
+        return { bounds, left: index(edges.slice(0, half)), right: index(edges.slice(half)) };
+    }
+    function visit(node, bounds, fn) {
+        if (!overlaps(node.bounds, bounds))
+            return;
+        if (node.edges) {
+            for (const e of node.edges)
+                if (overlaps(e.bounds, bounds))
+                    fn(e);
+        }
+        else {
+            visit(node.left, bounds, fn);
+            visit(node.right, bounds, fn);
+        }
+    }
+    function intervals(cuts, at, contains, accept) {
+        cuts.sort((a, b) => a - b);
+        const result = [];
+        for (let i = 1; i < cuts.length; i++) {
+            const a = cuts[i - 1], b = cuts[i];
+            if (!(b > a))
+                continue;
+            const midpoint = a + (b - a) / 2;
+            if (accept && !accept(midpoint))
+                continue;
+            const p = at(midpoint);
+            if (!contains(p[0], p[1]))
+                continue;
+            const last = result[result.length - 1];
+            // Merge only exactly adjacent accepted bins, never across a small hole.
+            if (last && last[1] === a)
+                last[1] = b;
+            else
+                result.push([a, b]);
+        }
+        return result;
+    }
+    function valid(p) { return Number.isFinite(p[0]) && Number.isFinite(p[1]); }
+    /** The edges must describe complete closed contours. Orientation is irrelevant.
+     * Bounds are [minX,minY,maxX,maxY]; a supplied box is conservatively enlarged.
+     * Boundaries belong to the region, including a line coincident with an edge.
+     */
+    function createRegion(input, bounds) {
+        const edges = [];
+        for (const e of input) {
+            if (!valid(e.p) || !valid(e.q))
+                throw new Error('Non-finite region edge');
+            const p = e.p.slice(0, 2), q = e.q.slice(0, 2);
+            if (p[0] === q[0] && p[1] === q[1])
+                continue;
+            edges.push({ p, q, bounds: [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])] });
+        }
+        const root = index(edges), regionBounds = root.bounds.slice();
+        function contains(x, y) {
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !overlaps(root.bounds, [x, y, x, y]))
+                return false;
+            let inside = false, boundary = false;
+            visit(root, [x, y, Infinity, y], e => {
+                const [px, py] = e.p, [qx, qy] = e.q, dx = qx - px, dy = qy - py;
+                const cross = (x - px) * dy - (y - py) * dx;
+                const tolerance = 8 * EPS * (Math.abs((x - px) * dy) + Math.abs((y - py) * dx));
+                if (x >= e.bounds[0] && x <= e.bounds[2] && Math.abs(cross) <= tolerance)
+                    boundary = true;
+                if ((py > y) !== (qy > y) && x < px + (y - py) * dx / dy)
+                    inside = !inside;
+            });
+            return boundary || inside;
+        }
+        function clipEllipse(c, u, v, candidates, cuts = [0, 1], accept) {
+            if (!valid(c) || !valid(u) || !valid(v))
+                return null;
+            const scale = Math.max(Math.abs(u[0]), Math.abs(u[1]), Math.abs(v[0]), Math.abs(v[1]));
+            if (!(scale > 0) || scale > 1e150 || scale < 1e-150)
+                return null;
+            const ux = u[0] / scale, uy = u[1] / scale, vx = v[0] / scale, vy = v[1] / scale;
+            const det = ux * vy - uy * vx;
+            if (Math.abs(det) < 1e-12)
+                return null;
+            const rx = Math.hypot(u[0], v[0]), ry = Math.hypot(u[1], v[1]);
+            const extent = Math.max(root.bounds[2] - root.bounds[0], root.bounds[3] - root.bounds[1]);
+            if (edges.length && (scale > Math.max(extent, 1e-150) * 1e10 || Math.max(Math.abs(c[0]), Math.abs(c[1])) * EPS > scale * 1e-6))
+                return null;
+            const eb = [c[0] - rx, c[1] - ry, c[0] + rx, c[1] + ry];
+            if (!edges.length || !overlaps(root.bounds, eb))
+                return [];
+            let unsafe = false;
+            function inverse(p) {
+                const x = (p[0] - c[0]) / scale, y = (p[1] - c[1]) / scale;
+                return [(vy * x - vx * y) / det, (ux * y - uy * x) / det];
+            }
+            function intersect(e) {
+                const p = inverse(e.p), q = inverse(e.q), dx = q[0] - p[0], dy = q[1] - p[1], length = Math.hypot(dx, dy);
+                if (!valid(p) || !valid(q) || !(length > 0) || Math.max(Math.hypot(...p), Math.hypot(...q)) > 1e8) {
+                    unsafe = true;
+                    return;
+                }
+                const ex = dx / length, ey = dy / length;
+                // Unit-speed segment in the inverse ellipse frame meets the unit circle.
+                // D = 1 - cross(p,e)^2 avoids cancellation of b*b - a*c.
+                const b = p[0] * ex + p[1] * ey, h = p[0] * ey - p[1] * ex;
+                let d = (1 - Math.abs(h)) * (1 + Math.abs(h));
+                if (d < -32 * EPS * Math.max(1, h * h))
+                    return;
+                d = Math.max(0, d);
+                const r = Math.sqrt(d), stable = -b - (b < 0 ? -r : r), norm = Math.hypot(p[0], p[1]);
+                const roots = stable === 0 ? [-b] : [stable, (norm - 1) * (norm + 1) / stable];
+                for (const s of roots) {
+                    const t = s / length;
+                    if (t < -32 * EPS || t > 1 + 32 * EPS)
+                        continue;
+                    const f = Math.max(0, Math.min(1, t));
+                    let angle = Math.atan2(p[1] + f * dy, p[0] + f * dx) / TAU;
+                    if (angle < 0)
+                        angle += 1;
+                    cuts.push(angle);
+                }
+            }
+            if (candidates) {
+                for (const edge of candidates)
+                    if (overlaps(edge.bounds, eb))
+                        intersect(edge);
+            }
+            else
+                visit(root, eb, intersect);
+            if (unsafe)
+                return null;
+            return intervals(cuts, t => {
+                const a = TAU * t, co = Math.cos(a), si = Math.sin(a);
+                return [c[0] + u[0] * co + v[0] * si, c[1] + u[1] * co + v[1] * si];
+            }, contains, accept);
+        }
+        return {
+            bounds: Object.freeze(regionBounds), contains,
+            clipEllipse,
+            sphereFamily(c, r, axis, e, f) {
+                const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+                const basis = [axis, e, f];
+                if (!valid(c) || !(r > 0) || !Number.isFinite(r) || r < 1e-150 || r > 1e150 ||
+                    basis.some(a => a.length < 3 || !a.slice(0, 3).every(Number.isFinite) || Math.abs(dot(a, a) - 1) > 1e-9) ||
+                    Math.abs(dot(axis, e)) > 1e-9 || Math.abs(dot(axis, f)) > 1e-9 || Math.abs(dot(e, f)) > 1e-9 ||
+                    Math.abs(e[0] * f[1] - e[1] * f[0]) < 1e-12)
+                    return () => null;
+                // Retain an immutable family chart even if the caller reuses its vectors.
+                const center = c.slice(0, 2), a = axis.slice(0, 3), u = e.slice(0, 3), v = f.slice(0, 3);
+                const count = Math.max(32, Math.min(1024, Math.ceil(Math.sqrt(edges.length) * 8)));
+                const bins = Array.from({ length: count }, () => []);
+                const bin = (h) => Math.max(0, Math.min(count - 1, Math.floor((h + 1) * .5 * count)));
+                let refs = 0;
+                for (const edge of edges) {
+                    const px = (edge.p[0] - center[0]) / r, py = (edge.p[1] - center[1]) / r;
+                    const qx = (edge.q[0] - center[0]) / r, qy = (edge.q[1] - center[1]) / r;
+                    const dx = qx - px, dy = qy - py, length2 = dx * dx + dy * dy;
+                    if (![px, py, qx, qy, length2].every(Number.isFinite))
+                        return () => null;
+                    const t = length2 > 0 ? Math.max(0, Math.min(1, -(px * dx + py * dy) / length2)) : 0;
+                    const near2 = (px + t * dx) ** 2 + (py + t * dy) ** 2;
+                    const far2 = Math.max(px * px + py * py, qx * qx + qy * qy);
+                    // Outward error covers rounded silhouette vertices, including segments
+                    // with endpoints just outside the sphere but interior points inside it.
+                    const error = 64 * EPS * Math.max(1, far2);
+                    if (near2 > 1 + error)
+                        continue;
+                    const zlo = Math.sqrt(Math.max(0, 1 - far2 - error));
+                    const zhi = Math.sqrt(Math.max(0, 1 - near2 + error));
+                    const hp = a[0] * px + a[1] * py, hq = a[0] * qx + a[1] * qy;
+                    const padding = 1e-8 + 128 * EPS * Math.max(1, Math.abs(hp), Math.abs(hq));
+                    const low = Math.min(hp, hq) + Math.min(a[2] * zlo, a[2] * zhi) - padding;
+                    const high = Math.max(hp, hq) + Math.max(a[2] * zlo, a[2] * zhi) + padding;
+                    if (high < -1 || low > 1)
+                        continue;
+                    const first = bin(low), last = bin(high);
+                    refs += last - first + 1;
+                    // Bound chart memory; parent can use its generic fallback for pathological
+                    // long crossing edges instead of retaining millions of duplicate refs.
+                    if (refs > 2000000)
+                        return () => null;
+                    for (let i = first; i <= last; i++)
+                        bins[i].push(edge);
+                }
+                return h => {
+                    if (!Number.isFinite(h) || Math.abs(h) > 1)
+                        return null;
+                    const radial = Math.sqrt(Math.max(0, (1 - h) * (1 + h))), radius = r * radial;
+                    if (!(radius > 0))
+                        return null;
+                    const c = [center[0] + r * h * a[0], center[1] + r * h * a[1]];
+                    const eu = [radius * u[0], radius * u[1]], ev = [radius * v[0], radius * v[1]];
+                    const z0 = h * a[2], zc = radial * u[2], zs = radial * v[2], amplitude = Math.hypot(zc, zs);
+                    const cuts = [0, 1];
+                    if (amplitude > 0 && Math.abs(z0) <= amplitude) {
+                        const phase = Math.atan2(zs, zc), alpha = Math.acos(Math.max(-1, Math.min(1, -z0 / amplitude)));
+                        for (const angle of [phase - alpha, phase + alpha]) {
+                            const t = angle / TAU;
+                            cuts.push(t - Math.floor(t));
+                        }
+                    }
+                    // The height index contains only front-lift intersections. Explicit
+                    // silhouette cuts prevent an uncut back arc from becoming visible.
+                    return clipEllipse(c, eu, ev, bins[bin(h)], cuts, t => z0 + zc * Math.cos(TAU * t) + zs * Math.sin(TAU * t) >= 0);
+                };
+            },
+            clipLine(a, b) {
+                if (!valid(a) || !valid(b))
+                    return [];
+                const dx = b[0] - a[0], dy = b[1] - a[1];
+                if (dx === 0 && dy === 0)
+                    return contains(a[0], a[1]) ? [[0, 1]] : [];
+                const cuts = [0, 1], lb = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+                if (!overlaps(root.bounds, lb))
+                    return [];
+                visit(root, lb, e => {
+                    const ex = e.q[0] - e.p[0], ey = e.q[1] - e.p[1], px = e.p[0] - a[0], py = e.p[1] - a[1];
+                    const det = dx * ey - dy * ex;
+                    if (det !== 0) {
+                        const t = (px * ey - py * ex) / det, s = (px * dy - py * dx) / det;
+                        if (t >= 0 && t <= 1 && s >= 0 && s <= 1)
+                            cuts.push(t);
+                    }
+                    else if (px * dy - py * dx === 0) {
+                        // Both overlap endpoints are cuts; midpoint classification handles
+                        // coincident segments without parity toggles or invented bridges.
+                        const axis = Math.abs(dx) >= Math.abs(dy) ? 0 : 1, delta = axis === 0 ? dx : dy;
+                        cuts.push(Math.max(0, Math.min(1, (e.p[axis] - a[axis]) / delta)), Math.max(0, Math.min(1, (e.q[axis] - a[axis]) / delta)));
+                    }
+                });
+                return intervals(cuts, t => [a[0] + dx * t, a[1] + dy * t], contains);
+            }
+        };
+    }
+    /** Parse only local absolute M/L/Z contours. Reject open/unsupported paths
+     * instead of silently closing them or losing a hole. Empty paths are empty.
+     */
+    function regionFromPath(path) {
+        const token = /[MLZ]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g;
+        const tokens = [];
+        let end = 0;
+        for (const match of path.matchAll(token)) {
+            if (!/^[\s,]*$/.test(path.slice(end, match.index)))
+                throw new Error('Unsupported region path');
+            tokens.push(match[0]);
+            end = match.index + match[0].length;
+        }
+        if (!/^[\s,]*$/.test(path.slice(end)))
+            throw new Error('Unsupported region path');
+        const edges = [];
+        let first = null, prev = null, command = '', i = 0;
+        while (i < tokens.length) {
+            if (/^[MLZ]$/.test(tokens[i]))
+                command = tokens[i++];
+            if (command === 'Z') {
+                if (!first || !prev)
+                    throw new Error('Unmatched region close');
+                edges.push({ p: prev, q: first });
+                first = prev = null;
+                command = '';
+                continue;
+            }
+            if ((command !== 'M' && command !== 'L') || i + 1 >= tokens.length || /^[MLZ]$/.test(tokens[i]) || /^[MLZ]$/.test(tokens[i + 1]))
+                throw new Error('Malformed region path');
+            const p = [Number(tokens[i++]), Number(tokens[i++])];
+            if (!valid(p))
+                throw new Error('Non-finite region path');
+            if (command === 'M') {
+                if (prev)
+                    throw new Error('Open region contour');
+                first = prev = p;
+                command = 'L';
+            }
+            else {
+                if (!prev)
+                    throw new Error('Missing region move');
+                edges.push({ p: prev, q: p });
+                prev = p;
+            }
+        }
+        if (prev)
+            throw new Error('Open region contour');
+        return createRegion(edges);
+    }
+
+    /** One visible-region index and one lazily extracted binary shadow per surface.
+     * Discovery is local and resolution-limited; no ray tracing in subsequent
+     * texture queries. Shadows retain the halftone backend's 2/1 SVG-unit grid. */
+    function createSurfaceAtlas(prepared, regions, o) {
+        const { scene, project, scale, unshadowedIllumination } = prepared, origin = project([0, 0, 0]);
+        const ids = new Map(scene.map((s, i) => [s, i])), empty = regionFromPath('');
+        const shadowCache = new Map(), lightCache = new Map();
+        const stats = { shadowBuilds: 0, shadowSamples: 0 };
+        const visible = (s) => { const id = ids.get(s); return id === undefined ? null : regions.surface?.(id) || null; };
+        function shadow(s) {
+            const cached = shadowCache.get(s);
+            if (cached)
+                return cached;
+            const face = visible(s);
+            if (!face || !prepared.mayShadow(s)) {
+                shadowCache.set(s, empty);
+                return empty;
+            }
+            const b = face.bounds, bounds = [Math.max(-8, b[0]), Math.max(-8, b[1]), Math.min(o.width + 8, b[2]), Math.min(o.height + 8, b[3])];
+            const physical = prepared.lightingFor(s);
+            const directional = o.lightType === 'directional' ? prepared.directionalShadows() : null, id = ids.get(s);
+            const sample = (x, y) => {
+                stats.shadowSamples++;
+                const wx = (x - origin[0]) / scale, wy = (origin[1] - y) / scale, z = depthAt(s, wx, wy);
+                if (!Number.isFinite(z))
+                    return 0;
+                const p = [wx, wy, z];
+                let n;
+                if (s.kind === 'sphere')
+                    n = p.map((v, i) => (v - s.c[i]) / s.r);
+                else {
+                    const q = p.map((v, i) => v - s.a[i]), t = q.reduce((a, v, i) => a + v * s.u[i], 0);
+                    if (t < 1e-7)
+                        n = s.u.map(v => -v);
+                    else if (t > s.length - 1e-7)
+                        n = s.u.slice();
+                    else {
+                        const r = q.map((v, i) => v - t * s.u[i]), length = Math.hypot(...r);
+                        n = length ? r.map(v => v / length) : [0, 0, 1];
+                    }
+                }
+                return directional ? (directional.shadowed(id, n, p) ? 1 : 0) : (physical(n, p) < unshadowedIllumination(n, p) ? 1 : 0);
+            };
+            const path = sampledTonePaths(bounds, sample, o.quality === 'preview' ? 2 : 1, [.5], true)[0];
+            const result = regionFromPath(path);
+            shadowCache.set(s, result);
+            stats.shadowBuilds++;
+            return result;
+        }
+        function lightingFor(s) {
+            const cached = lightCache.get(s);
+            if (cached)
+                return cached;
+            if (!prepared.mayShadow(s)) {
+                lightCache.set(s, unshadowedIllumination);
+                return unshadowedIllumination;
+            }
+            const region = shadow(s);
+            const light = (n, p) => {
+                let lit = unshadowedIllumination(n, p);
+                const xy = project(p);
+                if (region.contains(xy[0], xy[1]))
+                    lit = (Math.max(-1, Math.min(1, lit)) + 1) * (1 - o.shadowStrength) - 1;
+                return lit;
+            };
+            lightCache.set(s, light);
+            return light;
+        }
+        return { visible, shadow, lightingFor, stats };
     }
 
     /** Expected projected hatch coverage, not a second illumination model.
@@ -507,10 +1208,26 @@ var MolEngraver = (function (exports) {
 
     function render(molecule, options = {}) {
         const o = normalizeOptions(options);
-        const { spheres, cylinders, scene, scale, project, illumination: physicalIllumination, lightDirection, shadowBias } = prepareScene(molecule, o);
+        const prepared = prepareScene(molecule, o);
+        const { spheres, cylinders, scene, scale, project, illumination: physicalIllumination, lightDirection, lightingFor, mayShadow, directionalShadows } = prepared;
+        let atlas = null;
+        const physicalFor = (source) => atlas ? atlas.lightingFor(source) : lightingFor(source);
         // Shift tonal input after lighting/shadows, leaving color fills and outlines alone.
         const illumination = o.shadingBrightness === 0 ? physicalIllumination :
             (n, p) => Math.max(-1, Math.min(1, physicalIllumination(n, p) + 2 * o.shadingBrightness));
+        const shiftedLights = new Map();
+        const lightFor = (source) => {
+            if (o.shadingBrightness === 0)
+                return physicalFor(source);
+            let light = shiftedLights.get(source);
+            if (!light) {
+                const physical = physicalFor(source);
+                light = (n, p) => Math.max(-1, Math.min(1, physical(n, p) + 2 * o.shadingBrightness));
+                shiftedLights.set(source, light);
+            }
+            return light;
+        };
+        const physicalThreshold = (limit) => 1 - 2 * Math.pow((1 - limit) / 2, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
         const paths = [];
         // Preserve the tolerant legacy oracle for outlines/fallbacks and labels.
         const visible = (p) => !scene.some(s => depthAt(s, p[0], p[1]) > p[2] + .00015);
@@ -520,8 +1237,27 @@ var MolEngraver = (function (exports) {
         const built = analytic ? analytic.build(scene, depthAt, project, scale) : null;
         // Validate independently of the selected palette; styles must not change outlines.
         const boundaries = built && built.validate(elementColor) ? built : null;
+        // Labels are part of their owner's paint layer, never a final overlay and
+        // never clipped text. Certified visible fills preserve intersecting geometry.
+        const layerPaths = o.labels && boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null;
+        const ownerEngraving = new Map(), ownerDots = new Map();
+        const regions = o.shadingMode !== 'halftone' && o.shadingSize !== 0 && boundaries?.dotRegions ? boundaries.dotRegions() : null;
+        if (regions?.surface)
+            atlas = createSurfaceAtlas(prepared, regions, o);
+        // Shadow boundaries are solved per surface, not rediscovered along each line.
+        function tonalSpans(s, g, tone, limit, sharedShadow) {
+            if (o.lightType !== 'directional')
+                return { spans: undefined, breaks: undefined };
+            const shadow = sharedShadow !== undefined ? sharedShadow : mayShadow(s) ? (atlas ? g.clip(atlas.shadow(s)) : null) : [];
+            if (shadow === null)
+                return { spans: undefined, breaks: undefined };
+            const threshold = physicalThreshold(limit);
+            const darkThreshold = o.shadowStrength >= 1 ? (-1 < threshold ? Infinity : -Infinity) : (threshold + 1) / (1 - o.shadowStrength) - 1;
+            const spans = unionSpans(intersectSpans(tone(threshold), complementSpans(shadow)), intersectSpans(tone(darkThreshold), shadow));
+            return { spans, breaks: shadow.flat() };
+        }
         let wash = '';
-        if (o.colorWash && o.washStrength > 0) {
+        if (!layerPaths && o.colorWash && o.washStrength > 0) {
             if (boundaries)
                 wash = boundaries.wash(fillFor, o.quality === 'preview');
             if (!boundaries || wash === null) {
@@ -535,20 +1271,38 @@ var MolEngraver = (function (exports) {
         // never by stretching their spacing. Calibrate to the existing scale=60 look.
         const hatchDensity = o.density * scale / 60;
         for (const s of spheres) {
+            const start = paths.length;
             if (boundaries)
                 paths.push(boundaries.outline(s, o.quality === 'preview' || !o.optimizePaths, o.outlineWidth * 1.4));
             else
                 curve(t => { const a = t * Math.PI * 2, n = [Math.cos(a), Math.sin(a), 0]; return { p: add(s.c, mul(n, s.r)), n }; }, Math.ceil(2 * Math.PI * s.r * scale / 0.65), o.outlineWidth * 1.4);
             function hatch(axis, count, secondary) {
                 axis = norm(axis);
-                const e = norm(cross(axis, [1, 0, 0])), f = cross(axis, e);
+                const e = norm(cross(axis, [1, 0, 0])), f = cross(axis, e), light = lightFor(s);
+                const face = atlas?.visible(s);
+                if (atlas && !face)
+                    return;
+                const screen = (a) => [a[0], -a[1], a[2]], c = project(s.c), radius = s.r * scale;
+                const visibleFamily = face?.sphereFamily?.(c, radius, screen(axis), screen(e), screen(f));
+                const shadowFamily = o.lightType === 'directional' && atlas && mayShadow(s) ? atlas.shadow(s).sphereFamily?.(c, radius, screen(axis), screen(e), screen(f)) : undefined;
                 for (let j = 1; j < count; j++) {
-                    const h = -1 + 2 * j / count, r = Math.sqrt(1 - h * h);
+                    const h = -1 + 2 * j / count, r = Math.sqrt(1 - h * h), limit = secondary ? .12 : (j % 2 === 0 ? .88 : .58);
+                    const center = add(s.c, mul(axis, h * s.r)), u = mul(e, r * s.r), v = mul(f, r * s.r);
+                    const geometry = projectedCircle(project, center, u, v);
+                    const front = trigSpans(-axis[2] * h, -r * e[2], -r * f[2], 1e-12);
+                    const tonal = tonalSpans(s, geometry, t => trigSpans(h * dot(axis, lightDirection), r * dot(e, lightDirection), r * dot(f, lightDirection), t), limit, shadowFamily?.(h));
+                    const spans = tonal.spans ? intersectSpans(tonal.spans, front) : undefined;
+                    const clip = () => {
+                        let result = visibleFamily?.(h) ?? (face ? geometry.clip(face) : null);
+                        if (result === null)
+                            result = boundaries?.clipCircle ? boundaries.clipCircle(s, center, u, v) : null;
+                        return result === null ? null : intersectSpans(result, front);
+                    };
                     curve(t => {
                         const a = t * Math.PI * 2, cos = Math.cos(a), sin = Math.sin(a);
                         const n = [axis[0] * h + (e[0] * cos + f[0] * sin) * r, axis[1] * h + (e[1] * cos + f[1] * sin) * r, axis[2] * h + (e[2] * cos + f[2] * sin) * r];
                         return { p: [s.c[0] + n[0] * s.r, s.c[1] + n[1] * s.r, s.c[2] + n[2] * s.r], n };
-                    }, Math.max(120, Math.ceil(2 * Math.PI * s.r * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, p, lit) => n[2] >= -1e-12 && lit < (secondary ? .12 : (j % 2 === 0 ? .88 : .58)), true, true, boundaries?.clipCircle ? () => boundaries.clipCircle(s, add(s.c, mul(axis, h * s.r)), mul(e, r * s.r), mul(f, r * s.r)) : null);
+                    }, Math.max(120, Math.ceil(2 * Math.PI * s.r * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, p, lit) => n[2] >= -1e-12 && lit < limit, true, true, clip, { geometry, spans, breaks: tonal.breaks, illumination: light });
                 }
             }
             if (o.shadingMode === 'hatch' && o.hatchWidth > 0) {
@@ -556,12 +1310,19 @@ var MolEngraver = (function (exports) {
                 if (o.crossHatch)
                     hatch([1, .22, -0.32], Math.max(2, Math.round(hatchDensity * .8 * s.r / .48)), true);
             }
+            if (layerPaths)
+                ownerEngraving.set(s, paths.slice(start).join(''));
         }
         for (const s of cylinders) {
+            const start = paths.length;
             const e = norm(cross(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross(s.u, e);
             const line = (n, w, engrave = false) => {
                 const offset = mul(n, s.r), a = add(s.a, offset), b = add(a, mul(s.u, s.length));
-                curve(t => { const d = t * s.length; return { p: [s.a[0] + s.u[0] * d + offset[0], s.a[1] + s.u[1] * d + offset[1], s.a[2] + s.u[2] * d + offset[2]], n }; }, Math.max(60, Math.ceil(s.length * scale / .7)), w, (normal, p, lit) => !engrave || lit < .65, engrave, false, engrave && boundaries?.clipLine ? () => boundaries.clipLine(s, a, b) : null);
+                const geometry = projectedLine(project, a, b), face = engrave ? atlas?.visible(s) : null;
+                if (engrave && atlas && !face)
+                    return;
+                const tonal = engrave ? tonalSpans(s, geometry, t => dot(n, lightDirection) < t ? [[0, 1]] : [], .65) : { spans: undefined, breaks: undefined };
+                curve(t => { const d = t * s.length; return { p: [s.a[0] + s.u[0] * d + offset[0], s.a[1] + s.u[1] * d + offset[1], s.a[2] + s.u[2] * d + offset[2]], n }; }, Math.max(60, Math.ceil(s.length * scale / .7)), w, (normal, p, lit) => !engrave || lit < .65, engrave, false, engrave ? () => face ? geometry.clip(face) : boundaries?.clipLine ? boundaries.clipLine(s, a, b) : null : null, { geometry, spans: tonal.spans, breaks: tonal.breaks, illumination: lightFor(s), ignoreLighting: !engrave });
             };
             if (Math.hypot(s.u[0], s.u[1]) > 1e-8) {
                 const edge = norm([-s.u[1], s.u[0], 0]);
@@ -574,30 +1335,51 @@ var MolEngraver = (function (exports) {
                 if (n[2] > 0)
                     line(n, o.hatchWidth * .68, true);
             }
+            if (layerPaths)
+                ownerEngraving.set(s, paths.slice(start).join(''));
         }
         let dots = '';
         if (o.shadingMode !== 'hatch' && o.dotSize > 0) {
             const dotter = getDots();
             if (!dotter)
                 throw new Error('Load dots.js before renderer.js');
-            const regions = o.shadingMode === 'stipple' && boundaries?.dotRegions ? boundaries.dotRegions() : null;
-            const surfaces = o.shadingMode === 'halftone' ? {
-                paths: boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null,
+            const surfaces = {
+                compactStipple: true,
+                emitSurface: layerPaths ? (id, svg) => { ownerDots.set(id, (ownerDots.get(id) || '') + svg); } : undefined,
+                paths: o.shadingMode === 'halftone' && boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null,
                 light: o.lightType === 'directional' ? lightDirection : undefined,
-                ...(o.lightType === 'directional' && o.castShadows && o.shadowStrength > 0 ? directionalShadowContext(scene, lightDirection, shadowBias) : {})
-            } : undefined;
+                illumination: (source, n, p) => lightFor(source)(n, p),
+                ...(o.shadingMode === 'halftone' && o.lightType === 'directional' && o.castShadows && o.shadowStrength > 0 ? directionalShadows() : {})
+            };
             dots = dotter.buildDots(scene, depthAt, project, scale, illumination, o, regions, hatchCoverage(scale, o), surfaces);
         }
-        let labels = '';
-        if (o.labels)
-            for (const s of spheres) {
+        const ownerLabels = new Map();
+        // If ownership cannot be certified, omit labels rather than float them over
+        // unrelated foreground geometry. The underlying scene keeps its fallback.
+        if (o.labels && layerPaths)
+            for (const [id, s] of spheres.entries()) {
                 const p = add(s.c, [0, 0, s.r]);
-                if (!visible(p))
+                if (!layerPaths[id] || !visible(p))
                     continue;
                 const [x, y] = project(p);
-                labels += `<text data-role="element-label" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${escapeXml(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fillFor(s.element) : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${escapeXml(s.element)}</text>`;
+                ownerLabels.set(s, `<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${escapeXml(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fillFor(s.element) : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${escapeXml(s.element)}</text>`);
             }
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title><rect width="100%" height="100%" fill="white"/>${wash}${dots}<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${paths.join('')}</g><g font-family="Georgia, 'Times New Roman', serif">${labels}</g></svg>`;
+        const engraving = (body) => `<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+        let artwork = `${wash}${dots}${engraving(paths.join(''))}<g font-family="Georgia, 'Times New Roman', serif"></g>`;
+        if (layerPaths) {
+            const depth = (s) => s.kind === 'sphere' ? s.c[2] : s.a[2] + s.u[2] * s.length / 2;
+            const order = scene.map((s, id) => ({ s, id, z: depth(s) })).sort((a, b) => a.z - b.z || a.id - b.id);
+            artwork = dots + order.map(({ s, id }) => {
+                const outline = layerPaths[id];
+                if (!outline)
+                    return '';
+                // Opaque paint is essential even with color wash disabled: white atoms
+                // and white bonds must naturally cover labels in the rear layers.
+                const fill = `<path data-role="surface-fill" fill="${fillFor(s.kind === 'sphere' ? s.element : null)}" stroke="none" fill-rule="evenodd" d="${outline}"/>`;
+                return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${ownerDots.get(id) || ''}${engraving(ownerEngraving.get(s) || '')}${ownerLabels.get(s) || ''}</g>`;
+            }).join('');
+        }
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title><rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
     }
 
     exports.covalentRadii = covalentRadii;

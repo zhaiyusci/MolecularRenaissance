@@ -100,13 +100,33 @@ export interface DotRegionHit {
     id: number;
     clearance: number;
 }
+/** Projected evenodd surface; bounds are [minX,minY,maxX,maxY]. */
+export interface SurfaceRegion {
+    bounds: readonly number[];
+    contains(x: number, y: number): boolean;
+    /** c + u*cos(2*pi*t) + v*sin(2*pi*t), 0 <= t <= 1. Null requests fallback. */
+    clipEllipse(c: Vector, u: Vector, v: Vector): Intervals | null;
+    /** a + (b-a)*t, 0 <= t <= 1. */
+    clipLine(a: Vector, b: Vector): Intervals;
+    /** Reusable front-sphere height chart; orthonormal axes use screen x/right,
+     * y/down, z/toward-viewer. The returned clipper takes height h in [-1,1]. */
+    sphereFamily?(c: Vector, r: number, axis: Vector, e: Vector, f: Vector): (h: number) => Intervals | null;
+}
 export interface DotRegions {
     query(x: number, y: number, maxRadius: number): DotRegionHit | null;
+    /** When available, null means the owner is fully hidden. */
+    surface?(id: number): SurfaceRegion | null;
 }
 export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast' | 'width' | 'height' | 'quality' | 'shadingBrightness' | 'shadowStrength'>;
 /** Internal geometric context; custom low-level callbacks may omit it. */
 export interface SurfaceToneContext {
     paths: readonly (string | null)[] | null;
+    /** Batch equal-radius dots into round zero-length subpaths, without repetition. */
+    compactStipple?: boolean;
+    /** Emit complete texture bodies by scene primitive index; return only shared setup. */
+    emitSurface?: (id: number, svg: string) => void;
+    /** Surface-aware tone illumination, including the caller's brightness shift. */
+    illumination?: (source: Primitive, n: Vector, p: Vector) => number;
     /** Present only for a directional light, in view coordinates. */
     light?: Vector;
     mayShadow?: readonly boolean[];

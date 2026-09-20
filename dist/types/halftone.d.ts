@@ -10,6 +10,8 @@ export declare function projectedSilhouette(scene: Scene, project: Project, scal
  * refines hard shadow edges independently of the coarse discovery grid. */
 export declare function sampledTonePaths(bounds: Bounds, sample: (x: number, y: number) => number | null, step: number, thresholds?: number[], refine?: boolean): string[];
 export interface SurfacePatternLayer {
+    /** Required for per-surface emission; optional for the legacy combined output. */
+    sourceId?: number;
     /** Exact visible surface, or empty for a sampled-ownership fallback. */
     clip: string;
     bounds?: Bounds;
@@ -23,5 +25,5 @@ export declare function buildSurfacePatterns(o: {
     silhouette: string;
     layers: readonly SurfacePatternLayer[];
     method: string;
-}): string;
+}, emitSurface?: (id: number, svg: string) => void): string;
 export {};

@@ -1,0 +1,179 @@
+{
+  "model": "ethanol",
+  "options": {
+    "quality": "export",
+    "textureScale": 1,
+    "colorWash": false,
+    "castShadows": false
+  },
+  "radius": 0.3,
+  "seed": 1934903632,
+  "tileSizes": [
+    12,
+    24
+  ],
+  "distributionSHA256": "cab8410d3dde135c17a0a3d6158e753152ee92ae976cbb14ed1f354bf2e31c14",
+  "note": "Expected union coverage, not measured coverage. Exact 100% uses a solid endpoint. No timings or browser validation.",
+  "tiles": [
+    {
+      "size": 12,
+      "counts": [
+        {
+          "coverage": 0.0625,
+          "intensity": 0.228258325753005,
+          "points": 28,
+          "expectedPoints": 32.86919890843272
+        },
+        {
+          "coverage": 0.125,
+          "intensity": 0.47227069320305404,
+          "points": 68,
+          "expectedPoints": 68.00697982123978
+        },
+        {
+          "coverage": 0.1875,
+          "intensity": 0.7343740285537512,
+          "points": 101,
+          "expectedPoints": 105.74986011174018
+        },
+        {
+          "coverage": 0.25,
+          "intensity": 1.0174671971027045,
+          "points": 144,
+          "expectedPoints": 146.51527638278944
+        },
+        {
+          "coverage": 0.3125,
+          "intensity": 1.3252069916167484,
+          "points": 195,
+          "expectedPoints": 190.82980679281178
+        },
+        {
+          "coverage": 0.375,
+          "intensity": 1.662297797013096,
+          "points": 247,
+          "expectedPoints": 239.37088276988584
+        },
+        {
+          "coverage": 0.4375,
+          "intensity": 2.034934394205409,
+          "points": 288,
+          "expectedPoints": 293.0305527655789
+        },
+        {
+          "coverage": 0.5,
+          "intensity": 2.4515066683627955,
+          "points": 354,
+          "expectedPoints": 353.01696024424257
+        },
+        {
+          "coverage": 0.5625,
+          "intensity": 2.9237773615658496,
+          "points": 421,
+          "expectedPoints": 421.0239400654823
+        },
+        {
+          "coverage": 0.625,
+          "intensity": 3.4689738654655,
+          "points": 505,
+          "expectedPoints": 499.5322366270319
+        },
+        {
+          "coverage": 0.6875,
+          "intensity": 4.113804465375892,
+          "points": 589,
+          "expectedPoints": 592.3878430141283
+        }
+      ]
+    },
+    {
+      "size": 24,
+      "counts": [
+        {
+          "coverage": 0.0625,
+          "intensity": 0.228258325753005,
+          "points": 127,
+          "expectedPoints": 131.4767956337309
+        },
+        {
+          "coverage": 0.125,
+          "intensity": 0.47227069320305404,
+          "points": 271,
+          "expectedPoints": 272.0279192849591
+        },
+        {
+          "coverage": 0.1875,
+          "intensity": 0.7343740285537512,
+          "points": 423,
+          "expectedPoints": 422.9994404469607
+        },
+        {
+          "coverage": 0.25,
+          "intensity": 1.0174671971027045,
+          "points": 578,
+          "expectedPoints": 586.0611055311578
+        },
+        {
+          "coverage": 0.3125,
+          "intensity": 1.3252069916167484,
+          "points": 749,
+          "expectedPoints": 763.3192271712471
+        },
+        {
+          "coverage": 0.375,
+          "intensity": 1.662297797013096,
+          "points": 948,
+          "expectedPoints": 957.4835310795434
+        },
+        {
+          "coverage": 0.4375,
+          "intensity": 2.034934394205409,
+          "points": 1136,
+          "expectedPoints": 1172.1222110623155
+        },
+        {
+          "coverage": 0.5,
+          "intensity": 2.4515066683627955,
+          "points": 1371,
+          "expectedPoints": 1412.0678409769703
+        },
+        {
+          "coverage": 0.5625,
+          "intensity": 2.9237773615658496,
+          "points": 1625,
+          "expectedPoints": 1684.0957602619292
+        },
+        {
+          "coverage": 0.625,
+          "intensity": 3.4689738654655,
+          "points": 1939,
+          "expectedPoints": 1998.1289465081277
+        },
+        {
+          "coverage": 0.6875,
+          "intensity": 4.113804465375892,
+          "points": 2321,
+          "expectedPoints": 2369.551372056513
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "name": "ethanol-stipple.svg",
+      "bytes": 810023
+    },
+    {
+      "name": "ethanol-halftone.svg",
+      "bytes": 132517
+    },
+    {
+      "name": "ethanol-tile-12.svg",
+      "bytes": 164462
+    },
+    {
+      "name": "ethanol-tile-24.svg",
+      "bytes": 247014
+    }
+  ]
+}

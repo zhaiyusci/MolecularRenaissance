@@ -2,7 +2,7 @@ import type { Molecule, Sphere, Cylinder, Primitive, Project, Illumination, Vect
 import type { NormalizedOptions } from './options.js';
 import { add, sub, mul, dot, norm, rotate } from './math.js';
 import { atomRadius } from './radii.js';
-import { shadowBlocked } from './shadows.js';
+import { shadowBlocked, directionalShadowContext } from './shadows.js';
 
 /** Frontmost orthographic intersection with a closed sphere/finite cylinder. */
 export function depthAt(s: Primitive,x: number,y: number): number {
@@ -34,6 +34,15 @@ export function depthAt(s: Primitive,x: number,y: number): number {
 export interface PreparedScene {
   spheres: Sphere[]; cylinders: Cylinder[]; scene: Primitive[];
   scale: number; project: Project; illumination: Illumination;
+  /** Physical light without occluders, for reuse with shared shadow regions. */
+  unshadowedIllumination: Illumination;
+  /** Cached physical (unshifted) illumination for outward-facing points on source.
+   * Source geometry must remain unchanged for the lifetime of this scene. */
+  lightingFor(source: Primitive): Illumination;
+  /** Conservative caster availability; false guarantees no traced shadow on source. */
+  mayShadow(source: Primitive): boolean;
+  /** Same lazily prepared directional candidates for geometric shadow masks. */
+  directionalShadows(): ReturnType<typeof directionalShadowContext>;
   lightDirection: Vector; shadowBias: number;
 }
 export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedScene {
@@ -58,7 +67,9 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
   const lightPosition=mul(light,o.lightDistance*sceneRadius);
   const shadowBias=Math.max(1e-9,Math.min(sceneRadius*1e-6,...scene.map(s=>s.r*1e-4)));
   const traceShadows=o.castShadows&&o.shadowStrength>0&&o.shadingSize!==0;
-  const illumination: Illumination=(n,p)=>{
+  // Share the evaluator so broad-phase specialization cannot drift from the
+  // generic callback's physical formulas or arithmetic order.
+  const lighting=(casters:readonly Primitive[]):Illumination=>(n,p)=>{
     const point=o.lightType==='point',delta=point?sub(lightPosition,p):light;
     const direction=point?norm(delta):light;
     const distance=point?Math.hypot(...delta):Infinity;
@@ -70,12 +81,34 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
       const attenuation=1/(1+o.lightAttenuation*relativeDistance*relativeDistance);
       lit=(Math.max(-1,Math.min(1,lit))+1)*attenuation-1;
     }
-    if(traceShadows&&facing>0&&shadowBlocked(scene,p,n,direction,distance,shadowBias)){
+    if(casters.length&&traceShadows&&facing>0&&shadowBlocked(casters,p,n,direction,distance,shadowBias)){
       // Signed engraving brightness maps to [0,1] before shadow attenuation.
       // At strength .8, keep 20% of the local brightness instead of solid black.
       lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;
     }
     return lit;
   };
-  return {spheres,cylinders,scene,scale,project,illumination,lightDirection:light,shadowBias};
+  const illumination=lighting(scene),unshadowedIllumination=lighting([]),cache=new WeakMap<Primitive,Illumination>();
+  const ids=new Map(scene.map((s,id)=>[s,id]));
+  let directional:ReturnType<typeof directionalShadowContext>|undefined;
+  const directionalShadows=()=>directional??=directionalShadowContext(scene,light,shadowBias);
+  const lightingFor=(source:Primitive):Illumination=>{
+    const cached=cache.get(source);if(cached)return cached;
+    const id=ids.get(source);
+    let result=illumination;
+    if(traceShadows&&o.lightType==='directional'&&id!==undefined){
+      result=lighting(directionalShadows().candidates[id]);
+    }
+    // Point rays vary across a receiver: retain the complete caster list,
+    // including self, rather than apply an unsafe directional broad phase.
+    // Unknown primitives also keep the fully generic behavior.
+    cache.set(source,result);return result;
+  };
+  const mayShadow=(source:Primitive):boolean=>{
+    if(!traceShadows)return false;
+    const id=ids.get(source);
+    if(o.lightType!=='directional'||id===undefined)return scene.length>0;
+    return directionalShadows().mayShadow[id];
+  };
+  return {spheres,cylinders,scene,scale,project,illumination,unshadowedIllumination,lightingFor,mayShadow,directionalShadows,lightDirection:light,shadowBias};
 }

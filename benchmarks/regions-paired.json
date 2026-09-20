@@ -1,0 +1,113 @@
+{
+  "note": "Core SVG only, no browser paint. Same process, two warmups each; 5 alternating old/new pairs per model/settings, medians. Scale 60, textureScale 1, preview, color wash.",
+  "rows": [
+    {
+      "model": "sphere",
+      "castShadows": false,
+      "shadingMode": "hatch",
+      "beforeMs": 7.74,
+      "afterMs": 7.3,
+      "beforeBytes": 131373,
+      "afterBytes": 135640
+    },
+    {
+      "model": "sphere",
+      "castShadows": false,
+      "shadingMode": "stipple",
+      "beforeMs": 10.44,
+      "afterMs": 7.32,
+      "beforeBytes": 270896,
+      "afterBytes": 123014
+    },
+    {
+      "model": "sphere",
+      "castShadows": true,
+      "shadingMode": "hatch",
+      "beforeMs": 6.28,
+      "afterMs": 5.21,
+      "beforeBytes": 131373,
+      "afterBytes": 135640
+    },
+    {
+      "model": "sphere",
+      "castShadows": true,
+      "shadingMode": "stipple",
+      "beforeMs": 10.57,
+      "afterMs": 7.97,
+      "beforeBytes": 270896,
+      "afterBytes": 123014
+    },
+    {
+      "model": "ethanol",
+      "castShadows": false,
+      "shadingMode": "hatch",
+      "beforeMs": 45.43,
+      "afterMs": 33.18,
+      "beforeBytes": 539963,
+      "afterBytes": 549758
+    },
+    {
+      "model": "ethanol",
+      "castShadows": false,
+      "shadingMode": "stipple",
+      "beforeMs": 35.87,
+      "afterMs": 29.88,
+      "beforeBytes": 849398,
+      "afterBytes": 392874
+    },
+    {
+      "model": "ethanol",
+      "castShadows": true,
+      "shadingMode": "hatch",
+      "beforeMs": 35.43,
+      "afterMs": 39.88,
+      "beforeBytes": 445720,
+      "afterBytes": 585952
+    },
+    {
+      "model": "ethanol",
+      "castShadows": true,
+      "shadingMode": "stipple",
+      "beforeMs": 35.57,
+      "afterMs": 35.33,
+      "beforeBytes": 929813,
+      "afterBytes": 425909
+    },
+    {
+      "model": "c60",
+      "castShadows": false,
+      "shadingMode": "hatch",
+      "beforeMs": 476.2,
+      "afterMs": 354.64,
+      "beforeBytes": 3883909,
+      "afterBytes": 3964819
+    },
+    {
+      "model": "c60",
+      "castShadows": false,
+      "shadingMode": "stipple",
+      "beforeMs": 653.18,
+      "afterMs": 507.8,
+      "beforeBytes": 7321682,
+      "afterBytes": 3061462
+    },
+    {
+      "model": "c60",
+      "castShadows": true,
+      "shadingMode": "hatch",
+      "beforeMs": 759.54,
+      "afterMs": 600.65,
+      "beforeBytes": 3724903,
+      "afterBytes": 4651374
+    },
+    {
+      "model": "c60",
+      "castShadows": true,
+      "shadingMode": "stipple",
+      "beforeMs": 833.88,
+      "afterMs": 718.72,
+      "beforeBytes": 11363939,
+      "afterBytes": 4674844
+    }
+  ]
+}
