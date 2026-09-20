@@ -7,11 +7,12 @@ const defaults: NormalizedOptions = {
   lightType:'directional',lightDistance:3,lightAttenuation:0,castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
   variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',textureScale:1,shadingBrightness:0,shadingContrast:1.2,
   dotSpacing:2.5,dotSize:.5,dotContrast:1.2,crossHatch:true,colorWash:false,colorScheme:'jmol',washStrength:1,
-  colorSaturation:1,labelMatchFill:false,labels:false,labelSize:17,labelStrokeWidth:4,labelStrokeColor:'#ffffff',
+  colorSaturation:1,labelMatchFill:false,labels:false,labelHydrogens:true,labelSize:17,labelStrokeWidth:4,labelStrokeColor:'#ffffff',
   labelColor:'#161616',labelFont:"Georgia, 'Times New Roman', serif",labelBold:false,labelItalic:true
 };
 export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   const o={...defaults,...options};
+  if(typeof o.labelHydrogens!=='boolean')throw new Error('Invalid labelHydrogens');
   if(!['preview','export'].includes(o.quality))throw new Error('Invalid quality');
   if(o.quality==='preview')o.optimizePaths=false;
   o.outlineWidth=options.outlineWidth===undefined?o.lineWidth:options.outlineWidth;

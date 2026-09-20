@@ -55,11 +55,13 @@ var MolEngraver = (function (exports) {
         lightType: 'directional', lightDistance: 3, lightAttenuation: 0, castShadows: false, shadowStrength: .8, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
         variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', textureScale: 1, shadingBrightness: 0, shadingContrast: 1.2,
         dotSpacing: 2.5, dotSize: .5, dotContrast: 1.2, crossHatch: true, colorWash: false, colorScheme: 'jmol', washStrength: 1,
-        colorSaturation: 1, labelMatchFill: false, labels: false, labelSize: 17, labelStrokeWidth: 4, labelStrokeColor: '#ffffff',
+        colorSaturation: 1, labelMatchFill: false, labels: false, labelHydrogens: true, labelSize: 17, labelStrokeWidth: 4, labelStrokeColor: '#ffffff',
         labelColor: '#161616', labelFont: "Georgia, 'Times New Roman', serif", labelBold: false, labelItalic: true
     };
     function normalizeOptions(options) {
         const o = { ...defaults, ...options };
+        if (typeof o.labelHydrogens !== 'boolean')
+            throw new Error('Invalid labelHydrogens');
         if (!['preview', 'export'].includes(o.quality))
             throw new Error('Invalid quality');
         if (o.quality === 'preview')
@@ -144,10 +146,29 @@ var MolEngraver = (function (exports) {
 
     /** Empirical covalent radii in angstrom (1 Å = 100 pm), not van der Waals radii.
      * Cordero et al., Dalton Trans. (2008), 2832–2838, DOI:10.1039/B801115J.
-     * Values cross-checked against ASE and python-periodictable's cited tables.
+     * Values transcribed from ASE's cited table (see covalentRadiusSource.data).
+     * Covers H–Cm (Z=1–96). ASE's dummy X and `missing=2.0` placeholders
+     * for Bk–Og are intentionally excluded: they are not sourced radii.
      * Carbon uses the tabulated sp3 reference; no hybridization is inferred.
      */
-    const covalentRadii = Object.freeze({ H: .31, C: .76, N: .71, O: .66, P: 1.07, S: 1.05 });
+    const covalentRadii = Object.freeze({
+        H: .31, He: .28,
+        Li: 1.28, Be: .96, B: .84, C: .76, N: .71, O: .66, F: .57, Ne: .58,
+        Na: 1.66, Mg: 1.41, Al: 1.21, Si: 1.11, P: 1.07, S: 1.05, Cl: 1.02, Ar: 1.06,
+        K: 2.03, Ca: 1.76, Sc: 1.70, Ti: 1.60, V: 1.53, Cr: 1.39, Mn: 1.39,
+        Fe: 1.32, Co: 1.26, Ni: 1.24, Cu: 1.32, Zn: 1.22,
+        Ga: 1.22, Ge: 1.20, As: 1.19, Se: 1.20, Br: 1.20, Kr: 1.16,
+        Rb: 2.20, Sr: 1.95, Y: 1.90, Zr: 1.75, Nb: 1.64, Mo: 1.54, Tc: 1.47,
+        Ru: 1.46, Rh: 1.42, Pd: 1.39, Ag: 1.45, Cd: 1.44,
+        In: 1.42, Sn: 1.39, Sb: 1.39, Te: 1.38, I: 1.39, Xe: 1.40,
+        Cs: 2.44, Ba: 2.15, La: 2.07, Ce: 2.04, Pr: 2.03, Nd: 2.01, Pm: 1.99,
+        Sm: 1.98, Eu: 1.98, Gd: 1.96, Tb: 1.94, Dy: 1.92, Ho: 1.92,
+        Er: 1.89, Tm: 1.90, Yb: 1.87, Lu: 1.87,
+        Hf: 1.75, Ta: 1.70, W: 1.62, Re: 1.51, Os: 1.44, Ir: 1.41,
+        Pt: 1.36, Au: 1.36, Hg: 1.32, Tl: 1.45, Pb: 1.46, Bi: 1.48,
+        Po: 1.40, At: 1.50, Rn: 1.50, Fr: 2.60, Ra: 2.21, Ac: 2.15,
+        Th: 2.06, Pa: 2.00, U: 1.96, Np: 1.90, Pu: 1.87, Am: 1.80, Cm: 1.69
+    });
     const covalentRadiusSource = Object.freeze({
         kind: 'covalent', unit: 'angstrom', doi: '10.1039/B801115J',
         citation: 'Cordero et al., Covalent radii revisited, Dalton Trans. (2008), 2832–2838',
@@ -1802,8 +1823,9 @@ var MolEngraver = (function (exports) {
             definitions.push(`<clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><circle ${circle}/></clipPath>`);
             const texture = `<g clip-path="url(#${clipId})">${template ? `<use href="#${template}" transform="translate(${x} ${y})"/>` : ''}${dots(s, project, clipId)}</g>`;
             const outline = o.outlineWidth > 0 ? `<circle data-role="outline" ${circle} fill="none" stroke="#161616" stroke-width="${o.outlineWidth * 1.4}"/>` : '';
-            const label = o.labels ? `<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${escapeXml(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fill : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${escapeXml(s.element)}</text>` : '';
-            if (o.labels)
+            const showLabel = o.labels && (o.labelHydrogens || s.element !== 'H');
+            const label = showLabel ? `<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${escapeXml(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fill : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${escapeXml(s.element)}</text>` : '';
+            if (showLabel)
                 counts.labels++;
             layers.push(`<g data-role="surface-layer" data-surface-id="${id}" data-atom-id="${id}"><circle data-role="surface-fill" ${circle} fill="${fill}" stroke="none"/>${texture}${outline}${label}</g>`);
         }
@@ -1934,6 +1956,159 @@ var MolEngraver = (function (exports) {
         ethanol: { name: '乙醇 · C₂H₆O', atoms: [atom('C', -1.22, 0, 0), atom('C', .12, .55, 0), atom('O', 1.28, -0.2, .15), atom('H', 2.02, .28, .15), atom('H', -1.3, -0.72, .8), atom('H', -1.95, .75, .1), atom('H', -1.38, -0.5, -0.92), atom('H', .2, 1.2, .88), atom('H', .22, 1.14, -0.92)], bonds: [[0, 1], [1, 2], [2, 3], [0, 4], [0, 5], [0, 6], [1, 7], [1, 8]] },
         c60: fullerene()
     };
+
+    const MAX_ATOMS = 2000;
+    const MAX_TEXT_LENGTH = 2 * 1024 * 1024;
+    const MAX_COORDINATE = 1e6;
+    const MAX_INFERRED_BONDS = 10000;
+    const DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?$/;
+    // IUPAC symbols in atomic-number order, as listed by ASE:
+    // https://gitlab.com/ase/ase/-/raw/master/ase/data/__init__.py
+    const SYMBOLS = ('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn '
+        + 'Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm '
+        + 'Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U '
+        + 'Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og').split(' ');
+    const SYMBOL_SET = new Set(SYMBOLS);
+    function fail(line, message) {
+        throw new Error(`XYZ line ${line}: ${message}`);
+    }
+    function parseElement(token, line) {
+        let symbol;
+        if (/^\d+$/.test(token)) {
+            const number = Number(token);
+            if (!Number.isSafeInteger(number) || number < 1 || number > SYMBOLS.length) {
+                return fail(line, 'unknown element: atomic number must be in 1–118');
+            }
+            symbol = SYMBOLS[number - 1];
+        }
+        else {
+            if (!/^[A-Za-z]{1,2}$/.test(token))
+                return fail(line, 'unknown element: expected a chemical symbol or atomic number');
+            symbol = token[0].toUpperCase() + token.slice(1).toLowerCase();
+            if (!SYMBOL_SET.has(symbol))
+                return fail(line, `unknown chemical element ${symbol}`);
+        }
+        if (!Object.hasOwn(covalentRadii, symbol)) {
+            return fail(line, `unsupported element ${symbol}: no sourced covalent radius available for rendering (supported: H–Cm, Z=1–96)`);
+        }
+        return symbol;
+    }
+    function parseCoordinate(token, line) {
+        if (!DECIMAL.test(token))
+            return fail(line, 'coordinates must be finite decimal/scientific numbers (not NaN, Inf or hexadecimal)');
+        const value = Number(token.replace(/[dD]/, 'e'));
+        if (!Number.isFinite(value))
+            return fail(line, 'coordinates must be finite');
+        if (Math.abs(value) > MAX_COORDINATE)
+            return fail(line, 'coordinate exceeds the absolute limit of 1000000 angstrom');
+        return value;
+    }
+    /**
+     * Parse exactly one STANDARD XYZ frame: count, mandatory comment, then exactly
+     * count four-column `element x y z` records. Blank trailing lines are allowed.
+     * Symbols are case-normalized; atomic numbers 1–118 are recognized, but only
+     * elements with a sourced rendering radius (currently H–Cm) are accepted.
+     * Coordinates remain in angstrom, without recentering, rescaling or unit guessing.
+     * Decimal exponents E/e and Fortran D/d are accepted. LF, CRLF and CR work.
+     *
+     * Extended XYZ `Properties=` declarations are rejected, even standard-order ones:
+     * reordered/property-rich layouts must be converted to standard XYZ first.
+     * Other comment text is opaque name data, never HTML or executable metadata.
+     * There are no periodic boundaries; lattice/comment metadata is not interpreted.
+     *
+     * Limits: 2 Mi UTF-16 code units, at most 2000 atoms, |coordinate| <= 1e6 Å.
+     * Text/count limits are checked before atom allocation; lines are scanned rather
+     * than split into an unbounded array. Optional inference visits each i<j once
+     * (at most 1,999,000 candidates), returning pairs in lexicographic index order
+     * when 0.4 Å <= distance <= 1.2 * (covalentRadius[i] + covalentRadius[j]).
+     * Inferred output is capped at 10000 bonds; denser inputs must disable inference.
+     * This is only a geometric heuristic, not bond-order/valence/chemistry inference.
+     */
+    function parseXYZ(text, options = {}) {
+        if (typeof text !== 'string')
+            return fail(1, 'input must be text');
+        if (text.length > MAX_TEXT_LENGTH)
+            return fail(1, 'text exceeds the 2097152-character safety budget');
+        if (options === null || typeof options !== 'object')
+            return fail(1, 'options must be an object');
+        const maxAtoms = options.maxAtoms ?? MAX_ATOMS;
+        if (!Number.isSafeInteger(maxAtoms) || maxAtoms < 1 || maxAtoms > MAX_ATOMS) {
+            return fail(1, 'maxAtoms must be a positive integer no greater than 2000');
+        }
+        if (options.name !== undefined && typeof options.name !== 'string')
+            return fail(1, 'name must be a string');
+        if (options.inferBonds !== undefined && typeof options.inferBonds !== 'boolean')
+            return fail(1, 'inferBonds must be a boolean');
+        let cursor = text.charCodeAt(0) === 0xfeff ? 1 : 0;
+        let line = 0;
+        const nextLine = () => {
+            if (cursor >= text.length)
+                return undefined;
+            const start = cursor;
+            while (cursor < text.length && text[cursor] !== '\n' && text[cursor] !== '\r')
+                cursor++;
+            const end = cursor;
+            if (cursor < text.length) {
+                if (text[cursor++] === '\r' && text[cursor] === '\n')
+                    cursor++;
+            }
+            line++;
+            return text.slice(start, end);
+        };
+        const header = nextLine()?.trim();
+        if (header === undefined || !/^\d+$/.test(header))
+            return fail(1, 'expected a positive integer atom count');
+        const count = Number(header);
+        if (!Number.isSafeInteger(count) || count < 1)
+            return fail(1, 'expected a positive safe-integer atom count');
+        if (count > maxAtoms)
+            return fail(1, `declared atom count ${count} exceeds maxAtoms ${maxAtoms}`);
+        const comment = nextLine();
+        if (comment === undefined)
+            return fail(2, 'missing mandatory comment line (use an empty line if unnamed)');
+        if (/\bProperties\s*=/i.test(comment)) {
+            return fail(2, 'extended XYZ Properties layouts are unsupported; convert to standard four-column element x y z XYZ (no reordered fields)');
+        }
+        const atoms = [];
+        for (let i = 0; i < count; i++) {
+            const record = nextLine();
+            if (record === undefined)
+                return fail(i + 3, `missing coordinate record ${i + 1} of ${count}`);
+            // Limit the split too: a malformed long record never allocates many columns.
+            const fields = record.trim().split(/\s+/, 5);
+            if (fields.length !== 4)
+                return fail(line, 'expected exactly four columns: element x y z; blank records and extra atom properties are unsupported');
+            const element = parseElement(fields[0], line);
+            atoms.push({ element, position: [
+                    parseCoordinate(fields[1], line),
+                    parseCoordinate(fields[2], line),
+                    parseCoordinate(fields[3], line)
+                ] });
+        }
+        for (let trailing = nextLine(); trailing !== undefined; trailing = nextLine()) {
+            if (trailing.trim() !== '')
+                return fail(line, 'unexpected trailing data: only one XYZ frame is supported (extra records/frames are not allowed)');
+        }
+        const bonds = [];
+        if (options.inferBonds === true) {
+            for (let i = 0; i < atoms.length; i++) {
+                const a = atoms[i];
+                for (let j = i + 1; j < atoms.length; j++) {
+                    const b = atoms[j];
+                    const distance = Math.hypot(a.position[0] - b.position[0], a.position[1] - b.position[1], a.position[2] - b.position[2]);
+                    const cutoff = 1.2 * (covalentRadii[a.element]
+                        + covalentRadii[b.element]);
+                    if (distance >= 0.4 && distance <= cutoff) {
+                        if (bonds.length >= MAX_INFERRED_BONDS) {
+                            return fail(j + 3, 'bond inference exceeds the 10000-bond safety limit; disable inferBonds for this dense structure');
+                        }
+                        bonds.push([i, j]);
+                    }
+                }
+            }
+        }
+        return { name: options.name ?? (comment.trim() || 'XYZ molecule'), atoms, bonds };
+    }
 
     function render(molecule, options = {}) {
         const o = normalizeOptions(options);
@@ -2089,6 +2264,8 @@ var MolEngraver = (function (exports) {
         // unrelated foreground geometry. The underlying scene keeps its fallback.
         if (o.labels && layerPaths)
             for (const [id, s] of spheres.entries()) {
+                if (s.element === 'H' && !o.labelHydrogens)
+                    continue;
                 const p = add$1(s.c, [0, 0, s.r]);
                 if (!layerPaths[id] || !visible(p))
                     continue;
@@ -2120,6 +2297,7 @@ var MolEngraver = (function (exports) {
     exports.elementPalette = elementPalette;
     exports.engravingWidth = engravingWidth;
     exports.examples = examples;
+    exports.parseXYZ = parseXYZ;
     exports.render = render;
 
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });

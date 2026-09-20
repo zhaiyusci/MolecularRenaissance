@@ -42,6 +42,8 @@ export interface RenderOptions {
   /** Sourced element fill palettes; default jmol. Textures always use black ink. */
   colorScheme?: ColorScheme;
   colorWash?: boolean; washStrength?: number; colorSaturation?: number;
+  /** Show H text when labels are enabled; default true. Does not hide atoms/bonds. */
+  labelHydrogens?: boolean;
   labels?: boolean; labelMatchFill?: boolean; labelSize?: number; labelStrokeWidth?: number;
   labelStrokeColor?: string; labelColor?: string; labelFont?: string; labelBold?: boolean; labelItalic?: boolean;
   /** Legacy controls; the corresponding shared shading control takes precedence. */

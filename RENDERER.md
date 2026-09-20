@@ -55,6 +55,27 @@ const svg = render(examples.c60, { colorWash: true });
 
 **`dist/molplotter.mjs` 是独立单文件**，内部已包含几何、排线、填色和网点实现，不需再加载其他模块。浏览器以模块方式加载时，应遵守浏览器的模块 URL/CORS 限制；直接双击的现有 GUI 仍使用下面的经典脚本方案。
 
+## XYZ 文本解析
+
+`parseXYZ` 与渲染器一起导出，无 DOM、文件系统或网络依赖；调用方负责取得文本。返回的坐标原样保留（约定 Å），不修改渲染比例。
+
+```ts
+import { parseXYZ, render, type XYZOptions } from 'molplotter';
+const options: XYZOptions = { name: 'water.xyz', inferBonds: true, maxAtoms: 500 };
+const molecule = parseXYZ(`3
+water
+O 0 0 0
+H .9572 0 0
+H -.239 .927 0`, options);
+const svg = render(molecule, { renderMode: 'fast', castShadows: false });
+```
+
+- `name` 覆盖第二行注释生成的标题；未指定且注释为空时使用 `XYZ molecule`。
+- `inferBonds` 默认 **false**，开启后按 `0.4 ≤ d ≤ 1.2 × (ri+rj)`（Å）产生排序后的无向索引对；只做几何推断，无键级、价态或周期边界处理。半径来自物理数据表，而非显示倍率。
+- `maxAtoms` 默认 2000，可设 1–2000；另外限制文本最多 2097152 个 UTF-16 代码单元、坐标绝对值不超过 10⁶ Å、推断不超过 10000 根键。GUI 更严格：2 MiB 文件、500 原子。
+- 严格单帧、四列标准 XYZ；第二行必须存在，可为空。支持 BOM、LF/CRLF/CR、元素大小写规范化、原子序数和 E/D 科学计数法。拒绝多帧、额外列、`Properties=`、非有限值和缺少半径的元素，并报告行号。
+- CommonJS 为 `require('molplotter').parseXYZ`；经典脚本为 `MolEngraver.parseXYZ`。输入注释/文件名始终作为文本数据，渲染时 XML 转义。
+
 ## CommonJS
 
 ```js

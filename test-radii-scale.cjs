@@ -10,7 +10,7 @@ function capture(model,options={}){
  finally{b.build=original;}
  assert.ok(args);return {scene:args[0],project:args[2],scale:args[3]};
 }
-assert.deepEqual(r.covalentRadii,expected);
+assert.deepEqual(Object.fromEntries(Object.keys(expected).map(k=>[k,r.covalentRadii[k]])),expected,'legacy radii remain unchanged');
 assert.equal(r.covalentRadiusSource.doi,'10.1039/B801115J');
 assert.equal(r.covalentRadiusSource.unit,'angstrom');
 assert.equal(r.covalentRadiusSource.carbonReference,'sp3');
@@ -43,7 +43,8 @@ for(const model of Object.values(r.examples))for(const view of [{},{yaw:1.2,pitc
 const override={atoms:[{element:'C',position:[0,0,0],radius:.73},{element:'F',position:[3,0,0],radius:.57}],bonds:[]};
 assert.deepEqual(capture(override).scene.map(s=>s.r),[.73,.57]);
 assert.deepEqual(capture(override,{atomRadiusScale:.5}).scene.map(s=>s.r),[.365,.285]);
-assert.throws(()=>capture({atoms:[{element:'F',position:[0,0,0]}],bonds:[]}),/No covalent radius/);
+assert.equal(capture({atoms:[{element:'F',position:[0,0,0]}],bonds:[]}).scene[0].r,.57);
+assert.throws(()=>capture({atoms:[{element:'Xx',position:[0,0,0]}],bonds:[]}),/No covalent radius/);
 for(const value of [0,-1,NaN,Infinity,'60',null]){
  assert.throws(()=>capture(r.examples.sphere,{scale:value}),/Invalid scale/);
  assert.throws(()=>capture(r.examples.sphere,{atomRadiusScale:value}),/Invalid atomRadiusScale/);

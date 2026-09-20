@@ -29,8 +29,20 @@
     .settings-group summary { padding: 12px 0; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
     .settings-group[open] summary { margin-bottom: 4px; }
     .control { margin-bottom: 15px; }
+    .outline-control { border-top: 1px solid #cbd1d5; padding-top: 14px; }
+    .control-subheading { margin: 14px 0 12px; color: #5b636a; font-size: 12px; font-weight: 600; }
     .mode-hint { margin: 0 0 15px; color: #5b636a; font-size: 12px; line-height: 1.6; }
     #render-mode-status { color: #303b44; font-weight: 600; }
+    #xyz-file { width: 100%; font: inherit; font-size: 12px; }
+    #xyz-status { overflow-wrap: anywhere; }
+    #xyz-status:empty { display: none; }
+    .check-help { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .summary-controls { float: right; display: inline-flex; align-items: center; gap: 10px; margin-top: -2px; }
+    .help { position: relative; display: inline-flex; flex: 0 0 auto; }
+    .help-button { width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 12px; line-height: 18px; cursor: help; }
+    .help-tooltip { position: absolute; z-index: 10; right: 0; top: 100%; width: 230px; max-width: calc(100vw - 64px); padding: 10px; border: 1px solid #bac2c8; border-radius: 5px; background: #fff; color: #303b44; box-shadow: 0 3px 12px #0002; font-size: 12px; font-weight: normal; line-height: 1.6; visibility: hidden; }
+    .help:hover .help-tooltip, .help:focus-within .help-tooltip { visibility: visible; }
+    #xyz-status[data-error="true"] { color: #9d3434; }
     .control-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; }
     output { color: #5b636a; font-variant-numeric: tabular-nums; white-space: nowrap; }
     select, button { font: inherit; }
@@ -71,9 +83,10 @@
     <aside aria-label="渲染控制">
       <h2>图版设置</h2>
       <div class="settings-body">
-        <div class="control"><label class="control-heading" for="model">模型</label><select id="model" aria-label="示例模型"></select></div>
-        <label class="check"><input id="fast-overlay" type="checkbox" aria-describedby="fast-overlay-hint">快速覆盖</label>
-        <p id="fast-overlay-hint" class="mode-hint">正交投影 · 平行光 · 无投影阴影；球体按深度覆盖，键与原子局部处理</p>
+        <div class="control"><label class="control-heading" for="model">模型</label><select id="model" aria-label="模型"></select></div>
+        <div class="control"><div class="control-heading"><label for="xyz-file">导入本地 XYZ</label><span class="help"><button type="button" class="help-button" aria-label="XYZ 导入帮助" aria-describedby="xyz-hint">?</button><span id="xyz-hint" class="help-tooltip" role="tooltip">自动按距离推断键。坐标单位 Å；支持单帧，最多 500 原子、2 MiB。文件仅在本地读取，不上传。</span></span></div><input id="xyz-file" type="file" accept=".xyz,text/plain" aria-describedby="xyz-hint xyz-status"></div>
+        <p id="xyz-status" class="mode-hint" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="control outline-control"><div class="control-heading"><label for="outline-width">轮廓线宽</label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8"></div>
         <details class="settings-group" name="settings" open>
           <summary>大小与视角</summary>
           <div class="control"><div class="control-heading"><label for="scale" title="SVG 单位/Å；只缩放几何，不缩放纹理">整图比例</label><output id="scale-value" for="scale">60</output></div><input id="scale" type="range" min="20" max="200" step="1" value="60"></div>
@@ -82,17 +95,16 @@
           <div class="control"><div class="control-heading"><label for="pitch">俯仰角度</label><output id="pitch-value" for="pitch">−15°</output></div><input id="pitch" type="range" min="-90" max="90" step="1" value="-15"></div>
         </details>
         <details class="settings-group" name="settings">
-          <summary>纹理与线条</summary>
+          <summary>光影<span id="shading-title-controls" class="summary-controls"><input id="shading-enabled" type="checkbox" checked aria-label="启用光影"></span></summary>
+          <div class="check-help"><label class="check"><input id="fast-overlay" type="checkbox" aria-describedby="fast-overlay-hint">快速覆盖</label><span class="help"><button type="button" class="help-button" aria-label="快速覆盖帮助" aria-describedby="fast-overlay-hint">?</button><span id="fast-overlay-hint" class="help-tooltip" role="tooltip">正交投影、平行光、无投影阴影。球体按深度覆盖，仅处理键与原子的局部遮挡；关闭后恢复原光照设置。</span></span></div>
+          <div class="control-subheading">纹理</div>
           <div class="control"><label class="control-heading" for="shading-mode">明暗模式</label><select id="shading-mode"><option value="hatch" selected>排线</option><option value="stipple">点刻</option><option value="halftone">规则网点</option></select></div>
           <div class="control"><div class="control-heading"><label for="texture-scale" title="向左更细密，向右更粗疏，平均黑度尽量不变">纹理粗细</label><output id="texture-scale-value" for="texture-scale">1.00×</output></div><input id="texture-scale" type="range" min="20" max="250" step="5" value="100"></div>
           <div class="control"><div class="control-heading"><label for="shading-brightness">亮度</label><output id="shading-brightness-value" for="shading-brightness">0</output></div><input id="shading-brightness" type="range" min="-100" max="100" step="5" value="0"></div>
           <div class="control"><div class="control-heading"><label for="shading-contrast">对比度</label><output id="shading-contrast-value" for="shading-contrast">1.2</output></div><input id="shading-contrast" type="range" min="0.5" max="2.5" step="0.1" value="1.2"></div>
-          <div class="control"><div class="control-heading"><label for="outline-width">轮廓线宽</label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8"></div>
           <label class="check"><input id="variable-width" type="checkbox" checked>渐变线宽</label>
           <label class="check"><input id="cross-hatch" type="checkbox" checked>交叉排线</label>
-        </details>
-        <details class="settings-group" name="settings">
-          <summary>光照与阴影</summary>
+          <div class="control-subheading">光照与阴影</div>
           <div class="control"><div class="control-heading"><label for="light-azimuth">光源方位</label><output id="light-azimuth-value" for="light-azimuth">−29°</output></div><input id="light-azimuth" type="range" min="-180" max="180" step="1" value="-29"></div>
           <div class="control"><div class="control-heading"><label for="light-elevation">光源仰角</label><output id="light-elevation-value" for="light-elevation">32°</output></div><input id="light-elevation" type="range" min="-90" max="90" step="1" value="32"></div>
           <label class="check"><input id="point-light" type="checkbox">点光源</label>
@@ -102,16 +114,15 @@
           <div class="control"><div class="control-heading"><label for="shadow-strength">阴影强度</label><output id="shadow-strength-value" for="shadow-strength">80%</output></div><input id="shadow-strength" type="range" min="0" max="100" step="5" value="80"></div>
         </details>
         <details class="settings-group" name="settings">
-          <summary>配色</summary>
+          <summary>配色<span id="color-title-controls" class="summary-controls"><input id="color-wash" type="checkbox" checked aria-label="启用元素底色"></span></summary>
           <div class="control"><label class="control-heading" for="color-scheme">色表</label><select id="color-scheme"><option value="jmol" selected>Jmol / ChimeraX</option><option value="rasmol">RasMol (CPK)</option><option value="pymol">PyMOL 元素色</option><option value="greenCarbon">3Dmol · 绿碳</option><option value="cyanCarbon">3Dmol · 青碳</option><option value="magentaCarbon">3Dmol · 品红碳</option></select></div>
-          <label class="check"><input id="color-wash" type="checkbox" checked>元素底色</label>
           <div class="control"><div class="control-heading"><label for="wash-strength">浓度</label><output id="wash-strength-value" for="wash-strength">100%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="100"></div>
           <div class="control"><div class="control-heading"><label for="color-saturation">饱和度</label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="100" step="5" value="100"></div>
         </details>
         <details class="settings-group" name="settings">
-          <summary>元素标签</summary>
-          <label class="check"><input id="labels" type="checkbox">显示标签</label>
+          <summary>元素标签<span id="labels-title-controls" class="summary-controls"><input id="labels" type="checkbox" aria-label="显示元素标签"></span></summary>
           <fieldset id="label-settings" class="label-settings" disabled aria-label="元素标签样式">
+            <label class="check"><input id="label-hydrogens" type="checkbox" checked>显示 H 标签</label>
             <div class="control"><div class="control-heading"><label for="label-size">字号</label><output id="label-size-value" for="label-size">17</output></div><input id="label-size" type="range" min="6" max="96" step="1" value="17"></div>
             <div class="control"><label class="control-heading" for="label-font">字体</label><input id="label-font" type="text" list="label-font-options" maxlength="200" value="Georgia, 'Times New Roman', serif">
               <datalist id="label-font-options">

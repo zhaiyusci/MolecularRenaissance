@@ -59,6 +59,8 @@ export interface RenderOptions {
     colorWash?: boolean;
     washStrength?: number;
     colorSaturation?: number;
+    /** Show H text when labels are enabled; default true. Does not hide atoms/bonds. */
+    labelHydrogens?: boolean;
     labels?: boolean;
     labelMatchFill?: boolean;
     labelSize?: number;

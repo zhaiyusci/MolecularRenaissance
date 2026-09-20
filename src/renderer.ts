@@ -12,6 +12,8 @@ import { hatchCoverage } from './coverage.js';
 import { getBoundaries, getDots, getWash } from './runtime.js';
 export type { Atom, Bond, Molecule, Vec3, RenderOptions, RenderQuality, ShadingMode, ColorScheme, LightType, RenderMode } from './types.js';
 export { examples } from './examples.js';
+export { parseXYZ } from './xyz.js';
+export type { XYZOptions } from './xyz.js';
 export { covalentRadii, covalentRadiusSource } from './radii.js';
 export { depthAt } from './scene.js';
 export { engravingWidth } from './strokes.js';
@@ -147,6 +149,7 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   // If ownership cannot be certified, omit labels rather than float them over
   // unrelated foreground geometry. The underlying scene keeps its fallback.
   if(o.labels&&layerPaths)for(const [id,s] of spheres.entries()){
+    if(s.element==='H'&&!o.labelHydrogens)continue;
     const p=add(s.c,[0,0,s.r]);
     if(!layerPaths[id]||!visible(p))continue;
     const [x,y]=project(p);

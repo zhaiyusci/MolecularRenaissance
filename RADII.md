@@ -23,6 +23,8 @@
 const atom = { element: 'C', position: [0, 0, 0] as const, radius: 0.73 };
 ```
 
+为支持 XYZ 导入，半径表现已扩展到 **H–Cm（原子序数 1–96）**，使用上述 ASE 数据表中实际列出的 Cordero 值；原先六种元素数值不变。ASE 对 Bk–Og 的 `missing = 2.0` 占位值未当作真实半径收录。`test-xyz.cjs` 另检查 F、Cl、Fe 与跨模块 XYZ 解析。
+
 未收录的元素不再偷偷使用碳半径：必须显式提供正、有限的 `atom.radius`，否则报错。数据实现位于 `src/radii.ts`，公开导出 `covalentRadii` 和 `covalentRadiusSource`。
 
 ## 不再自动 rescale

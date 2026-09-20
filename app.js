@@ -4,6 +4,13 @@
 
   var byId = function (id) { return document.getElementById(id); };
   var model = byId('model');
+  var xyzFile = byId('xyz-file');
+  var xyzStatus = byId('xyz-status');
+  var imported = null;
+  var importedOption = null;
+  var importRequest = 0;
+  var importLoading = false;
+  var importedKey = '__local_xyz__';
   var preview = byId('preview');
   var timing = byId('timing');
   var error = byId('error');
@@ -23,6 +30,12 @@
   var lightAttenuation = byId('light-attenuation');
   var variableWidth = byId('variable-width');
   var shadingMode = byId('shading-mode');
+  var shadingEnabled = byId('shading-enabled');
+  ['shading-title-controls', 'color-title-controls', 'labels-title-controls'].forEach(function (id) {
+    byId(id).addEventListener('click', function (event) {
+      event.stopPropagation(); // Controls in summary must not toggle the accordion.
+    });
+  });
   var textureScale = byId('texture-scale');
   var shadingBrightness = byId('shading-brightness');
   var shadingContrast = byId('shading-contrast');
@@ -34,6 +47,7 @@
   var colorSaturation = byId('color-saturation');
   var labelMatchFill = byId('label-match-fill');
   var labels = byId('labels');
+  var labelHydrogens = byId('label-hydrogens');
   var labelSize = byId('label-size');
   var labelFont = byId('label-font');
   var labelColor = byId('label-color');
@@ -75,6 +89,74 @@
     model.appendChild(option);
   });
 
+  // Keep the local slot separate from the engine's immutable example catalog.
+  while (Object.prototype.hasOwnProperty.call(engine.examples, importedKey)) importedKey += '_';
+
+  function setXYZStatus(message, failed) {
+    xyzStatus.textContent = message;
+    xyzStatus.setAttribute('data-error', failed ? 'true' : 'false');
+  }
+
+  function cancelImport() {
+    importRequest += 1;
+    if (importLoading) setXYZStatus('已取消待完成的 XYZ 导入。', false);
+    importLoading = false;
+  }
+
+  function parseImport(text, name) {
+    if (typeof engine.parseXYZ !== 'function') throw new Error('未能载入 XYZ 解析器，请更新 renderer.js。');
+    var molecule = engine.parseXYZ(text, { name: name, inferBonds: true, maxAtoms: 500 });
+    return { name: name, model: molecule };
+  }
+
+  function commitImport(next, select) {
+    imported = next;
+    if (!importedOption) {
+      importedOption = document.createElement('option');
+      importedOption.value = importedKey;
+      model.appendChild(importedOption);
+    }
+    importedOption.textContent = '本地 · ' + next.name;
+    if (select) model.value = importedKey;
+    setXYZStatus('已载入 ' + next.name + ' · ' + next.model.atoms.length + ' 个原子 · ' + next.model.bonds.length + ' 个键（距离推断）', false);
+  }
+
+  xyzFile.addEventListener('change', async function () {
+    var file = xyzFile.files && xyzFile.files[0];
+    xyzFile.value = ''; // Permit choosing the same file again, including after failure.
+    if (!file) return;
+    var request = ++importRequest;
+    importLoading = true;
+    download.disabled = true;
+    lastRender = null;
+    setXYZStatus('正在读取 ' + file.name + '…', false);
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error('XYZ 文件不能超过 2MiB。');
+      var text = await file.text();
+      if (request !== importRequest) return;
+      var next = parseImport(text, file.name);
+      if (request !== importRequest) return;
+      commitImport(next, true);
+    } catch (cause) {
+      if (request !== importRequest) return;
+      setXYZStatus('XYZ 导入失败：' + (cause && cause.message ? cause.message : '无法读取文件。'), true);
+    } finally {
+      if (request === importRequest) {
+        importLoading = false;
+        // A failure renders the prior valid selection, never a partial import.
+        scheduleRender();
+      }
+    }
+  });
+
+  model.addEventListener('change', function () {
+    cancelImport();
+    if (model.value === importedKey && imported) {
+      commitImport(imported, false);
+    }
+    scheduleRender();
+  });
+
   function syncOutputs() {
     // Remember precise-mode preferences only on entry; restore them on exit.
     if (fastOverlay.checked) {
@@ -88,8 +170,11 @@
       castShadows.checked = preciseLightSettings.castShadows;
       preciseLightSettings = null;
     }
-    pointLight.disabled = fastOverlay.checked;
-    castShadows.disabled = fastOverlay.checked;
+    pointLight.disabled = fastOverlay.checked || !shadingEnabled.checked;
+    castShadows.disabled = fastOverlay.checked || !shadingEnabled.checked;
+    [shadingMode, textureScale, shadingBrightness, shadingContrast, lightAzimuth, lightElevation].forEach(function (input) {
+      input.disabled = !shadingEnabled.checked;
+    });
     byId('render-mode-status').textContent = fastOverlay.checked ? '快速覆盖 · 已启用' : '精确渲染';
     byId('scale-value').textContent = scale.value;
     byId('atom-radius-scale-value').textContent = Number(atomRadiusScale.value).toFixed(2) + '×';
@@ -97,15 +182,15 @@
     byId('pitch-value').textContent = pitch.value + '°';
     byId('light-azimuth-value').textContent = lightAzimuth.value + '°';
     byId('light-elevation-value').textContent = lightElevation.value + '°';
-    shadowStrength.disabled = !castShadows.checked;
+    shadowStrength.disabled = !shadingEnabled.checked || !castShadows.checked;
     byId('shadow-strength-value').textContent = shadowStrength.value + '%';
-    lightDistance.disabled = !pointLight.checked;
-    lightAttenuation.disabled = !pointLight.checked;
+    lightDistance.disabled = !shadingEnabled.checked || !pointLight.checked;
+    lightAttenuation.disabled = !shadingEnabled.checked || !pointLight.checked;
     byId('light-attenuation-value').textContent = Number(lightAttenuation.value).toFixed(3);
     byId('light-distance-value').textContent = pointLight.checked ? Number(lightDistance.value).toFixed(1) + ' R' : '∞';
     var isHatch = shadingMode.value === 'hatch';
     [crossHatch, variableWidth].forEach(function (input) {
-      input.disabled = !isHatch;
+      input.disabled = !shadingEnabled.checked || !isHatch;
     });
     byId('texture-scale-value').textContent = (Number(textureScale.value) / 100).toFixed(2) + '×';
     byId('shading-brightness-value').textContent = (Number(shadingBrightness.value) > 0 ? '+' : '') + shadingBrightness.value;
@@ -125,7 +210,8 @@
   function renderNow() {
     frame = null;
     var modelKey = model.value;
-    var molecule = engine.examples[modelKey];
+    var molecule = modelKey === importedKey && imported ? imported.model : engine.examples[modelKey];
+    var filename = modelKey === importedKey && imported ? imported.name.replace(/\.xyz$/i, '') : modelKey;
     var start = performance.now();
     var interacting = !!drag || !!controlPointer;
     try {
@@ -158,6 +244,7 @@
         colorSaturation: Number(colorSaturation.value) / 100,
         labelMatchFill: labelMatchFill.checked,
         labels: labels.checked,
+        labelHydrogens: labelHydrogens.checked,
         labelSize: Number(labelSize.value),
         labelFont: labelFont.value.trim() || defaultLabelFont,
         labelColor: labelColor.value,
@@ -166,6 +253,11 @@
         labelBold: labelBold.checked,
         labelItalic: labelItalic.checked
       };
+      // The master switch suppresses shading in BOTH preview and export snapshots.
+      if (!shadingEnabled.checked) {
+        options.shadingSize = 0;
+        options.castShadows = false;
+      }
       // Transient lightweight frame only; never overwrite the user's settings.
       var svg = engine.render(molecule, interacting ? Object.assign({}, options, { shadingSize: 0, castShadows: false }) : options);
       if (typeof svg !== 'string' || !/<svg[\s>]/i.test(svg)) {
@@ -181,12 +273,12 @@
       var caption = byId('molecule-caption');
       if (caption) caption.textContent = molecule.name || model.value;
       // Keep the successful preview inputs, not its sampled SVG geometry.
-      lastRender = interacting ? null : { key: modelKey, model: molecule, options: options };
+      lastRender = interacting || importLoading ? null : { key: modelKey, filename: filename, model: molecule, options: options };
       byId('model-info').textContent = molecule.atoms.length + ' 个原子 · ' + molecule.bonds.length + ' 个键 · 900 × 700';
       timing.textContent = (interacting ? '拖动预览（无纹理） ' : '渲染 ') + (performance.now() - start).toFixed(1) + ' ms';
       error.hidden = true;
       error.textContent = '';
-      download.disabled = interacting;
+      download.disabled = interacting || importLoading;
     } catch (cause) {
       preview.textContent = '图版生成失败，请调整设置后重试。';
       showError(cause && cause.message ? cause.message : '未知渲染错误');
@@ -202,7 +294,7 @@
   [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [model, fastOverlay, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
+  [fastOverlay, shadingEnabled, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
@@ -229,6 +321,7 @@
   });
 
   byId('reset').addEventListener('click', function () {
+    cancelImport();
     endControl();
     if (drag) endDrag({ pointerId: drag.id });
     model.value = keys[0];
@@ -245,6 +338,7 @@
     shadowStrength.value = '80';
     lightDistance.value = '3';
     lightAttenuation.value = '0';
+    shadingEnabled.checked = true;
     shadingMode.value = 'hatch';
     textureScale.value = '100';
     shadingBrightness.value = '0';
@@ -258,6 +352,7 @@
     colorSaturation.value = '100';
     labelMatchFill.checked = true;
     labels.checked = false;
+    labelHydrogens.checked = true;
     labelSize.value = '17';
     labelFont.value = defaultLabelFont;
     labelColor.value = '#161616';
@@ -280,7 +375,7 @@
   }
 
   download.addEventListener('click', function () {
-    if (!lastRender || frame !== null) return;
+    if (importLoading || !lastRender || frame !== null) return;
     var snapshot = lastRender;
     var url;
     var link;
@@ -295,7 +390,7 @@
       url = URL.createObjectURL(blob);
       link = document.createElement('a');
       link.href = url;
-      link.download = safeFilename(snapshot.key);
+      link.download = safeFilename(snapshot.filename);
       document.body.appendChild(link);
       link.click();
       error.hidden = true;
@@ -307,7 +402,7 @@
       if (link) link.remove();
       // Allow the browser to finish opening the download before revoking its URL.
       if (url) setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-      download.disabled = frame !== null || !lastRender;
+      download.disabled = importLoading || frame !== null || !lastRender;
     }
   });
 
