@@ -27,6 +27,7 @@
     "dist/",
     "src/",
     "README.md",
+    "README.zh-CN.md",
     "RENDERER.md",
     "RADII.md"
   ],

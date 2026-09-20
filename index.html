@@ -1,20 +1,24 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>分子文艺复兴 · Molecular Renaissance</title>
+  <title>Molecular Renaissance</title>
   <style>
     :root { color-scheme: light; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #25282b; background: #eceeef; }
     * { box-sizing: border-box; }
     body { margin: 0; }
-    header { max-width: 1400px; margin: auto; padding: 30px 32px 22px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+    header { max-width: 1400px; margin: auto; padding: 30px 32px 22px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: .06em; }
-    header p { margin: 0; color: #676c71; font-size: 13px; }
+    header h1 { min-width: 0; overflow-wrap: anywhere; }
+    .language-control { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; font-size: 13px; }
+    .language-icon { width: 22px; height: 22px; flex: 0 0 auto; }
+    #language { width: auto; min-width: 0; max-width: 100%; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    #xyz-choose { width: 100%; }
     main { max-width: 1400px; margin: auto; padding: 0 32px 30px; display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; align-items: start; }
     .artboard { background: #fff; border: 1px solid #d9dde0; min-width: 0; }
-    #preview { width: 100%; aspect-ratio: 9 / 7; min-height: 0; display: flex; overflow: auto; cursor: grab; touch-action: none; user-select: none; }
-    #preview.dragging { cursor: grabbing; }
+    #preview { width: 100%; aspect-ratio: 9 / 7; min-height: 0; display: flex; overflow: auto; }
     /* Auto margins center spare space without shrinking the SVG. */
     #preview svg { display: block; flex: 0 0 auto; margin: auto; width: auto; height: auto; max-width: none; max-height: none; }
     #preview p { padding: 24px; color: #73787c; text-align: center; }
@@ -33,7 +37,6 @@
     .control-subheading { margin: 14px 0 12px; color: #5b636a; font-size: 12px; font-weight: 600; }
     .mode-hint { margin: 0 0 15px; color: #5b636a; font-size: 12px; line-height: 1.6; }
     #render-mode-status { color: #303b44; font-weight: 600; }
-    #xyz-file { width: 100%; font: inherit; font-size: 12px; }
     #xyz-status { overflow-wrap: anywhere; }
     #xyz-status:empty { display: none; }
     .check-help { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -61,11 +64,28 @@
     button:hover:not(:disabled) { background: #fff; border-color: #82929e; }
     button:disabled { opacity: .5; cursor: not-allowed; }
     :focus-visible { outline: 2px solid #57778f; outline-offset: 4px; }
+    .rotation-widget { min-width: 0; margin: 0 0 15px; padding: 10px; border: 1px solid #c5ccd1; border-radius: 8px; background: #f0f2f3; }
+    .rotation-widget legend { padding: 0 5px; color: #46515a; font-size: 12px; font-weight: 650; }
+    #rotation-gizmo { width: 220px; max-width: 100%; aspect-ratio: 1; margin: 0 auto; background: transparent; overflow: hidden; }
+    #rotation-gizmo svg { width: 100%; display: block; touch-action: none; border-radius: inherit; }
+    .rotation-readout-label { margin: 9px 0 5px; color: #5b636a; font-size: 11px; }
+    .rotation-readouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 9px; }
+    .rotation-readout { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 4px 2px; border-radius: 4px; background: var(--axis-tint); }
+    .axis-x { --axis-color: #ae3542; --axis-tint: #fae9ec; }
+    .axis-y { --axis-color: #26713e; --axis-tint: #e6f2e9; }
+    .axis-z { --axis-color: #2866a5; --axis-tint: #e7effa; }
+    .rotation-readout label { color: var(--axis-color); font-size: 11px; font-weight: 750; }
+    .rotation-readout output { color: var(--axis-color); font-size: 11px; }
+    #rotation-reset { display: block; margin-left: auto; padding: 6px 8px; font-size: 12px; }
+    .rotation-widget :focus-visible { outline: 2px solid #253d50; outline-offset: 2px; }
+    /* SVG paths highlight their own stroke on focus; rectangular browser outlines
+       can create stray lines across the widget, especially on edge-on rings. */
+    #rotation-gizmo, #rotation-gizmo svg, #rotation-gizmo :focus-visible { outline: none; }
     #error { margin: 12px 0 0; color: #9d3434; font-size: 13px; line-height: 1.6; overflow-y: auto; }
     [hidden] { display: none !important; }
     @media (max-width: 760px) {
       header { padding: 22px 16px 18px; display: block; }
-      header p { margin-top: 8px; }
+      .language-control { margin-top: 12px; }
       main { padding: 0 16px 22px; grid-template-columns: 1fr; gap: 16px; }
       aside { position: static; max-height: none; }
       .settings-body { overflow: visible; padding-right: 0; }
@@ -73,58 +93,70 @@
   </style>
 </head>
 <body>
-  <header><h1>分子文艺复兴</h1><p lang="en">Molecular Renaissance</p></header>
+  <header>
+    <h1><span data-i18n="static.brand">Molecular Renaissance</span></h1>
+    <label class="language-control" for="language"><svg class="language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1m14 20-5-10-5 10m2-4h6"/></svg><select id="language" aria-label="Language / 语言"><option value="en" lang="en">English</option><option value="zh-CN" lang="zh-CN">简体中文</option></select></label>
+  </header>
   <main>
-    <section class="artboard" aria-label="分子图版">
-      <div id="preview" aria-label="分子预览，可拖拽旋转；也可使用右侧角度滑块"><p>正在准备图版…</p></div>
-      <div class="preview-caption"><p id="molecule-caption" class="molecule-caption"></p><p class="signature-caption" lang="en">Molecular Renaissance</p></div>
-      <div class="board-footer"><span id="model-info">900 × 700 · SVG</span><span id="timing" role="status">等待渲染</span><span id="render-mode-status" role="status">精确渲染</span><span>拖拽图版旋转</span></div>
+    <section class="artboard" aria-label="Molecular plate" data-i18n-aria-label="static.artboard">
+      <div id="preview" aria-label="Molecular preview" data-i18n-aria-label="static.preview"><p>Preparing the plate…</p></div>
+      <div class="preview-caption"><p id="molecule-caption" class="molecule-caption"></p><p class="signature-caption"><span data-i18n="static.brand">Molecular Renaissance</span></p></div>
+      <div class="board-footer"><span id="model-info">900 × 700 · SVG</span><span id="timing" role="status">Waiting to render</span><span id="render-mode-status" role="status">Exact rendering</span><span data-i18n="static.rotateHint">Drag the rotation rings</span></div>
     </section>
-    <aside aria-label="渲染控制">
-      <h2>图版设置</h2>
+    <aside aria-label="Rendering controls" data-i18n-aria-label="static.controls">
+      <h2><span data-i18n="static.settings">Plate settings</span></h2>
       <div class="settings-body">
-        <div class="control"><label class="control-heading" for="model">模型</label><select id="model" aria-label="模型"></select></div>
-        <div class="control"><div class="control-heading"><label for="xyz-file">导入本地 XYZ</label><span class="help"><button type="button" class="help-button" aria-label="XYZ 导入帮助" aria-describedby="xyz-hint">?</button><span id="xyz-hint" class="help-tooltip" role="tooltip">自动按距离推断键。坐标单位 Å；支持单帧，最多 500 原子、2 MiB。文件仅在本地读取，不上传。</span></span></div><input id="xyz-file" type="file" accept=".xyz,text/plain" aria-describedby="xyz-hint xyz-status"></div>
+        <div class="control"><label class="control-heading" for="model"><span data-i18n="static.model">Model</span></label><select id="model" aria-label="Model" data-i18n-aria-label="static.model"></select></div>
+        <div class="control"><div class="control-heading"><label for="xyz-choose"><span data-i18n="static.xyzImport">Import local XYZ</span></label><span class="help"><button type="button" class="help-button" aria-label="XYZ import help" data-i18n-aria-label="static.xyzHelp" aria-describedby="xyz-hint">?</button><span id="xyz-hint" class="help-tooltip" role="tooltip" data-i18n="static.xyzHint">Bonds are inferred automatically by distance. Coordinates in Å; one frame, up to 500 atoms and 2 MiB. Files are read locally and never uploaded.</span></span></div><input id="xyz-file" class="visually-hidden" type="file" accept=".xyz,text/plain" tabindex="-1" aria-label="Import local XYZ" data-i18n-aria-label="static.xyzImport" aria-describedby="xyz-hint xyz-status"><button id="xyz-choose" type="button" aria-describedby="xyz-hint xyz-status"><span data-i18n="static.xyzChoose">Choose XYZ file</span></button></div>
         <p id="xyz-status" class="mode-hint" role="status" aria-live="polite" aria-atomic="true"></p>
-        <div class="control outline-control"><div class="control-heading"><label for="outline-width">轮廓线宽</label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8"></div>
+        <div class="control outline-control"><div class="control-heading"><label for="outline-width"><span data-i18n="static.outlineWidth">Outline width</span></label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8"></div>
         <details class="settings-group" name="settings" open>
-          <summary>大小与视角</summary>
-          <div class="control"><div class="control-heading"><label for="scale" title="SVG 单位/Å；只缩放几何，不缩放纹理">整图比例</label><output id="scale-value" for="scale">60</output></div><input id="scale" type="range" min="20" max="200" step="1" value="60"></div>
-          <div class="control"><div class="control-heading"><label for="atom-radius-scale">原子半径倍率</label><output id="atom-radius-scale-value" for="atom-radius-scale">1.00×</output></div><input id="atom-radius-scale" type="range" min="0.2" max="2" step="0.05" value="1"></div>
-          <div class="control"><div class="control-heading"><label for="yaw">水平旋转</label><output id="yaw-value" for="yaw">25°</output></div><input id="yaw" type="range" min="-180" max="180" step="1" value="25"></div>
-          <div class="control"><div class="control-heading"><label for="pitch">俯仰角度</label><output id="pitch-value" for="pitch">−15°</output></div><input id="pitch" type="range" min="-90" max="90" step="1" value="-15"></div>
+          <summary><span data-i18n="static.sizeView">Size and view</span></summary>
+          <div class="control"><div class="control-heading"><label for="scale" title="SVG units/Å; scales geometry only, not texture" data-i18n-title="static.scaleHint"><span data-i18n="static.scale">Overall scale</span></label><output id="scale-value" for="scale">60</output></div><input id="scale" type="range" min="20" max="200" step="1" value="60"></div>
+          <div class="control"><div class="control-heading"><label for="atom-radius-scale"><span data-i18n="static.atomRadius">Atom radius multiplier</span></label><output id="atom-radius-scale-value" for="atom-radius-scale">1.00×</output></div><input id="atom-radius-scale" type="range" min="0.2" max="2" step="0.05" value="1"></div>
+          <fieldset class="rotation-widget">
+            <legend data-i18n="static.rotation">Rotation</legend>
+            <div id="rotation-gizmo" role="group" aria-label="3D rotation control" data-i18n-aria-label="gizmo.label"></div>
+            <p class="rotation-readout-label" data-i18n="static.eulerXYZ">Euler XYZ</p>
+            <div class="rotation-readouts">
+              <div class="rotation-readout axis-x"><label for="euler-x">X</label><output id="euler-x" for="rotation-gizmo rotation-reset">—</output></div>
+              <div class="rotation-readout axis-y"><label for="euler-y">Y</label><output id="euler-y" for="rotation-gizmo rotation-reset">—</output></div>
+              <div class="rotation-readout axis-z"><label for="euler-z">Z</label><output id="euler-z" for="rotation-gizmo rotation-reset">—</output></div>
+            </div>
+            <button id="rotation-reset" type="button" data-i18n="static.rotationReset">Reset view</button>
+          </fieldset>
         </details>
         <details class="settings-group" name="settings">
-          <summary>光影<span id="shading-title-controls" class="summary-controls"><input id="shading-enabled" type="checkbox" checked aria-label="启用光影"></span></summary>
-          <div class="check-help"><label class="check"><input id="fast-overlay" type="checkbox" aria-describedby="fast-overlay-hint">快速覆盖</label><span class="help"><button type="button" class="help-button" aria-label="快速覆盖帮助" aria-describedby="fast-overlay-hint">?</button><span id="fast-overlay-hint" class="help-tooltip" role="tooltip">正交投影、平行光、无投影阴影。球体按深度覆盖，仅处理键与原子的局部遮挡；关闭后恢复原光照设置。</span></span></div>
-          <div class="control-subheading">纹理</div>
-          <div class="control"><label class="control-heading" for="shading-mode">明暗模式</label><select id="shading-mode"><option value="hatch" selected>排线</option><option value="stipple">点刻</option><option value="halftone">规则网点</option></select></div>
-          <div class="control"><div class="control-heading"><label for="texture-scale" title="向左更细密，向右更粗疏，平均黑度尽量不变">纹理粗细</label><output id="texture-scale-value" for="texture-scale">1.00×</output></div><input id="texture-scale" type="range" min="20" max="250" step="5" value="100"></div>
-          <div class="control"><div class="control-heading"><label for="shading-brightness">亮度</label><output id="shading-brightness-value" for="shading-brightness">0</output></div><input id="shading-brightness" type="range" min="-100" max="100" step="5" value="0"></div>
-          <div class="control"><div class="control-heading"><label for="shading-contrast">对比度</label><output id="shading-contrast-value" for="shading-contrast">1.2</output></div><input id="shading-contrast" type="range" min="0.5" max="2.5" step="0.1" value="1.2"></div>
-          <label class="check"><input id="variable-width" type="checkbox" checked>渐变线宽</label>
-          <label class="check"><input id="cross-hatch" type="checkbox" checked>交叉排线</label>
-          <div class="control-subheading">光照与阴影</div>
-          <div class="control"><div class="control-heading"><label for="light-azimuth">光源方位</label><output id="light-azimuth-value" for="light-azimuth">−29°</output></div><input id="light-azimuth" type="range" min="-180" max="180" step="1" value="-29"></div>
-          <div class="control"><div class="control-heading"><label for="light-elevation">光源仰角</label><output id="light-elevation-value" for="light-elevation">32°</output></div><input id="light-elevation" type="range" min="-90" max="90" step="1" value="32"></div>
-          <label class="check"><input id="point-light" type="checkbox">点光源</label>
-          <div class="control"><div class="control-heading"><label for="light-distance">光源距离</label><output id="light-distance-value" for="light-distance">∞</output></div><input id="light-distance" type="range" min="1.2" max="12" step="0.1" value="3" disabled></div>
-          <div class="control"><div class="control-heading"><label for="light-attenuation" title="0 表示不衰减">衰减强度</label><output id="light-attenuation-value" for="light-attenuation">0.000</output></div><input id="light-attenuation" type="range" min="0" max="0.2" step="0.005" value="0" disabled></div>
-          <label class="check"><input id="cast-shadows" type="checkbox" checked>投射阴影</label>
-          <div class="control"><div class="control-heading"><label for="shadow-strength">阴影强度</label><output id="shadow-strength-value" for="shadow-strength">80%</output></div><input id="shadow-strength" type="range" min="0" max="100" step="5" value="80"></div>
+          <summary><span data-i18n="static.shading">Shading</span><span id="shading-title-controls" class="summary-controls"><input id="shading-enabled" type="checkbox" checked aria-label="Enable shading" data-i18n-aria-label="static.shadingEnabled"></span></summary>
+          <div class="check-help"><label class="check"><input id="fast-overlay" type="checkbox" aria-describedby="fast-overlay-hint"><span data-i18n="static.fastOverlay">Fast overlay</span></label><span class="help"><button type="button" class="help-button" aria-label="Fast overlay help" data-i18n-aria-label="static.fastHelp" aria-describedby="fast-overlay-hint">?</button><span id="fast-overlay-hint" class="help-tooltip" role="tooltip" data-i18n="static.fastHint">Orthographic projection, parallel light, no cast shadows. Spheres overlap by depth; only local bond–atom occlusion is handled. Turning this off restores the previous lighting settings.</span></span></div>
+          <div class="control-subheading"><span data-i18n="static.texture">Texture</span></div>
+          <div class="control"><label class="control-heading" for="shading-mode"><span data-i18n="static.shadingMode">Shading mode</span></label><select id="shading-mode"><option value="hatch" selected data-i18n="static.hatch">Hatching</option><option value="stipple" data-i18n="static.stipple">Stippling</option><option value="halftone" data-i18n="static.halftone">Regular halftone</option></select></div>
+          <div class="control"><div class="control-heading"><label for="texture-scale" title="Left: finer and denser; right: coarser and sparser, with similar average darkness" data-i18n-title="static.textureHint"><span data-i18n="static.textureScale">Texture scale</span></label><output id="texture-scale-value" for="texture-scale">1.00×</output></div><input id="texture-scale" type="range" min="20" max="250" step="5" value="100"></div>
+          <div class="control"><div class="control-heading"><label for="shading-brightness"><span data-i18n="static.brightness">Brightness</span></label><output id="shading-brightness-value" for="shading-brightness">0</output></div><input id="shading-brightness" type="range" min="-100" max="100" step="5" value="0"></div>
+          <div class="control"><div class="control-heading"><label for="shading-contrast"><span data-i18n="static.contrast">Contrast</span></label><output id="shading-contrast-value" for="shading-contrast">1.2</output></div><input id="shading-contrast" type="range" min="0.5" max="2.5" step="0.1" value="1.2"></div>
+          <label class="check"><input id="variable-width" type="checkbox" checked><span data-i18n="static.variableWidth">Variable line width</span></label>
+          <label class="check"><input id="cross-hatch" type="checkbox" checked><span data-i18n="static.crossHatch">Cross-hatching</span></label>
+          <div class="control-subheading"><span data-i18n="static.lighting">Lighting and shadows</span></div>
+          <div class="control"><div class="control-heading"><label for="light-azimuth"><span data-i18n="static.lightAzimuth">Light azimuth</span></label><output id="light-azimuth-value" for="light-azimuth">−29°</output></div><input id="light-azimuth" type="range" min="-180" max="180" step="1" value="-29"></div>
+          <div class="control"><div class="control-heading"><label for="light-elevation"><span data-i18n="static.lightElevation">Light elevation</span></label><output id="light-elevation-value" for="light-elevation">32°</output></div><input id="light-elevation" type="range" min="-90" max="90" step="1" value="32"></div>
+          <label class="check"><input id="point-light" type="checkbox"><span data-i18n="static.pointLight">Point light</span></label>
+          <div class="control"><div class="control-heading"><label for="light-distance"><span data-i18n="static.lightDistance">Light distance</span></label><output id="light-distance-value" for="light-distance">∞</output></div><input id="light-distance" type="range" min="1.2" max="12" step="0.1" value="3" disabled></div>
+          <div class="control"><div class="control-heading"><label for="light-attenuation" title="0 means no attenuation" data-i18n-title="static.attenuationHint"><span data-i18n="static.attenuation">Attenuation strength</span></label><output id="light-attenuation-value" for="light-attenuation">0.000</output></div><input id="light-attenuation" type="range" min="0" max="0.2" step="0.005" value="0" disabled></div>
+          <label class="check"><input id="cast-shadows" type="checkbox" checked><span data-i18n="static.castShadows">Cast shadows</span></label>
+          <div class="control"><div class="control-heading"><label for="shadow-strength"><span data-i18n="static.shadowStrength">Shadow strength</span></label><output id="shadow-strength-value" for="shadow-strength">80%</output></div><input id="shadow-strength" type="range" min="0" max="100" step="5" value="80"></div>
         </details>
         <details class="settings-group" name="settings">
-          <summary>配色<span id="color-title-controls" class="summary-controls"><input id="color-wash" type="checkbox" checked aria-label="启用元素底色"></span></summary>
-          <div class="control"><label class="control-heading" for="color-scheme">色表</label><select id="color-scheme"><option value="jmol" selected>Jmol / ChimeraX</option><option value="rasmol">RasMol (CPK)</option><option value="pymol">PyMOL 元素色</option><option value="greenCarbon">3Dmol · 绿碳</option><option value="cyanCarbon">3Dmol · 青碳</option><option value="magentaCarbon">3Dmol · 品红碳</option></select></div>
-          <div class="control"><div class="control-heading"><label for="wash-strength">浓度</label><output id="wash-strength-value" for="wash-strength">100%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="100"></div>
-          <div class="control"><div class="control-heading"><label for="color-saturation">饱和度</label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="100" step="5" value="100"></div>
+          <summary><span data-i18n="static.colors">Colors</span><span id="color-title-controls" class="summary-controls"><input id="color-wash" type="checkbox" checked aria-label="Enable element colors" data-i18n-aria-label="static.colorEnabled"></span></summary>
+          <div class="control"><label class="control-heading" for="color-scheme"><span data-i18n="static.colorScheme">Palette</span></label><select id="color-scheme"><option value="jmol" selected>Jmol / ChimeraX</option><option value="rasmol">RasMol (CPK)</option><option value="pymol" data-i18n="static.pymol">PyMOL element colors</option><option value="greenCarbon" data-i18n="static.greenCarbon">3Dmol · Green carbon</option><option value="cyanCarbon" data-i18n="static.cyanCarbon">3Dmol · Cyan carbon</option><option value="magentaCarbon" data-i18n="static.magentaCarbon">3Dmol · Magenta carbon</option></select></div>
+          <div class="control"><div class="control-heading"><label for="wash-strength"><span data-i18n="static.washStrength">Intensity</span></label><output id="wash-strength-value" for="wash-strength">100%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="100"></div>
+          <div class="control"><div class="control-heading"><label for="color-saturation"><span data-i18n="static.saturation">Saturation</span></label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="100" step="5" value="100"></div>
         </details>
         <details class="settings-group" name="settings">
-          <summary>元素标签<span id="labels-title-controls" class="summary-controls"><input id="labels" type="checkbox" aria-label="显示元素标签"></span></summary>
-          <fieldset id="label-settings" class="label-settings" disabled aria-label="元素标签样式">
-            <label class="check"><input id="label-hydrogens" type="checkbox" checked>显示 H 标签</label>
-            <div class="control"><div class="control-heading"><label for="label-size">字号</label><output id="label-size-value" for="label-size">17</output></div><input id="label-size" type="range" min="6" max="96" step="1" value="17"></div>
-            <div class="control"><label class="control-heading" for="label-font">字体</label><input id="label-font" type="text" list="label-font-options" maxlength="200" value="Georgia, 'Times New Roman', serif">
+          <summary><span data-i18n="static.labels">Element labels</span><span id="labels-title-controls" class="summary-controls"><input id="labels" type="checkbox" aria-label="Show element labels" data-i18n-aria-label="static.labelsEnabled"></span></summary>
+          <fieldset id="label-settings" class="label-settings" disabled aria-label="Element label style" data-i18n-aria-label="static.labelStyle">
+            <label class="check"><input id="label-hydrogens" type="checkbox" checked><span data-i18n="static.labelHydrogens">Show H labels</span></label>
+            <div class="control"><div class="control-heading"><label for="label-size"><span data-i18n="static.labelSize">Font size</span></label><output id="label-size-value" for="label-size">17</output></div><input id="label-size" type="range" min="6" max="96" step="1" value="17"></div>
+            <div class="control"><label class="control-heading" for="label-font"><span data-i18n="static.labelFont">Font</span></label><input id="label-font" type="text" list="label-font-options" maxlength="200" value="Georgia, 'Times New Roman', serif">
               <datalist id="label-font-options">
                 <option value="Georgia, 'Times New Roman', serif"></option>
                 <option value="'Times New Roman', serif"></option>
@@ -134,24 +166,27 @@
                 <option value="'Courier New', monospace"></option>
               </datalist>
             </div>
-            <div class="check-row"><label class="check"><input id="label-bold" type="checkbox">粗体</label><label class="check"><input id="label-italic" type="checkbox" checked>斜体</label></div>
-            <div class="color-control"><label for="label-color">文字颜色</label><input id="label-color" type="color" value="#161616"></div>
-            <div class="control"><div class="control-heading"><label for="label-stroke-width">描边宽度</label><output id="label-stroke-width-value" for="label-stroke-width">4.0</output></div><input id="label-stroke-width" type="range" min="0" max="16" step="0.5" value="4"></div>
-            <label class="check"><input id="label-match-fill" type="checkbox" checked>描边匹配底色</label>
-            <div class="color-control"><label for="label-stroke-color">描边颜色</label><input id="label-stroke-color" type="color" value="#ffffff"></div>
+            <div class="check-row"><label class="check"><input id="label-bold" type="checkbox"><span data-i18n="static.bold">Bold</span></label><label class="check"><input id="label-italic" type="checkbox" checked><span data-i18n="static.italic">Italic</span></label></div>
+            <div class="color-control"><label for="label-color"><span data-i18n="static.labelColor">Text color</span></label><input id="label-color" type="color" value="#161616"></div>
+            <div class="control"><div class="control-heading"><label for="label-stroke-width"><span data-i18n="static.labelStrokeWidth">Stroke width</span></label><output id="label-stroke-width-value" for="label-stroke-width">4.0</output></div><input id="label-stroke-width" type="range" min="0" max="16" step="0.5" value="4"></div>
+            <label class="check"><input id="label-match-fill" type="checkbox" checked><span data-i18n="static.labelMatchFill">Match stroke to fill</span></label>
+            <div class="color-control"><label for="label-stroke-color"><span data-i18n="static.labelStrokeColor">Stroke color</span></label><input id="label-stroke-color" type="color" value="#ffffff"></div>
           </fieldset>
         </details>
       </div>
-      <div class="actions"><button id="reset" type="button">重置</button><button id="download" type="button" disabled>下载 SVG</button></div>
+      <div class="actions"><button id="reset" type="button"><span data-i18n="static.reset">Reset</span></button><button id="download" type="button" disabled><span data-i18n="static.download">Download SVG</span></button></div>
       <p id="error" role="alert" hidden></p>
     </aside>
   </main>
-  <noscript>请启用 JavaScript 以生成分子图版。</noscript>
+  <noscript>Please enable JavaScript to generate molecular plates.</noscript>
   <script src="dot-regions.js"></script>
   <script src="boundaries.js"></script>
   <script src="wash.js"></script>
   <script src="dots.js"></script>
   <script src="renderer.js"></script>
+  <script src="i18n.js"></script>
+  <script src="i18n-messages.js"></script>
+  <script src="rotation-gizmo.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

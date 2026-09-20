@@ -1,6 +1,7 @@
 import type { RenderOptions } from './types.js';
 import { colorSchemes } from './palette.js';
-export type NormalizedOptions = Required<Omit<RenderOptions,'shadingDensity'|'shadingSize'>> & Pick<RenderOptions,'shadingDensity'|'shadingSize'>;
+import { normalizeOrientation } from './orientation.js';
+export type NormalizedOptions = Required<Omit<RenderOptions,'shadingDensity'|'shadingSize'|'orientation'>> & Pick<RenderOptions,'shadingDensity'|'shadingSize'|'orientation'>;
 const defaults: NormalizedOptions = {
   renderMode:'precise',
   width:900,height:700,scale:60,atomRadiusScale:1,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
@@ -12,6 +13,7 @@ const defaults: NormalizedOptions = {
 };
 export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   const o={...defaults,...options};
+  if(options.orientation!==undefined)o.orientation=normalizeOrientation(options.orientation);
   if(typeof o.labelHydrogens!=='boolean')throw new Error('Invalid labelHydrogens');
   if(!['preview','export'].includes(o.quality))throw new Error('Invalid quality');
   if(o.quality==='preview')o.optimizePaths=false;
@@ -39,7 +41,7 @@ export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   o.shadingContrast=options.shadingContrast===undefined?1.2:options.shadingContrast;
   if(options.shadingContrast!==undefined)o.dotContrast=o.shadingContrast;
   for(const k of ['dotSpacing','dotSize','dotContrast','outlineWidth','hatchWidth','colorSaturation','width','height','yaw','pitch','lightAzimuth','lightElevation','lightDistance','density','lineWidth','labelSize','labelStrokeWidth','washStrength'] as const)
-    if(!Number.isFinite(o[k]))throw new Error('Invalid option: '+k);
+    if(!(o.orientation!==undefined&&(k==='yaw'||k==='pitch'))&&!Number.isFinite(o[k]))throw new Error('Invalid option: '+k);
   if(!Number.isFinite(o.scale)||o.scale<=0)throw new Error('Invalid scale: expected positive finite SVG units per angstrom');
   if(!Number.isFinite(o.atomRadiusScale)||o.atomRadiusScale<=0)throw new Error('Invalid atomRadiusScale: expected a positive finite multiplier');
   if(!Number.isFinite(o.lightAttenuation)||o.lightAttenuation<0)throw new Error('Invalid lightAttenuation: expected a nonnegative finite strength');

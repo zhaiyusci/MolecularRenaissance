@@ -1,49 +1,61 @@
-# Molplotter · 线刻分子实验
+# Molplotter · Molecular Line Engraving Experiment
 
-渲染核心使用 **TypeScript**，运行时不依赖 DOM 或第三方库。仓库附带编译好的 JavaScript，直接打开页面不需要构建。白底黑线，可使用浓度与饱和度可调的元素底色，明暗统一由黑色规则网点、点刻或排线表达；不使用纸张纹理、噪声、褪色或灰度渐变。
+English (primary) · [简体中文](README.zh-CN.md)
 
-设计取向：保留排线、网点等有助于表达形体和明暗的印刷语言，不刻意模仿工艺缺陷。已移除套印错位（offset）功能，不模拟 CMYK 或专色失准。
+The rendering core is written in **TypeScript**, with no runtime dependency on the DOM or third-party libraries. Compiled JavaScript is included in the repository, so opening the page requires no build. Black lines on a white background can be combined with element-colored fills of adjustable strength and saturation. All shading is expressed through black regular halftone dots, stippling, or hatching; there are no paper textures, noise, fading, or grayscale gradients.
 
-## 使用
+Design approach: retain printmaking techniques such as hatching and halftone dots that help convey form and shading, without deliberately imitating production defects. The registration offset feature has been removed; CMYK or spot-color misregistration is not simulated.
 
-双击 `index.html`，选择单球、双球、水、乙醇或富勒烯 C₆₀；调整视角、三种模式共用的密度/大小/对比度、独立轮廓线宽、填色和光源角度，下载 SVG。默认使用平行光，可勾选「点光源」并调整距离；「渐变线宽（亮细暗粗）」默认开启。重置会恢复所有默认设置。页面不需要服务器或联网。直接查看样张可打开 `samples/*.svg`。
+## Usage
 
-**C₆₀ 模型**：`examples.c60`，由二十面体的有向边在 1/3 处截角生成，包含 60 个碳原子、90 条键，每个碳连接 3 个邻居，形成 12 个五边形和 20 个六边形。采用理想化等键长 1.42 Å 的坐标，不是量化计算优化构型，也未区分真实 C₆₀ 的两类键长或双键。模型下拉菜单自动收录；可用排线、点刻和规则网点。原子较多，渲染会比乙醇更慢。样张：`samples/c60.svg`；拓扑和渲染验证：`node test-c60.cjs`。
+Double-click `index.html` and choose from 15 molecules: water, ethanol, fullerene C₆₀, methane, ammonia, carbon dioxide, methanol, benzene, hydrogen peroxide, phenol, isopropanol, sulfuric acid, glycine, α-D-glucose, and the phospholipid DHPC. Adjust the view, texture scale/brightness/contrast shared by all three modes, independent outline width, fill, and light angles, then download SVG. Directional lighting is the default; enable “Point light” to adjust its distance. “Variable width (thin in light, thick in shade)” is enabled by default. Reset restores all defaults. The page requires neither a server nor an internet connection. To view samples directly, open `samples/*.svg`.
 
-运行测试并重新生成样张：
+**Rotation gizmo:** drag the red, green, or blue ring to rotate around the molecule's local X, Y, or Z axis. Drag the gray outer ring to rotate in the image plane. Only the gizmo accepts rotation gestures; the molecule canvas does not. Focus a ring and use arrow keys for 5° increments (Shift: 15°). “Reset view” resets orientation only. Colored rings follow the current pose; local increments use `q * q_delta`, while the outer ring uses a camera-Z increment `q_delta * q`. The read-only Euler XYZ values are calculated from the quaternion state using `R = Rz(z) * Ry(y) * Rx(x)`. Euler values can change branches near singularities; the stored orientation remains continuous. Neither physical scale nor molecular geometry is altered.
+
+API: optional `orientation: [x, y, z, w]` accepts a nonzero finite quaternion, normalizes a copy, and overrides legacy `yaw`/`pitch`. Without it the old rotation path is unchanged. `rotateOrientation(q, axis, radians)` applies a fixed-axis increment; `orientationFromEulerXYZ([x, y, z])` and `orientationToEulerXYZ(q)` convert radians. Checks: `node test-orientation.cjs`, `node test-orientation-ui.cjs`, `node test-gizmo.cjs`.
+
+The interface offers English and Simplified Chinese, displaying one language at a time and preserving the current model and rendering settings when switched. The language preference is remembered when browser storage is available; without a saved preference, a browser language starting with `zh` selects Simplified Chinese, otherwise English. Opening directly through `file://` remains supported; language selection does not change the renderer APIs. Keep `i18n.js`, `i18n-messages.js`, and `rotation-gizmo.js` alongside `index.html` and `app.js` when copying the GUI. Localization regression checks: `node test-i18n.cjs`.
+
+Molecule presets use idealized illustrative coordinates in Å, not optimized or experimental structures. Bond cylinders represent connectivity, not bond order (including carbon dioxide and benzene). Single/two-sphere study fixtures remain available through the API for regression tests but are excluded from the model menu; the default and reset model is water. Preset checks: `node test-molecule-presets.cjs`.
+
+Glucose is the cyclic α-D-glucopyranose chair, with stereochemistry checked against [RCSB GLC](https://www.rcsb.org/ligand/GLC). Glycine and sulfuric acid use neutral molecular forms. The phospholipid is specifically short-chain [DHPC (1,2-dihexanoyl-sn-glycero-3-phosphocholine)](https://www.ebi.ac.uk/chebi/CHEBI:138194), not a generic phospholipid: C₂₀H₄₀NO₈P, with two six-carbon acyl tails and a phosphocholine head. Its zwitterionic charges and bond orders are not drawn as separate glyphs. All coordinates are generated illustrations rather than copied experimental conformers.
+
+**C₆₀ model**: `examples.c60` is generated by truncating the directed edges of an icosahedron at 1/3, yielding 60 carbon atoms and 90 bonds. Each carbon has 3 neighbors, forming 12 pentagons and 20 hexagons. Its coordinates use an idealized, uniform bond length of 1.42 Å, not a quantum-chemically optimized geometry; they do not distinguish the two bond lengths or double bonds of real C₆₀. The model is automatically included in the dropdown and supports hatching, stippling, and regular halftone dots. Its larger atom count makes rendering slower than ethanol. Sample: `samples/c60.svg`; topology and rendering validation: `node test-c60.cjs`.
+
+Run tests and regenerate samples:
 
 ```sh
 node test.cjs
 ```
 
-## 读取自己的 XYZ 文件
+## Loading Your Own XYZ Files
 
-模型选择器下方提供本地 `.xyz` 文件选择。选中后加入一个「本地 · 文件名」模型，可在它和内置示例之间切换，使用现有渲染控件并下载 SVG。文件仅通过浏览器 `File.text()` 本地读取，不上传；直接双击 `index.html` 也可使用。示例文件：[samples/water.xyz](samples/water.xyz)。
+A local `.xyz` file picker is provided below the model selector. Selecting a file adds a “Local · filename” model; you can switch between it and the built-in examples, use the existing rendering controls, and download SVG. Files are read locally using the browser's `File.text()` and are not uploaded; this also works when double-clicking `index.html`. Example file: [samples/water.xyz](samples/water.xyz).
 
-支持**单帧标准 XYZ**：第一行原子数，第二行注释（可空，但必须保留该行），随后每行 `元素 x y z` 四列。坐标单位约定为 **Å**，不自动转换、缩放或适配画幅；支持元素符号、原子序数、科学计数法和 CRLF/BOM。当前不支持多帧轨迹、额外原子列及 `Properties=` 扩展 XYZ；格式错误会显示行号，保留上一份有效模型。
+**Single-frame standard XYZ** is supported: the first line is the atom count, the second is a comment (which may be empty, but the line must be present), followed by four columns per line: `element x y z`. Coordinates are assumed to be in **Å**, with no automatic conversion, scaling, or fitting to the canvas. Element symbols, atomic numbers, scientific notation, and CRLF/BOM are supported. Multi-frame trajectories, extra atom columns, and extended XYZ with `Properties=` are currently unsupported. Format errors display line numbers and leave the last valid model intact.
 
-XYZ 不含键，页面导入时**自动按距离推断键**，不再提供单独的开关；需要无键模型时仍可通过解析 API 指定 `inferBonds: false`。规则为 `0.4 Å ≤ 距离 ≤ 1.2 × 两原子的共价半径之和`，只是几何推断，不识别键级、价态或周期边界；不受显示用半径倍率影响。页面上限 2 MiB、500 个原子；推断上限 10000 根键。较大模型建议手动启用快速覆盖。导入等待期间禁止下载，连续选文件以最后一次为准，切回示例或重置会取消尚未完成的导入。
+XYZ contains no bonds, so page imports **automatically infer bonds by distance**, with no separate toggle. For a bondless model, the parsing API still accepts `inferBonds: false`. The rule is `0.4 Å ≤ distance ≤ 1.2 × sum of the two atoms' covalent radii`: a geometric inference only, with no recognition of bond order, valence, or periodic boundaries. It is unaffected by the display radius multiplier. Page limits are 2 MiB and 500 atoms; inference is capped at 10000 bonds. Manually enabling fast overlay is recommended for larger models. Downloads are disabled while an import is pending; when files are selected in succession, the last selection wins. Switching back to an example or resetting cancels any unfinished import.
 
-解析 API：`parseXYZ(text, {name, inferBonds, maxAtoms})`，返回 `Molecule`；API 默认不推断键，最多 2000 原子，详见 [RENDERER.md](RENDERER.md)。半径表支持 H–Cm（原子序数 1–96）；其他已知元素也会明确报缺少文献半径，不猜用碳半径。现有配色表以外的元素仍沿用配色回退值，可开启元素标签区分。
+Parsing API: `parseXYZ(text, {name, inferBonds, maxAtoms})`, returning a `Molecule`. By default, the API does not infer bonds and allows up to 2000 atoms; see [RENDERER.md](RENDERER.md). The radius table supports H–Cm (atomic numbers 1–96); other known elements explicitly report missing literature radii rather than assuming carbon's radius. Elements outside the existing palettes still use the fallback color; enable element labels to distinguish them.
 
-验证：`node test-xyz.cjs`、`node test-xyz-ui.cjs`。
+Validation: `node test-xyz.cjs`, `node test-xyz-ui.cjs`.
 
-## 科学半径与固定比例
+## Scientific Radii and Fixed Scale
 
-现采用 Cordero 等（2008，DOI [10.1039/B801115J](https://doi.org/10.1039/B801115J)）的经验共价半径：H **0.31 Å**、C **0.76 Å**（sp³ 参考）、N **0.71 Å**、O **0.66 Å**、P **1.07 Å**、S **1.05 Å**。数值由 ASE / periodictable 的文献数据表交叉核对；不是范德华半径或原子硬边界。
+The renderer now uses the empirical covalent radii of Cordero et al. (2008, DOI [10.1039/B801115J](https://doi.org/10.1039/B801115J)): H **0.31 Å**, C **0.76 Å** (sp³ reference), N **0.71 Å**, O **0.66 Å**, P **1.07 Å**, and S **1.05 Å**. Values were cross-checked against the literature data tables in ASE / periodictable; they are not van der Waals radii or hard atomic boundaries.
 
-**不再自动 rescale。** 坐标与半径按 Å 输入，`scale` 默认固定 **60 SVG 单位/Å**，不随分子、旋转或画布改变。GUI 提供手动比例滑块；SVG 按固有画幅显示，小窗口滚动而不是 CSS 自动缩放。过大的模型可能超出画幅，需要用户明确调整比例或画布。
+**No more automatic rescaling.** Coordinates and radii are supplied in Å. The default `scale` is fixed at **60 SVG units/Å**, independent of the molecule, rotation, or canvas. The GUI provides a manual scale slider; SVG is displayed at its intrinsic dimensions, with scrolling in small windows rather than automatic CSS scaling. Oversized models may extend beyond the canvas, requiring an explicit scale or canvas adjustment.
 
-**原子球大小另由用户控制**：`atomRadiusScale`（默认 1，GUI 0.2–2）只乘球半径，不改变原子中心距离、键长或键柱粗细；与整体投影 `scale` 独立，也不会自动选择倍率。可用 `atom.radius` 明确覆盖基准半径；未知元素不再猜用碳半径。真实半径引起的普通球球相交现由解析交圆处理，不擅自缩小原子或改变键长来回避。来源、适用范围、C(sp²)/C(sp) 以及验证见 [RADII.md](RADII.md)。后文早期性能表/优化百分比为旧绘图半径下的历史记录，不代表当前默认画幅与半径的测量结果。
+**Atom sphere size is controlled separately by the user**: `atomRadiusScale` (default 1, GUI 0.2–2) multiplies only sphere radii, without changing atom-center distances, bond lengths, or bond-cylinder thickness. It is independent of the overall projection `scale`, and no multiplier is selected automatically. Use `atom.radius` to explicitly override the base radius; unknown elements no longer assume carbon's radius. Ordinary sphere–sphere intersections caused by realistic radii are now handled using analytic intersection circles, rather than silently shrinking atoms or changing bond lengths to avoid them. Sources, applicability, C(sp²)/C(sp), and validation are documented in [RADII.md](RADII.md). The early performance tables and optimization percentages below are historical records using the old drawing radii, not measurements of the current default canvas and radii.
 
-## TypeScript 渲染库
+## TypeScript Rendering Library
 
-**编辑 `src/*.ts`，不要手改根目录生成的渲染器 JS。** GUI 仍是独立的 `app.js` / `index.html`；渲染库输入模型和参数，返回 SVG 字符串。
+**Edit `src/*.ts`; do not manually edit the generated renderer JS in the repository root.** The GUI remains separate in `app.js` / `index.html`; the rendering library takes a model and options and returns an SVG string.
 
-- 入口与公共类型：`src/renderer.ts`、`src/types.ts`。
-- 参数、场景/光照、配色、排线与示例：`src/options.ts`、`src/scene.ts`、`src/palette.ts`、`src/strokes.ts`、`src/examples.ts`。
-- 解析边界、区域索引、填色/拟合、网点：`src/boundaries.ts`、`src/dot-regions.ts`、`src/wash.ts`、`src/dots.ts`。
-- 产物：根目录五个兼容 JS 模块（经典脚本 / CommonJS）、独立的 `dist/molplotter.mjs`（ES Module）、`dist/types/*.d.ts`。
+- Entry point and public types: `src/renderer.ts`, `src/types.ts`.
+- Options, scene/lighting, palettes, hatching, and examples: `src/options.ts`, `src/scene.ts`, `src/palette.ts`, `src/strokes.ts`, `src/examples.ts`.
+- Analytic boundaries, region indexing, fills/fitting, and dots: `src/boundaries.ts`, `src/dot-regions.ts`, `src/wash.ts`, `src/dots.ts`.
+- Outputs: five compatible JS modules in the root (classic scripts / CommonJS), standalone `dist/molplotter.mjs` (ES Module), and `dist/types/*.d.ts`.
 
 ```sh
 npm ci
@@ -52,312 +64,312 @@ npm run build
 npm test
 ```
 
-TypeScript 和 Rollup 仅为开发依赖；`strict` 开启，核心编译不引入 DOM 类型库。`npm test` 自动先构建，再运行完整回归；`npm test -- --quick` 仅跳过较长的旋转压力测试。迁移还保留了 49 组原 JS 输出的 SHA-256 基线，通过显式历史半径与固定比例夹具检查 CommonJS、ES Module 和无 DOM 经典脚本环境中的算法一致性；当前科学半径与固定比例另有独立测试。
+TypeScript and Rollup are development dependencies only. `strict` is enabled, and the core compiles without DOM type libraries. `npm test` automatically builds first, then runs the full regression suite; `npm test -- --quick` skips only the longer rotation stress tests. The migration also retains SHA-256 baselines for 49 sets of original JS output, using explicit historical-radius and fixed-scale fixtures to check algorithmic consistency in CommonJS, ES Module, and DOM-free classic-script environments. Current scientific radii and fixed scale have separate tests.
 
-其他项目的 TypeScript / JavaScript 接入示例见 [RENDERER.md](RENDERER.md)。目前是本地包，未发布到 npm。
+For TypeScript / JavaScript integration examples in other projects, see [RENDERER.md](RENDERER.md). This is currently a local package, not published to npm.
 
-## 光影总开关
+## Master Shading Toggle
 
-主页面 **「光影」组标题右侧的总开关** 默认开启。快速覆盖、纹理、光源和阴影集中在组内；轮廓线宽独立放在各组选项之外，不受光影开关影响。关闭后，预览及导出都使用 `shadingSize: 0`、`castShadows: false`，不画明暗纹理或投影阴影，保留底色、轮廓和标签。纹理与光照参数只暂时禁用，不清空；重新开启恢复，重置恢复开启。支持精确／快速及三种纹理模式。说明收纳在小问号中，悬停、点击聚焦或键盘聚焦即可查看；错误和导入状态仍直接显示。
+The **master toggle to the right of the “Shading” group heading** on the main page is enabled by default. Fast overlay, texture, lighting, and shadows are grouped together; outline width sits independently outside the option groups and is unaffected by the shading toggle. When disabled, both preview and export use `shadingSize: 0` and `castShadows: false`, omitting shading textures and cast shadows while retaining fills, outlines, and labels. Texture and lighting parameters are temporarily disabled, not cleared; re-enabling restores them, and Reset enables shading again. Both precise/fast rendering and all three texture modes are supported. Help is tucked into small question marks, accessible by hovering, click focus, or keyboard focus; errors and import status remain directly visible.
 
-## 快速覆盖渲染开关
+## Fast Overlay Rendering Toggle
 
-主页面「光影」组内的 **「快速覆盖」** 开关默认关闭。开启后自动使用平行光并关闭投影阴影；这两个控件暂时禁用，关闭快速模式后恢复先前设置。排线、点刻、网点均支持，预览和 SVG 下载使用同一模式。
+The **“Fast overlay”** toggle in the main page's “Shading” group is off by default. Enabling it automatically selects directional light and disables cast shadows. These two controls are temporarily disabled, and their previous settings return when fast mode is turned off. Hatching, stippling, and halftone dots are all supported; preview and SVG downloads use the same mode.
 
 ```js
 render(molecule, {renderMode: 'fast', lightType: 'directional', castShadows: false});
-// renderMode: 'precise'（默认）保留原渲染器。
+// renderMode: 'precise' (default) retains the original renderer.
 ```
 
-当前投影本来就是正交投影。快速模式不求球—球交线：完整原子和完整标签按球中心深度覆盖，标签不裁剪、也不检查中心是否可见。平行光下同半径球的完整排线通过 SVG `use` 复用。键不会因模型含键而触发整体回退：完全埋在端点原子内的键通过几何条件判定，其余键只对附近原子做局部深度判定，生成矢量遮挡区域。坐标、物理半径和固定比例不变，但交叠球的接缝是插画式层次，并非精确三维相贯面；键—键也只排序。
+The projection is already orthographic. Fast mode does not compute sphere–sphere intersection curves: complete atoms and complete labels are overlaid in sphere-center depth order, without clipping labels or checking whether their centers are visible. With directional lighting, complete hatching for spheres of equal radius is reused through SVG `use`. The presence of bonds does not trigger a scene-wide fallback: bonds completely buried within their endpoint atoms are identified geometrically, while the remaining bonds use local depth tests against nearby atoms to generate vector visibility regions. Coordinates, physical radii, and fixed scale remain unchanged, but overlapping spheres meet in illustrative layers rather than precise three-dimensional intersection surfaces; bond–bond visibility is also handled only by sorting.
 
-API 在快速模式配点光源或投影阴影时明确报错，不偷偷回退。键局部区域的发现步长为预览 0.5、导出 0.25 SVG 单位；已发现的边界二分细化，仍可能漏掉亚网格小片段。点刻保留非周期点位，不复用重复随机图案，但可能因绘制隐藏表面而更慢、更大。
+The API explicitly errors on fast mode combined with point lighting or cast shadows, rather than silently falling back. Local bond regions use discovery steps of 0.5 SVG units for preview and 0.25 for export. Discovered boundaries are refined by bisection, but sub-grid fragments may still be missed. Stippling retains nonperiodic point positions without reusing a repeating random pattern, but drawing hidden surfaces can make it slower and larger.
 
-真实 C60（含全部 90 根键）的本轮 SVG 生成中位数：默认半径排线 **209.7 → 5.0 ms**，原子缩至 0.65 倍以露出键的夹具 **238.1 → 70.2 ms**。默认半径点刻 **209.4 → 170.5 ms**、网点 **72.7 → 49.0 ms**；缩小原子的点刻反而 **222.0 → 279.3 ms**，不是所有模式都更快。默认 C60 的键全部处于端点原子并集内，缩小半径的夹具有 74 根键可见，并未移除键。计时不含浏览器绘制，原始数据与参数见 `benchmarks/fast-renderer.json`。
+Median SVG generation times in this measurement round for the actual C60 model (including all 90 bonds): default-radius hatching **209.7 → 5.0 ms**; a fixture with atoms scaled to 0.65 to expose bonds **238.1 → 70.2 ms**. Default-radius stippling was **209.4 → 170.5 ms** and halftone **72.7 → 49.0 ms**; with smaller atoms, stippling instead worsened from **222.0 → 279.3 ms**, so not every mode is faster. All default C60 bonds lie within the union of their endpoint atoms; the reduced-radius fixture has 74 visible bonds, with none removed. Timings exclude browser painting; raw data and parameters are in `benchmarks/fast-renderer.json`.
 
-检查：`node test-fast-renderer.mjs`、`node test-fast-ui.cjs`。性能复现：`node scripts/bench-fast.mjs`。早期 `PAINTER-EXPERIMENT.md` 中的认证原型不再代表主页面快速开关的能力。
+Checks: `node test-fast-renderer.mjs`, `node test-fast-ui.cjs`. Reproduce performance measurements: `node scripts/bench-fast.mjs`. The earlier certified prototype in `PAINTER-EXPERIMENT.md` no longer represents the capabilities of the main page's fast toggle.
 
-## 低锚点矢量路径
+## Low-Anchor Vector Paths
 
-**拖动时不渲染纹理，松开立即恢复，不加延迟计时器。** 鼠标/触控拖动图版旋转或拖动滑块期间，临时以 `shadingSize: 0` 显示当前轮廓、底色和标签，不改动控件值；松开、取消或失去捕获时，在下一次正常绘制帧恢复完整排线/网点。窗口失焦也会结束交互。轻量预览期间禁用下载，防止把无纹理临时帧误导出；恢复后仍按原参数导出。普通键盘输入保持正常预览更新。
+**Textures are omitted while dragging and restored immediately on release, with no delay timer.** During mouse/touch dragging of a parameter slider or rotation ring (not the illustration), `shadingSize: 0` temporarily displays the current outlines, fills, and labels without changing control values. Release, cancellation, or loss of capture restores full hatching/dots on the next normal drawing frame. Losing window focus also ends the interaction. Downloads are disabled during the lightweight preview to prevent accidental export of a temporary untextured frame; after restoration, exports still use the original parameters. Ordinary keyboard input continues to update the normal preview.
 
-优先使用解析公式计算边缘及排线、网点。
+Analytic formulas are preferred for calculating edges, hatching, and dots.
 
-导出时执行低锚点优化：
+Low-anchor optimization is applied during export:
 
-- 直的可见线段保留两个端点。
-- 轮廓与等宽排线改用三次 Bézier 段，拟合容差 0.015 SVG 单位。
-- 渐变排线对两侧边界分别拟合，容差取 `min(0.015, 该类线条基础宽度 × 0.025)`，不跨越尖端进行圆滑。
-- 不合并不同的可见片段，因此遮挡断口、收尖、填色层和标签保留。
+- Straight visible segments retain two endpoints.
+- Outlines and constant-width hatching use cubic Bézier segments with a fitting tolerance of 0.015 SVG units.
+- Variable-width hatching fits its two boundaries separately, with tolerance `min(0.015, base width of that line type × 0.025)`, without smoothing across tips.
+- Separate visible fragments are not merged, preserving occlusion breaks, tapered tips, fill layers, and labels.
 
-浏览器按入口配置加载 `boundaries.js`（解析边界）与 `wash.js`（通用回退和拟合器）。API 默认 `quality: 'export'`；`quality: 'preview'` 强制跳过所有拟合。解析圆弧的导出直接计算三次 Bézier 控制点，无需最小二乘拟合。兼容旧的 `optimizePaths: false`，它在导出质量下仅关闭轮廓和排线压缩，用于诊断。预览会有更多锚点，导出才压缩为低锚点曲线。
+The browser loads `boundaries.js` (analytic boundaries) and `wash.js` (general fallback and fitters) as configured in the entry page. The API defaults to `quality: 'export'`; `quality: 'preview'` forcibly skips all fitting. Exported analytic arcs compute cubic Bézier control points directly, without least-squares fitting. The legacy `optimizePaths: false` is supported; at export quality, it disables only outline and hatch compression for diagnostics. Previews have more anchors; only exports compress them into low-anchor curves.
 
-验证：`node test-preview.cjs` 检查六种模式组合、无拟合调用、填色孔洞、圆点/标签/可见片段一致；`node test-preview-ui.cjs` 检查参数快照、下载内容、待更新保护及错误恢复。常见球棍模型的填色已不再扫描面积网格；复杂相交回退仍会扫描。预览 SVG 仍有浏览器解析成本。
+Validation: `node test-preview.cjs` checks six mode combinations, absence of fitting calls, fill holes, and consistency of dots/labels/visible fragments. `node test-preview-ui.cjs` checks parameter snapshots, download contents, pending-update protection, and error recovery. Fills for ordinary ball-and-stick models no longer scan an area grid; complex-intersection fallbacks still do. Preview SVG still incurs browser parsing costs.
 
-`node test-optimize.cjs` 对单球、双球和乙醇的等宽/渐变六组进行路径一一对应、端点、尖端、闭合及双向边界误差验证。默认无填色乙醇的结果：
+`node test-optimize.cjs` validates one-to-one path correspondence, endpoints, tips, closure, and bidirectional boundary error for six constant-/variable-width cases using a single sphere, two spheres, and ethanol. Results for default ethanol without fill:
 
-| 模式 | 锚点数（M/L/C 端点，不含控制柄） | SVG 字节数 |
+| Mode | Anchors (M/L/C endpoints, excluding control handles) | SVG bytes |
 | --- | --- | --- |
-| 渐变排线 | 67,419 → 5,325（−92.1%） | 1,095,222 → 242,720（−77.8%） |
-| 等宽排线 | 35,377 → 1,668（−95.3%） | 515,941 → 78,643（−84.8%） |
+| Variable-width hatching | 67,419 → 5,325 (−92.1%) | 1,095,222 → 242,720 (−77.8%) |
+| Constant-width hatching | 35,377 → 1,668 (−95.3%) | 515,941 → 78,643 (−84.8%) |
 
-六组测试相对原始折线的最大采样双向边界偏差小于 0.023 SVG 单位；这是数值回归结果，不是对任意输入的全局误差证明。
+Across the six test cases, the maximum sampled bidirectional boundary deviation from the original polylines is below 0.023 SVG units. This is a numerical regression result, not a proof of a global error bound for arbitrary inputs.
 
-## 纹理粗细与明暗归一
+## Texture Scale and Tone Normalization
 
-- `textureScale`（界面「纹理粗细」）范围 0.2–2.5，三种风格的界面默认值都是 1；点刻的内部基准为原先的 0.6，规则网点为原先的 3.0，排线不变。联合调整间距和点径／线宽，尽量保持平均覆盖率。轮廓线宽独立。
-- `shadingBrightness` 范围 −1–1，默认 0，正值变亮；`shadingContrast` 调整明暗响应。二者都不改变元素底色。
-- 先采样估计当前排线的平均黑色覆盖率，再用一个整体增益校准点刻／网点的平滑明暗场。局部明暗只取决于光照与对比度，不复制排线的方向、投影挤密或启停阈值，以免制造假光照分区。排线外观保持原样，不通过灰色墨水或透明度做补偿。
-- 点刻使用等径随机点，通过点数达到目标覆盖率，并用 `1−exp(−点数密度×点面积)` 补偿圆点重叠。规则网点使用最多 16 个 SVG `<pattern>`，通过反解圆盘在方格中的并集面积调整各档半径，包含暗部相邻圆盘的重叠。
-- 网点按明暗分档生成矢量裁切路径：平行光使用表面等明暗曲线，复杂阴影及点光源才做局部采样；所有档位网格同相位、统一旋转 45°。由累积明暗区域叠加黑色图案；元素底色透过网点间隙显示，不使用透明度、图像、滤镜或灰色渐变。圆点节点只随使用的明暗档数变化，不随网点数量增长，也不再触发逐点输出的数量上限。
-- 这是覆盖率模型的近似匹配，不是每张输出图的精确积分校正；细小表面、轮廓裁切、排线端部收尖及随机采样仍可能导致差异。网点另有 16 档量化误差（目标覆盖率最多约 ±1/32）及明暗场的采样误差；点刻仍逐点输出，极细设置可能产生较大的 SVG。
-- `node test-style-coverage.cjs` 做纯数值并集面积检查，不启动浏览器，比较三种风格的平均覆盖率并计入 pattern 分档误差。`node test-pattern-halftone.cjs` 检查图案相位、ID、纯矢量结构，以及 C₆₀ 在 0.2／1.0／2.5 档均可生成；圆点节点数由分档数而非网点数量决定。这些检查不是对所有模型和参数的误差保证。
+- `textureScale` (“Texture scale” in the UI) ranges from 0.2–2.5, with a UI default of 1 for all three styles. The internal stippling baseline is the former 0.6, regular halftone the former 3.0, and hatching is unchanged. Spacing and dot diameter/line width adjust together to maintain average coverage as closely as possible. Outline width is independent.
+- `shadingBrightness` ranges from −1–1, defaults to 0, and brightens with positive values; `shadingContrast` adjusts the tonal response. Neither changes element-colored fills.
+- Sampling first estimates the current hatching's average black coverage, then a single overall gain calibrates the smooth tonal field for stippling/halftone. Local tone depends only on lighting and contrast, without copying hatch directions, projection-induced crowding, or on/off thresholds that would create false lighting regions. Hatching retains its original appearance, without compensation through gray ink or transparency.
+- Stippling uses equal-diameter random dots and adjusts their number to achieve target coverage, compensating for overlaps with `1−exp(−dot number density×dot area)`. Regular halftone uses up to 16 SVG `<pattern>` elements, solving backward from the union area of disks in a square grid to set each tone level's radius, including overlaps between neighboring disks in dark areas.
+- Halftone produces vector clipping paths by tone level: directional light uses surface iso-tone curves, while complex shadows and point lights use local sampling. Grids at all levels share the same phase and a 45° rotation. Black patterns are overlaid through cumulative tone regions; element fills show through the gaps, with no transparency, images, filters, or gray gradients. Dot node count varies only with the number of tone levels used, not the total dot count, and no longer triggers the per-dot output count limit.
+- This is an approximate match of coverage models, not an exact integral correction for every output image. Small surfaces, silhouette clipping, tapered hatch ends, and random sampling may still cause differences. Halftone also has 16-level quantization error (up to about ±1/32 of target coverage) and tonal-field sampling error. Stippling still outputs individual dots, so extremely fine settings may produce large SVGs.
+- `node test-style-coverage.cjs` performs purely numerical union-area checks without launching a browser, comparing average coverage across the three styles and accounting for pattern quantization error. `node test-pattern-halftone.cjs` checks pattern phase, IDs, vector-only structure, and successful C₆₀ generation at 0.2/1.0/2.5. Dot node count depends on tone levels rather than dot count. These checks do not guarantee error bounds for every model and parameter combination.
 
-## 元素上色
+## Element Colors
 
-页面默认开启「元素底色」，使用 Jmol 色表，浓度和饱和度均为 100%。关闭后恢复白底黑纹理。可选 Jmol/ChimeraX、RasMol、PyMOL 及 3Dmol 碳色变体，来源及数值见 [PALETTES.md](PALETTES.md)。
+“Element fill” is enabled by default on the page, using the Jmol palette with strength and saturation both at 100%. Disabling it restores black textures on white. Available palettes include Jmol/ChimeraX, RasMol, PyMOL, and 3Dmol carbon-color variants; sources and values are in [PALETTES.md](PALETTES.md).
 
-**颜色只用于底色，规则网点、点刻、排线与轮廓统一使用黑色。** 不再提供彩色纹理模式。底色不随光照变化；光照、阴影通过纹理表达，不用渐变或色层偏移。
+**Color is used only for fills; regular halftone dots, stippling, hatching, and outlines are all black.** Colored texture modes are no longer provided. Fills do not change with lighting; lighting and shadows are expressed through texture, not gradients or shifted color layers.
 
-饱和度以 HSL 的 S 倍率计算，不改变 L；界面范围为 0–100%，0 为灰度，100% 为原色。浓度是与白色混合，不是透明度叠加，因此遮挡处不会混色。
+Saturation multiplies HSL's S without changing L. The UI range is 0–100%: 0 is grayscale, 100% the original color. Strength mixes with white rather than layering transparency, so colors do not blend at occlusions.
 
 ```js
 {
-  colorWash: true,      // 元素底色：API 默认 false；页面默认 true
-  colorScheme: 'jmol',  // 默认 jmol；其他名称见 PALETTES.md
-  washStrength: 1,     // 默认 1，范围 0–1；0 白色，1 原配色
-  colorSaturation: 1,  // 默认 1；UI 为 0–100%，旧 API 仍接受 0–4
-  labelMatchFill: true // API 默认 false；页面默认 true
+  colorWash: true,      // Element fill: API default false; page default true
+  colorScheme: 'jmol',  // Default jmol; see PALETTES.md for other names
+  washStrength: 1,     // Default 1, range 0–1; 0 white, 1 original palette
+  colorSaturation: 1,  // Default 1; UI 0–100%, legacy API still accepts 0–4
+  labelMatchFill: true // API default false; page default true
 }
 ```
 
-关闭底色时禁用色表、浓度和饱和度控件，但保留其值。标签描边可自动匹配元素底色，关闭底色时匹配白色；描边宽度 0 始终关闭描边。
+Disabling fills disables the palette, strength, and saturation controls but retains their values. Label strokes can automatically match the element fill, or white when fills are off; a stroke width of 0 always disables the stroke.
 
-旧彩色纹理参数与颜色回调已移除，迁移说明见 PALETTES.md。仓库中的旧 `ethanol-ink-*` 样张及彩色纹理测试属于历史行为，不代表当前功能。
+The old colored-texture parameters and color callbacks have been removed; see PALETTES.md for migration notes. The repository's old `ethanol-ink-*` samples and colored-texture tests describe historical behavior, not current functionality.
 
-浏览器需按 `dot-regions.js` → `boundaries.js` → `wash.js` → `dots.js` → `renderer.js` → `app.js` 顺序加载（入口已配置），不需要安装包或联网。填色仍按真实前表面深度判断遮挡，不按球心前后叠圆。
+Browsers must load `dot-regions.js` → `boundaries.js` → `wash.js` → `dots.js` → `renderer.js` → `app.js` in order (already configured in the entry page), with no package installation or network connection required. Fill occlusion still uses true front-surface depth, not circles stacked by sphere-center depth.
 
-### 解析球柱交线与共享边界
+### Analytic Sphere–Cylinder Intersections and Shared Boundaries
 
-常见球棍模型走 `src/boundaries.ts`（生成 `boundaries.js`）：支持分离球以及普通的部分球球相交；键端位于球心、柱半径小于两端球半径，外露键不穿入非端点球。球球交界采用真实三维交圆的投影。球半径 R、柱半径 r 时，接触圆的半径为 r，圆心沿键轴距球心 `sqrt(R²-r²)`，投影为椭圆（侧视时退化为线段）。
+Ordinary ball-and-stick models use `src/boundaries.ts` (generating `boundaries.js`): separated spheres and ordinary partial sphere–sphere intersections are supported; bond endpoints are at sphere centers, cylinder radii are smaller than both endpoint sphere radii, and exposed bonds do not penetrate non-endpoint spheres. Sphere–sphere boundaries use the projection of the true three-dimensional intersection circle. For sphere radius R and cylinder radius r, the contact circle has radius r and its center lies `sqrt(R²-r²)` from the sphere center along the bond axis. Its projection is an ellipse (degenerating into a line segment when viewed edge-on).
 
-- 直接求球轮廓圆、圆柱两侧母线和接触椭圆的投影交点，沿交点分割曲线；只在弧段两侧查询可见表面，不再逐像素扫描填色面积。探针偏移受邻近曲线间距及椭圆短轴限制，避免跨过窄缝或扁椭圆的另一侧；拓扑判断先检查严格的球投影圆盘/柱投影条带，不让射线相切容差把界外探针误判为界内。原 `depthAt` 数值行为保持不变。
-- 以共享顶点拼接闭合色区；孔洞保留，颜色相同的内部界面去除。球轮廓和填色使用同一批分割边界；开关上色不改变黑线。
-- 接触弧仅封闭色区，不额外描黑。圆柱黑轮廓仍保留原可见性采样，因为两根相交柱体的黑线可见性还会受柱柱交线影响；排线使用下面的可见区间裁剪；网点也复用已有表面区域，布点和明暗规则保持不变。
-- 预览输出细分折线（圆弧弦高预算约 0.003 SVG 单位）；导出直接计算圆弧三次 Bézier，目标误差约 0.001 SVG 单位。几何交点仍采用数值求根与约 0.00002 SVG 单位的顶点合并，不声称任意退化输入均有全局精度保证。
-- 投影重合的圆/椭圆共用一条几何边界；共线线段合并重叠部分，但不跨越间隙，并保留每条原线段的端点作为分割事件。仍保留全部真实表面身份、接触平面及独立轮廓可见性，不删除背面原子或改变相机角度。
-- 球体包容/近相切退化、外露的意外球柱相交、自由端盖、无法可靠处理的病态投影或不能可靠闭合的边界自动回退到原 `wash.js`，不猜测连接、不把缺口直接拉直。直接调用 `MolWash.buildWash` 也保持原通用算法和自定义深度回调语义。
+- Directly compute projected intersections of sphere silhouette circles, the two side generators of cylinders, and contact ellipses, splitting curves at those intersections. Query visible surfaces only on either side of each arc, rather than scanning fill areas pixel by pixel. Probe offsets are limited by nearby curve spacing and ellipse minor axes to avoid crossing narrow gaps or the opposite side of flattened ellipses. Topology tests first check strict projected sphere disks/cylinder strips, preventing ray-tangency tolerances from misclassifying outside probes as inside. The original numerical behavior of `depthAt` is unchanged.
+- Stitch closed color regions using shared vertices, preserving holes and removing internal interfaces between identical colors. Sphere outlines and fills use the same split boundaries; toggling color does not change black lines.
+- Contact arcs only close fill regions; they add no black strokes. Cylinder black outlines retain the original visibility sampling because intersections between two cylinders also affect line visibility. Hatching uses the visible-interval clipping below; dots also reuse existing surface regions, with placement and shading rules unchanged.
+- Previews output subdivided polylines (arc sagitta budget about 0.003 SVG units). Exports directly calculate cubic Béziers for arcs, targeting about 0.001 SVG units of error. Geometric intersections still use numerical root finding and vertex merging at about 0.00002 SVG units; no global accuracy guarantee is claimed for arbitrary degenerate inputs.
+- Circles/ellipses with coincident projections share one geometric boundary. Collinear segments merge their overlapping portions, without bridging gaps, and retain every original segment endpoint as a splitting event. All true surface identities, contact planes, and independent outline visibility are preserved; rear atoms are not removed and camera angles are not changed.
+- Sphere containment/near-tangent degeneracies, unexpected exposed sphere–cylinder intersections, free end caps, pathological projections that cannot be handled reliably, or boundaries that cannot be closed reliably automatically fall back to the original `wash.js`. Connections are not guessed and gaps are not simply bridged with straight lines. Direct calls to `MolWash.buildWash` also retain the original general algorithm and custom depth-callback semantics.
 
-回退算法使用约 1 SVG 单位的网格确定连接关系，然后做亚像素边界细化和曲线拟合；亚网格窄区仍可能丢失，极大画幅会加粗网格。两条路径都输出可编辑矢量路径，不含位图、滤镜或模糊。
+The fallback algorithm uses a grid of about 1 SVG unit to establish connectivity, followed by subpixel boundary refinement and curve fitting. Sub-grid narrow regions may still be lost, and very large canvases use a coarser grid. Both paths output editable vector paths, without bitmaps, filters, or blur.
 
-验证：`node test-analytic-boundaries.cjs` 对 95 个案例做独立路径展开、前表面归属及连续边界检查，包含超过 12 万个远离边界的归属探针和超过 19 万个边界侧探针；原先失败的近切视角在 460×360 和 900×700 两种画幅下均作回归。`node test-boundary-rotations.cjs` 检查另外 1,325 个乙醇视角（1,000 个固定随机视角＋325 个规则/轴向视角），全部通过解析闭合检查，不允许回退；原 40 个视角也是 40/40。旋转数量是回归覆盖范围，不是对所有输入的数学证明。`node test-wash.cjs`、`node test-wash-junction.cjs` 保留通用算法的遮挡、圆弧和三色交界测试。新样张：`samples/ethanol-analytic-fill.svg`。
+Validation: `node test-analytic-boundaries.cjs` independently expands paths and checks front-surface ownership and continuous boundaries for 95 cases, including over 120,000 ownership probes away from boundaries and over 190,000 boundary-side probes. Previously failing near-tangent views are regression-tested at both 460×360 and 900×700. `node test-boundary-rotations.cjs` checks another 1,325 ethanol views (1,000 fixed random views + 325 regular/axial views), all passing analytic closure checks with no fallback allowed; the original 40 views also pass 40/40. Rotation counts describe regression coverage, not a mathematical proof for all inputs. `node test-wash.cjs` and `node test-wash-junction.cjs` retain occlusion, arc, and three-color junction tests for the general algorithm. New sample: `samples/ethanol-analytic-fill.svg`.
 
-### C₆₀ 对称视角与交互慢帧
+### C₆₀ Symmetric Views and Slow Interaction Frames
 
-C₆₀ 的某些视角会出现完全相同的投影圆、接触椭圆及部分重叠的共线母线。此前这些情况会触发通用网格回退；65 个视角的复现扫描中有 9 个慢帧，单次约 1～1.5 秒。现在共享这些几何边界并保留各自的真实表面编号，不再因这类重合而整体回退。
+Certain C₆₀ views contain identical projected circles, contact ellipses, and partially overlapping collinear generators. These previously triggered the general grid fallback: a reproduction scan of 65 views found 9 slow frames, each taking about 1–1.5 seconds. These geometric boundaries are now shared while retaining each actual surface ID, so this kind of coincidence no longer triggers a scene-wide fallback.
 
-`node test-c60-visibility.cjs` 在 15 个对称/近对称及普通视角，用独立的球/有限柱射线公式检查轮廓、区域归属、圆点半径余量和排线区间，共约 156 万个探针；不以渲染器自己的深度函数作为唯一依据。`node test-c60-rotations.cjs` 扫描 466 个规则视角、对称平面的逐度水平旋转及固定随机视角，解析填色和网点区域全部通过，无回退。
+`node test-c60-visibility.cjs` checks outlines, region ownership, dot-radius margins, and hatch intervals at 15 symmetric/near-symmetric and ordinary views using independent sphere/finite-cylinder ray formulas, with about 1.56 million probes. It does not rely solely on the renderer's own depth function. `node test-c60-rotations.cjs` scans 466 regular views, degree-by-degree horizontal rotations in symmetry planes, and fixed random views; all analytic fill and dot regions pass, with no fallback.
 
-注意：正对某些对称方向时，前后原子及键的投影确实会重合。例如 yaw=0° 或 90°、pitch=0° 时，60 个原子中有 28 个被完全遮挡，只剩 32 个原子有可见轮廓；旧小球半径夹具在 yaw=45°、pitch=0° 时 60 个均有可见弧段。科学半径改变了遮挡关系，不能沿用旧的 60 个可见轮廓结论，也不能仅凭稀疏采样计数判定整颗原子是否隐藏；轮廓与排线继续逐点与独立射线核对，不能为了“看见后方”而强行叠画。对照样张：`samples/c60-symmetry.svg`（0° / 0°）与 `samples/c60-oblique.svg`（45° / 0°）。
+Note: front and rear atoms and bonds really do overlap in projection when viewed along certain symmetry directions. For example, at yaw=0° or 90°, pitch=0°, 28 of the 60 atoms are completely occluded, leaving only 32 with visible outlines. The old small-sphere-radius fixture has visible arcs for all 60 at yaw=45°, pitch=0°. Scientific radii change occlusion, so the old conclusion of 60 visible outlines no longer applies. Nor can sparse sample counts alone determine whether an entire atom is hidden. Outlines and hatching continue to be checked point by point against independent rays; rear geometry must not be forcibly drawn on top just to “see the back.” Comparison samples: `samples/c60-symmetry.svg` (0° / 0°) and `samples/c60-oblique.svg` (45° / 0°).
 
-`node bench-c60-interaction.cjs` 对比同一渲染器中的强制旧网格路径和共享边界路径，900×700、填色开启、纹理关闭，模拟拖动帧。预热 1 轮后交替取 3 次中位数，本机 Node v26.8.2：
+`node bench-c60-interaction.cjs` compares the forced old grid path and the shared-boundary path in the same renderer at 900×700, with fills on and textures off to simulate dragging frames. After 1 warm-up round, medians are taken from 3 alternating runs, on the local machine with Node v26.8.2:
 
-| 水平 / 俯仰角 | 旧网格路径 | 共享边界 |
+| Yaw / pitch | Old grid path | Shared boundaries |
 | --- | ---: | ---: |
 | 0° / 0° | 612.87 ms | 72.11 ms |
 | 45° / 0° | 709.67 ms | 142.50 ms |
 | 90° / 0° | 606.18 ms | 66.38 ms |
 
-这是 CPU 生成 SVG 的测量，不含浏览器绘制，也不意味着所有 C₆₀ 视角都能达到高帧率。拖动时无纹理、松开立即恢复的交互规则未改。
+These measure CPU SVG generation, excluding browser painting, and do not imply high frame rates at every C₆₀ view. Parameter sliders and rotation rings omit textures while dragging and restore them immediately on release; keyboard rotation retains the normal shaded preview.
 
-### 填色性能
+### Fill Performance
 
-`node bench-boundaries.cjs` 交替运行、预热 4 轮后取 12 次中位数。乙醇默认视角，900×700，`quality:'preview', shadingSize:0, colorWash:true`（无明暗纹理，保留轮廓），本机 Node v26.8.2：
+`node bench-boundaries.cjs` alternates implementations, with 4 warm-up rounds and medians from 12 runs. Ethanol at the default view, 900×700, `quality:'preview', shadingSize:0, colorWash:true` (no shading texture, outlines retained), on the local machine with Node v26.8.2:
 
-| 实现 | SVG 生成中位耗时 | 填色/解析边界深度查询 | SVG 字节数 |
+| Implementation | Median SVG generation time | Fill/analytic-boundary depth queries | SVG bytes |
 | --- | ---: | ---: | ---: |
-| 原数组式射线＋网格（本地旧快照） | 221.3 ms | — | 160,795 |
-| 标量射线＋原网格 | 63.2 ms | 834,968 | 160,795 |
-| 标量射线＋解析边界 | 14.7 ms | 1,546 | 83,643 |
+| Original array-based rays + grid (local old snapshot) | 221.3 ms | — | 160,795 |
+| Scalar rays + original grid | 63.2 ms | 834,968 | 160,795 |
+| Scalar rays + analytic boundaries | 14.7 ms | 1,546 | 83,643 |
 
-最终旋转修复后的这轮测量中，解析结构相对同一标量射线的网格版约快 4.3 倍；相对本地原始快照约快 15.1 倍。墙钟耗时随机器负载变化，应比较同轮结果。深度查询计数不含较便宜的投影范围检查。计时包含查询计数包装，不含浏览器 DOM 解析和绘制，不能等同于实测界面帧率。旧快照仅在本地 `build/perf-before-visibility/` 存在时参与；基准始终可比较当前解析版和强制回退网格版。圆柱射线同时去除了临时向量分配，`test-depth-fast.cjs` 用 194,403 次查询核对原数值行为。
+In this measurement round after the final rotation fixes, the analytic structure is about 4.3 times faster than the grid version using the same scalar rays, and about 15.1 times faster than the local original snapshot. Wall-clock time varies with machine load; compare results from the same round. Depth-query counts exclude cheaper projected-bounds checks. Timings include the query-counting wrapper but exclude browser DOM parsing and painting, so they are not measured UI frame rates. The old snapshot participates only when present locally in `build/perf-before-visibility/`; the benchmark can always compare the current analytic version against the forced grid fallback. Cylinder rays also eliminate temporary vector allocations; `test-depth-fast.cjs` checks original numerical behavior with 194,403 queries.
 
-## 排线的解析可见区间
+## Analytic Visible Intervals for Hatching
 
-球面排线和柱面排线现在也复用 `boundaries.js`，不再对每个排线采样点遍历全部几何体：
+Sphere and cylinder hatching now also reuse `boundaries.js`, rather than traversing all geometry for every hatch sample:
 
-- **球面圆弧**：按真实表面身份索引其可见边界，求圆弧与相关边界的参数交点，并补上正面/背面分界。球自身的球柱接触圆直接使用已有交圆平面，只需求解 `k + A cos(t) + B sin(t) = 0`，无需重复解投影椭圆的四次方程。
-- **柱面直线**：求与投影边界的交点；自身两端的球柱接触直接解线和平面的交点。另外求该直线与其他柱体侧面、端盖的三维交点，不能因为键同为白色而省略柱柱遮挡。
-- 只在分割区间内部判定一次前后关系，合并相邻可见区间；隐藏区间不再逐点计算光照。白色氢与相同颜色原子也保有独立表面身份，不能按填色颜色合并排线裁剪区域。
-- 可见段保留原全局采样位置，插入解析断口端点。渐变宽度、收尖、交叉排线、平行光/点光源和对比度公式不变；跨周期接缝的同一段合并，避免产生假尖端。比采样间隔更短的可见段补中点，避免只剩两个零宽端点。
-- **光照明暗断口与线宽仍按采样计算**，此次没有把它们也改成解析求根。预览不拟合，导出仍拟合细化后的可见段。
-- 新路径以实际几何交界裁剪，不保留旧逐点判断中额外放宽的 `0.00015` 世界单位深度带；断口也不再取最近的原采样点。因此 SVG 不保证逐字节等同旧版，近切接触处可能有可见的小幅端点修正。
-- 退化的单条曲线可以单独使用旧可见性采样，不影响其他排线；不适用解析场景的模型仍使用原路径。网点不调用排线裁剪器，而使用后述的共享可见区域查询。 圆柱外轮廓仍使用旧裁剪。
+- **Spherical arcs**: index visible boundaries by actual surface identity, find parametric intersections between each arc and relevant boundaries, and add front/back transitions. A sphere's own sphere–cylinder contact circle directly uses the existing intersection-circle plane, requiring only a solution to `k + A cos(t) + B sin(t) = 0`, without repeatedly solving quartics for projected ellipses.
+- **Cylinder lines**: intersect projected boundaries; for their own sphere–cylinder contacts at either end, solve line–plane intersections directly. Also find three-dimensional intersections of the line with other cylinder sides and end caps. Cylinder–cylinder occlusion cannot be omitted merely because both bonds are white.
+- Test front/back ordering once inside each split interval, then merge adjacent visible intervals. Hidden intervals no longer calculate lighting point by point. White hydrogen and same-colored atoms retain independent surface identities; hatch clipping regions cannot be merged by fill color.
+- Visible segments retain the original global sample positions, with analytic break endpoints inserted. Variable width, tapering, cross-hatching, directional/point lighting, and contrast formulas are unchanged. A single segment spanning a periodic seam is merged to avoid false tips. Visible segments shorter than the sampling interval receive a midpoint so they do not consist solely of two zero-width endpoints.
+- **Lighting-induced tonal breaks and line width still use sampling**; they have not also been converted to analytic root finding in this change. Previews do not fit curves; exports still fit the refined visible segments.
+- The new path clips at actual geometric intersections, without the extra `0.00015` world-unit depth allowance in the old pointwise tests. Breaks also no longer snap to the nearest original sample. SVG output is therefore not guaranteed to match the old version byte for byte; near-tangent contacts may show small endpoint corrections.
+- A single degenerate curve can fall back to the old visibility sampling without affecting other hatches. Models outside the analytic scene's scope still use the original path. Dots do not call the hatch clipper, instead using the shared visible-region queries described below. Cylinder outer outlines still use the old clipping.
 
-验证：`node test-hatch-intervals.cjs` 检查 7,676 条曲线、约 395 万个独立参数探针，覆盖保留段和丢弃段、20 个乙醇旋转、近切柱柱交线、共享端点、仅投影相交的遮挡、完整圆环、周期接缝、短区间和单曲线回退。测试中的常规曲线没有回退。`node test-hatch-renderer.cjs` 禁止逐采样可见性调用，验证两种光照、三档对比度、等宽/渐变宽及预览/导出，同时检查短段不消失、网点不调用新路径。其余光照、填色、路径优化和网点回归仍需通过。
+Validation: `node test-hatch-intervals.cjs` checks 7,676 curves and about 3.95 million independent parametric probes, covering kept and discarded segments, 20 ethanol rotations, near-tangent cylinder–cylinder intersections, shared endpoints, occlusions caused only by projected intersections, full rings, periodic seams, short intervals, and single-curve fallback. Ordinary curves in the tests do not fall back. `node test-hatch-renderer.cjs` forbids per-sample visibility calls, validates both lighting types, three contrast levels, constant/variable width, and preview/export, and also checks that short segments survive and dots do not call the new path. The remaining lighting, fill, path optimization, and dot regressions must still pass.
 
-`node bench-hatching.cjs` 交替执行，预热 3 轮后取 7 次中位数。本机 Node v26.8.2，默认乙醇、900×700、渐变排线、开启填色：
+`node bench-hatching.cjs` alternates runs, with 3 warm-up rounds and medians from 7 runs. Local Node v26.8.2, default ethanol, 900×700, variable-width hatching, fills enabled:
 
-| 实现 | 预览 SVG 生成 | 导出 SVG 生成 |
+| Implementation | Preview SVG generation | Export SVG generation |
 | --- | ---: | ---: |
-| 修改前快照 | 92.3 ms | 287.4 ms |
-| 仅减少逐点向量分配，仍逐点判断遮挡 | 40.0 ms | 197.6 ms |
-| 加上解析可见区间 | 34.6 ms | 175.1 ms |
+| Pre-change snapshot | 92.3 ms | 287.4 ms |
+| Reduced per-point vector allocations only, still testing occlusion point by point | 40.0 ms | 197.6 ms |
+| With analytic visible intervals | 34.6 ms | 175.1 ms |
 
-本轮预览总体约快 2.7 倍，不能把全部收益归因于解析裁剪：减少临时数组也贡献明显。当前代码中的整次预览射线查询由 622,834 次降至 40,019 次（约 −93.6%，包括未改动的轮廓查询）。导出仍有曲线拟合成本。耗时不包含浏览器解析/绘制；旧快照存在于本地 `build/perf-before-hatching/` 时才参与，但当前代码的两条路径始终可对比。
+Overall preview generation in this round is about 2.7 times faster, but not all gains come from analytic clipping: reducing temporary arrays also contributes substantially. In the current code, ray queries for a complete preview drop from 622,834 to 40,019 (about −93.6%, including unchanged outline queries). Export still incurs curve-fitting costs. Timings exclude browser parsing/painting. The old snapshot participates only when present locally in `build/perf-before-hatching/`, but the two paths in current code can always be compared.
 
-样张：`samples/ethanol-analytic-hatch.svg`。
+Sample: `samples/ethanol-analytic-hatch.svg`.
 
-## 调用渲染器
+## Calling the Renderer
 
-浏览器经典脚本 `renderer.js` 暴露 `MolEngraver`；Node.js 使用：
+The browser classic script `renderer.js` exposes `MolEngraver`. In Node.js:
 
 ```js
 const { render, examples } = require('./renderer.js');
 const svg = render(examples.ethanol, {
-  yaw: 0.25, pitch: -0.16, // 弧度
+  yaw: 0.25, pitch: -0.16, // Radians
   shadingMode: 'hatch',  // hatch / stipple / halftone
-  shadingDensity: 1,    // 0.4–2.5；UI 40–250%
-  shadingSize: 1,       // 0–1.5；UI 0–150%，0 关闭明暗纹理
-  shadingContrast: 1.2, // 0.5–2.5，三模式均生效
-  outlineWidth: 0.8,     // 默认 0.8，UI 0–4；独立轮廓线宽
-  variableWidth: true,   // 亮细暗粗，排线端部收尖；false 使用等宽 stroke
+  shadingDensity: 1,    // 0.4–2.5; UI 40–250%
+  shadingSize: 1,       // 0–1.5; UI 0–150%, 0 disables shading textures
+  shadingContrast: 1.2, // 0.5–2.5, applies to all three modes
+  outlineWidth: 0.8,     // Default 0.8, UI 0–4; independent outline width
+  variableWidth: true,   // Thin in light, thick in shade, tapered hatch ends; false uses constant-width strokes
   lightAzimuth: -29 * Math.PI / 180,
   lightElevation: 32 * Math.PI / 180,
-  lightType: 'directional', // 默认平行光；'point' 为点光源
-  lightDistance: 3,      // 点光源距模型中心的距离，单位为场景包围半径 R
+  lightType: 'directional', // Directional light by default; 'point' for a point light
+  lightDistance: 3,      // Point-light distance from model center, in scene bounding radii R
   crossHatch: true,
   labels: false,
   width: 900, height: 700
 });
 ```
 
-界面只保留一组 **密度、大小、对比度**，切换模式保留同一组数值，不再维护两套参数。`outlineWidth` 独立控制轮廓，不受大小与对比度影响。大小 0 关闭当前模式的排线或圆点，保留轮廓、底色及标签。
+The UI keeps just one set of **density, size, and contrast** values, preserving them across mode switches rather than maintaining two parameter sets. `outlineWidth` controls outlines independently of size and contrast. Size 0 disables hatching or dots in the current mode while retaining outlines, fills, and labels.
 
-| 共用参数 | 排线 | 点刻 / 规则网点 |
+| Shared parameter | Hatching | Stippling / regular halftone |
 | --- | --- | --- |
-| `shadingDensity`（默认 1） | 排线密度 `round(24 × 倍率)` | 点间距 `5 / 倍率` SVG 单位 |
-| `shadingSize`（默认 1） | 基础线宽 `0.8 × 倍率` | 点径倍率 |
-| `shadingContrast`（默认 1.2） | 对明暗值作幂映射，影响可见排线及渐变线宽 | 点刻墨量或规则网点点径的明暗映射 |
+| `shadingDensity` (default 1) | Hatch density `round(24 × multiplier)` | Dot spacing `5 / multiplier` SVG units |
+| `shadingSize` (default 1) | Base line width `0.8 × multiplier` | Dot diameter multiplier |
+| `shadingContrast` (default 1.2) | Power mapping of tone, affecting visible hatches and variable line width | Tonal mapping of stipple ink coverage or regular halftone dot diameter |
 
-对比度越高，浅调子更淡、深调子更突出；三种纹理的视觉效果不保证相同，但控制方向一致。排线等宽模式也会通过明暗阈值响应对比度。默认值保持原有样式。交叉排线和渐变线宽仍为排线专属选项。
+Higher contrast lightens light tones and emphasizes dark ones. The three textures are not guaranteed to look identical, but their controls act in the same direction. Constant-width hatching also responds to contrast through tonal thresholds. Defaults preserve the original appearance. Cross-hatching and variable width remain hatch-only options.
 
-兼容旧 API：`density`、`hatchWidth`、`dotSpacing`、`dotSize`、`dotContrast` 仍可用于已有脚本；只有显式传入相应共用参数时，才覆盖其旧参数。未指定线宽项时仍回退到旧 `lineWidth`，轮廓球体 1.4 / 键 1.1 倍率保持不变。页面仅使用共用参数和独立 `outlineWidth`。
+Legacy API compatibility: `density`, `hatchWidth`, `dotSpacing`, `dotSize`, and `dotContrast` remain usable in existing scripts; a legacy parameter is overridden only when its corresponding shared parameter is explicitly supplied. Unspecified line-width options still fall back to legacy `lineWidth`, retaining outline multipliers of 1.4 for spheres / 1.1 for bonds. The page uses only shared parameters and independent `outlineWidth`.
 
-验证：`node test-shared-controls.cjs`；界面切换、参数保留和重置由 `node test.cjs` 检查。
+Validation: `node test-shared-controls.cjs`; UI switching, parameter retention, and reset are checked by `node test.cjs`.
 
-自定义模型格式：
+Custom model format:
 
 ```js
 const molecule = {
-  name: '示意模型',
+  name: 'Illustrative model',
   atoms: [
     { element: 'C', position: [-0.8, 0, 0] },
     { element: 'O', position: [0.8, 0, 0] }
   ],
-  bonds: [[0, 1]] // 原子下标；目前仅支持单根圆柱键
+  bonds: [[0, 1]] // Atom indices; currently only single cylindrical bonds are supported
 };
 ```
 
-## 元素标签样式
+## Element Label Styling
 
-「配色」和「元素标签」的总开关均位于各自组标题右侧，点击开关不会折叠面板。开启元素标签后可调整字号、字体、粗体/斜体、文字颜色、描边宽度及颜色。组内「显示 H 标签」默认开启；关闭仅隐藏 H 字样，不移除氢原子或键，适用于精确／快速模式及 SVG 导出。关闭标签总开关会保留这一偏好，重置则恢复显示 H。字体输入框提供常见字体候选，也可直接输入本机字体名称或逗号分隔的回退列表。清空输入时使用默认字体。以下参数仅影响元素标签，不改变图版标题：
+The master toggles for “Colors” and “Element labels” sit to the right of their respective group headings; clicking a toggle does not collapse the panel. With element labels enabled, you can adjust font size, font family, bold/italic, text color, and stroke width/color. “Show H labels” is enabled by default within the group. Disabling it hides only the H text, not hydrogen atoms or bonds, in precise/fast modes and SVG exports. Turning off the label master toggle retains this preference; Reset restores H labels. The font input offers common font suggestions and also accepts local font names or comma-separated fallback lists. Clearing the input uses the default font. The following options affect only element labels, not the illustration title:
 
 ```js
 {
   labels: true,
-  labelHydrogens: true,    // false 只隐藏 H 标签，不隐藏氢原子
-  labelSize: 17,           // 6–96，SVG viewBox 单位
+  labelHydrogens: true,    // false hides only H labels, not hydrogen atoms
+  labelSize: 17,           // 6–96, SVG viewBox units
   labelFont: "Georgia, 'Times New Roman', serif",
   labelBold: false,
   labelItalic: true,
   labelColor: '#161616',
-  labelStrokeWidth: 4,     // 0–16，0 关闭描边
+  labelStrokeWidth: 4,     // 0–16, 0 disables the stroke
   labelStrokeColor: '#ffffff'
 }
 ```
 
-描边先画、文字后画，默认白色描边用于隔开排线；更换描边颜色可以形成彩色边缘。颜色参数使用六位十六进制。字号与描边宽度随整个 SVG 缩放，粗描边会向字形内外扩展、内侧部分由文字填充覆盖。标签隐藏时样式控件禁用但保留值，重置恢复默认。
+The stroke is drawn before the text; its default white color separates labels from hatching, while other stroke colors create colored edges. Color parameters use six-digit hexadecimal values. Font size and stroke width scale with the entire SVG. Thick strokes extend inward and outward from glyphs, with their inner portions covered by text fill. Style controls are disabled when labels are hidden but retain their values; Reset restores defaults.
 
-标签随所属原子一起按中心深度由后往前绘制，不再作为最上层文字叠加。每个表面依次绘制不透明底色、纹理／轮廓及自己的标签，前景表面自然盖住后景文字和描边；关闭底色时仍用不透明白色完成遮挡。文字本身及其容器不加裁剪，保留完整、可编辑的字形。三种纹理都按所属表面输出，不通过重复整个场景实现覆盖；关闭标签时保持原输出路径。精确模式中，无法认证可见区域的特殊模型暂不显示标签，而非浮盖在几何上；快速覆盖模式不做这项认证，也不测试标签中心可见性。验证：`node test-label-depth.cjs`。
+Labels are drawn with their atoms, back to front by center depth, rather than added as topmost text. Each surface draws an opaque fill, its texture/outline, then its own label; foreground surfaces naturally cover background text and strokes. Opaque white still provides occlusion when colored fills are disabled. Neither text nor its container is clipped, preserving complete, editable glyphs. All three textures are output per surface, without repeating the entire scene to create overlays; disabling labels retains the original output path. In precise mode, special models whose visible regions cannot be certified temporarily omit labels instead of floating them over the geometry. Fast overlay mode neither performs this certification nor tests label-center visibility. Validation: `node test-label-depth.cjs`.
 
-字体不自动下载、不嵌入 SVG，也不转曲；未安装的字体会回退，换机器打开可能不同。大字号或粗描边仍可能遮住同层／后景内容，目前不做标签碰撞避让；这也不是逐字形像素的三维深度测试。基线偏移随字号调整，不是基于每种字体的精确字形居中。
+Fonts are not automatically downloaded, embedded in SVG, or converted to outlines. Missing fonts fall back, and appearance may differ on another machine. Large text or thick strokes can still obscure same-layer/background content; label collision avoidance is not implemented, nor is this a per-glyph-pixel three-dimensional depth test. Baseline offsets vary with font size, not precise glyph centering for each font.
 
-## 实现
+## Implementation
 
-- 正交相机位于 +Z 一侧，沿 −Z 看向模型（前方是较大的 Z）；可调相机空间光源，独立于分子旋转。API 参数 `lightAzimuth` 和 `lightElevation` 均为弧度，默认 −29°、32°。方位 0° 为正前方、90° 为右侧、−90° 为左侧、±180° 为背后；仰角正值向上。界面使用角度，重置会还原光源。
-- `lightType` 默认为 `'directional'`（平行光），可设为 `'point'`（点光源）。点光源沿当前方位与仰角方向，位于距模型中心 `lightDistance × 场景包围半径` 的位置；`lightDistance` 默认 3，界面范围 1.2–12、步长 0.1，显示如 `3.0 R`。距离沿当前方向从模型中心移近移远，不是独立 Z 轴。平行光模式禁用距离滑块并显示 `∞`。核心逐点计算表面位置到点光源的方向，仅模拟方向变化，不模拟距离亮度衰减；两种光源均无投射阴影。
-- `variableWidth` 默认为 `true`：排线以封闭实心 SVG 路径输出，亮部细、暗部粗，端部收尖；轮廓维持可读性，不收尖。关闭界面开关或传入 `false` 后回到等宽 `stroke`，仍由 `hatchWidth` 控制排线基础线宽（兼容旧 `lineWidth` 回退）。
-- 球面与倾斜平面相交生成真实三维小圆，投影成弧线；根据表面法线与光照的点积截取亮暗区域。暗部可叠加第二组排线。
-- 键是有限长圆柱，包含端盖深度测试；轮廓和轴向细线表达形体。
-- 常见球棍模型的排线先解析分割可见区间，仅在区间内部进行深度比较；圆柱轮廓与回退曲线保留逐点判断。两条路径都不依赖原子中心深度排序。
-- 固定采样、确定性输出；输出是 SVG 路径、圆点和文字，不是位图滤镜。
+- The orthographic camera is on the +Z side, looking toward the model along −Z (larger Z is in front). Lighting is adjustable in camera space, independent of molecule rotation. API parameters `lightAzimuth` and `lightElevation` are in radians, defaulting to −29° and 32°. Azimuth 0° is directly in front, 90° right, −90° left, and ±180° behind; positive elevation points upward. The UI uses degrees, and Reset restores the light.
+- `lightType` defaults to `'directional'` and can be set to `'point'`. A point light lies along the current azimuth and elevation, at `lightDistance × scene bounding radius` from the model center. `lightDistance` defaults to 3; the UI range is 1.2–12 in steps of 0.1, displayed as, for example, `3.0 R`. Distance moves the light toward or away from the model center along the current direction, not along an independent Z axis. Directional mode disables the distance slider and displays `∞`. The core computes the direction from each surface point to the point light, simulating directional variation only, not distance-based brightness attenuation. Precise mode supports cast shadows; fast overlay mode does not support cast shadows and requires directional lighting.
+- `variableWidth` defaults to `true`: hatches are closed, solid SVG paths, thin in light areas, thick in dark areas, and tapered at their ends. Outlines remain readable and do not taper. Disabling the UI toggle or passing `false` restores constant-width `stroke`, with hatch base width still controlled by `hatchWidth` (including the legacy `lineWidth` fallback).
+- Intersections of spheres with tilted planes form true three-dimensional small circles, projected as arcs. Light and dark regions are selected using the dot product of surface normals and light direction. Dark areas can receive a second hatch family.
+- Bonds are finite cylinders with end-cap depth tests; outlines and fine axial lines convey their form.
+- Hatching on ordinary ball-and-stick models first splits visible intervals analytically, comparing depth only inside those intervals. Cylinder outlines and fallback curves retain pointwise tests. Neither path depends on atom-center depth sorting.
+- Fixed sampling, deterministic output; the result consists of SVG paths, dots, and text, not bitmap filters.
 
-## 点刻与规则网点
+## Stippling and Regular Halftone
 
-三种模式共用纹理粗细、亮度、对比度，切换风格不会重置控件。推荐接口：
+All three modes share texture scale, brightness, and contrast; switching styles does not reset controls. Recommended interface:
 
 ```js
 {
-  shadingMode: 'halftone', // 'hatch'（默认）| 'stipple' | 'halftone'
-  textureScale: 1,        // 0.2–2.5，风格各自校准后的纹理粗细
+  shadingMode: 'halftone', // 'hatch' (default) | 'stipple' | 'halftone'
+  textureScale: 1,        // 0.2–2.5, texture scale calibrated separately for each style
   shadingBrightness: 0,   // −1–1
   shadingContrast: 1.2    // 0.5–2.5
 }
 ```
 
-- **点刻**仍使用确定性的等径随机圆点。共享可见区域提供边界距离，防止单点越过表面边界；旧的独立点径参数仍可用于底层 API。
-- **规则网点**由 `src/surface-tones.ts` 求明暗几何、`src/halftone.ts` 填充共享 pattern。平行光下，球面等照度线是平面截球的圆，圆柱侧面由法线角区间界定，端盖单独判断；直接投影这些边界，圆弧以每段不超过 45° 的三次贝塞尔近似，不再扫描整幅画面寻找 16 档轮廓。分档边界仍可能截断圆点。
-- `BoundaryArrangement.surfacePaths()` 保留每个球／圆柱的可见区域、孔洞与不连通分量，复用解析遮挡结果，不需要构造逐点查询索引。不同表面的纹理分别裁切；另有整体投影轮廓保护。每层只绘制自身区域的包围盒，而不是整张画布。
-- 平行光投影阴影先按光线投影包围体筛选可能遮挡者；只对相关表面局部采样一个二值阴影区域，边界用二分细化。阴影区域内的各档明暗边界仍通过反解阴影衰减后的阈值求几何曲线。
-- 点光源／衰减使用已知表面的局部明暗采样，不在每个采样点重查整个场景的归属。解析可见区域无法认证或底层自定义光照回调没有几何上下文时，按几何体局部回退。局部采样步长为预览 2、导出 1 SVG 单位，大区域可自适应调粗；细于采样尺度的阴影或复杂拓扑仍可能遗漏，不能视为精确布尔求交。
-- 网点间距与上述几何计算、局部采样分离，细化不会产生海量圆点节点。图案与裁切路径保留在 SVG 内，可编辑、不依赖外部资源；ID 根据内容确定，避免同页不同图版错用图案。重构前后同参数测量见 [PERFORMANCE.md](PERFORMANCE.md)。
-- 轮廓、底色与标签保持独立。重置恢复排线、粗细 1.0、亮度 0、对比度 1.2。`dots.js` 已包含 pattern 后端，不需要增加页面脚本。
+- **Stippling** still uses deterministic, equal-diameter random dots. Shared visible regions provide boundary distances to prevent individual dots from crossing surface boundaries; legacy independent dot-size parameters remain available through the lower-level API.
+- **Regular halftone** uses `src/surface-tones.ts` to compute tonal geometry and `src/halftone.ts` to fill it with shared patterns. Under directional light, sphere iso-illumination contours are circles from plane–sphere intersections; cylinder sides are bounded by normal-angle intervals, with end caps evaluated separately. These boundaries are projected directly, approximating arcs with cubic Bézier segments of no more than 45° each, instead of scanning the entire image for 16 tone-level contours. Tone-level boundaries can still cut through dots.
+- `BoundaryArrangement.surfacePaths()` retains each sphere/cylinder's visible regions, holes, and disconnected components, reusing analytic occlusion results without building a point-query index. Each surface's texture is clipped separately, with an additional overall projected-silhouette guard. Each layer draws only its own region's bounding box, not the whole canvas.
+- Directional-light cast shadows first filter potential occluders using bounding volumes projected along the light direction. A binary shadow region is sampled locally only for relevant surfaces, with boundaries refined by bisection. Tone-level boundaries within shadow regions still come from geometric curves obtained by solving the shadow-attenuated thresholds backward.
+- Point lighting/attenuation uses local tonal sampling on known surfaces, without re-querying whole-scene ownership at each sample. If analytic visible regions cannot be certified, or a lower-level custom lighting callback lacks geometric context, fallback is local to each object. Local sampling steps are 2 SVG units for preview and 1 for export, adaptively coarsened for large regions. Shadows or complex topology finer than the sampling scale can still be missed; this is not exact Boolean intersection.
+- Dot spacing is independent of the geometry calculations and local sampling above, so finer settings do not generate huge numbers of dot nodes. Patterns and clipping paths stay inside the SVG, editable and independent of external resources. IDs are content-derived to prevent different illustrations on the same page from using each other's patterns. Same-parameter measurements before and after the refactor are in [PERFORMANCE.md](PERFORMANCE.md).
+- Outlines, fills, and labels remain independent. Reset restores hatching, texture scale 1.0, brightness 0, and contrast 1.2. `dots.js` already includes the pattern backend; no extra page script is needed.
 
-### 排线与点刻的保真优化
+### Fidelity-Preserving Hatching and Stippling Optimizations
 
-排线没有改成平铺直线。`DotRegions.surface(id)` 暴露一次求解好的可见边界；`src/region-clipping.ts` 为每个球面的排线族建立高度索引，每条排线只检查可能相交的边，不再重新对整个场景求遮挡交线。可见边界沿用约 0.0015 SVG 单位的折线误差；退化投影或无法认证的区域保留回退路径。
+Hatching has not been replaced with tiled straight lines. `DotRegions.surface(id)` exposes visible boundaries solved once; `src/region-clipping.ts` builds a height index for each sphere's hatch family so each hatch checks only potentially intersecting edges, instead of solving scene-wide occlusion intersections again. Visible boundaries retain a polyline error of about 0.0015 SVG units; degenerate projections and uncertifiable regions keep their fallback paths.
 
-`src/surface-atlas.ts` 为每个相关表面一次性提取局部二值阴影轮廓，预览／导出发现网格分别为 2／1 SVG 单位，边界二分细化。随后排线与点刻查询这个区域，不再逐纹理采样点发射遮挡射线。它不是全画幅图像，也不会向 SVG 嵌入位图；但细于发现网格的阴影仍可能遗漏，并非精确阴影布尔运算。
+`src/surface-atlas.ts` extracts a local binary shadow contour once for each relevant surface, using discovery grids of 2/1 SVG units for preview/export and bisection-refined boundaries. Hatching and stippling then query this region instead of firing an occlusion ray at every texture sample. This is not a full-canvas image and embeds no bitmap in the SVG, but shadows finer than the discovery grid may still be missed; it is not an exact shadow Boolean operation.
 
-平行光明暗阈值在有／无阴影区域分别解析反解，再合并相邻的有效区间。连续区域内自适应采样线宽；硬阴影交界保留双侧线宽，不制造新的收尖；只有真正的线尾收尖。点光源仍需沿线求明暗，但阴影区域复用不变。通用 `PreparedScene.illumination`／`lightingFor` 仍是物理射线参考与回退，并未替换为近似回调。
+Directional-light tonal thresholds are inverted analytically within shadowed/unshadowed regions separately, then adjacent valid intervals are merged. Line width is sampled adaptively within continuous regions. Hard shadow boundaries retain the line widths on both sides, without introducing new tapered tips; only actual line ends taper. Point lights still require tone evaluation along each line, but shadow-region reuse remains unchanged. The general `PreparedScene.illumination` / `lightingFor` remain physical-ray references and fallbacks; they have not been replaced with approximate callbacks.
 
-点刻先认证整格候选点及最大圆点是否完全位于同一可见表面，内部点批量复用结果，只有边界格保留逐点归属／缩点。相同半径的圆点序列化成带圆头的零长度 SVG 子路径，减少重复标签：**不是 pattern，没有周期重复**。随机流和点径规则不变；无阴影逐点坐标与半径一致，有阴影会受局部轮廓近似影响。仍可编辑，但逐点独立编辑需拆分子路径；不同 SVG 查看器的抗锯齿合成也可能有细微差异。
+Stippling first certifies that an entire cell's candidate points and maximum-size dots lie wholly within one visible surface. Interior points reuse that result in batches; only boundary cells retain per-point ownership checks/dot shrinking. Equal-radius dots are serialized as zero-length SVG subpaths with round caps, reducing repeated tags: **not patterns, with no periodic repetition**. The random stream and dot-size rules are unchanged. Without shadows, individual coordinates and radii match; with shadows, local contour approximations can affect them. They remain editable, but editing individual dots separately requires splitting subpaths; antialiasing compositing may also differ slightly between SVG viewers.
 
-最新架构与同进程成对测量见 [SHARED-REGIONS.md](SHARED-REGIONS.md)，历史测量见 [PERFORMANCE.md](PERFORMANCE.md)。另有不接入默认模式的[随机 pattern 点刻原型](STIPPLE-PATTERN-PROTOTYPE.md)，它与当前非重复点刻的子路径合并不是同一件事。
+See [SHARED-REGIONS.md](SHARED-REGIONS.md) for the latest architecture and paired, same-process measurements, and [PERFORMANCE.md](PERFORMANCE.md) for historical measurements. There is also a [random-pattern stippling prototype](STIPPLE-PATTERN-PROTOTYPE.md) that is not part of the default modes; it is distinct from the current nonrepeating stipple subpath merging.
 
-### 点刻复用可见区域（历史算法说明）
+### Stippling Reuses Visible Regions (Historical Algorithm Notes)
 
-`dot-regions.js` 从已有解析边界的 `left/right` 表面编号建立区域索引，不调用深度函数、不重新求遮挡交线。即使原子/键同为白色，或两个原子颜色相同，也保持不同的表面编号，以取得正确法线。
+`dot-regions.js` builds a region index from the `left/right` surface IDs of existing analytic boundaries, without calling depth functions or recomputing occlusion intersections. It preserves distinct surface IDs even when atoms/bonds are all white or two atoms have the same color, ensuring correct normals.
 
-1. 按表面验证闭合边界，保留孔洞和不相连的区域；将解析弧细分为弦高不超过约 0.0015 SVG 单位的折线，建立区域包围盒、行索引及边界空间索引。这是边界索引，不是逐像素遮挡图。
-2. 每个原点阵候选点只查询一次所属区域及到边界的保守距离。只对已确定的那个球/柱求一次表面交点，取得法线和光照；不再与其他几何体比较前后关系。
-3. 用该距离限制圆点半径，扣除曲线细分、共享顶点与坐标舍入余量。旧的整体点径缩放也保留，因此区域内部的点位、半径、颜色和明暗规则与旧版一致；边缘圆点半径及极小点的保留情况可以改变。
-4. 区域索引每次渲染只建立一次，并缓存复用。调用旧的 `buildDots` 七参数接口仍使用原算法；渲染器通过可选第八参数传入共享区域。
+1. Validate closed boundaries per surface, retaining holes and disconnected regions. Subdivide analytic arcs into polylines with sagitta no greater than about 0.0015 SVG units, then build region bounding boxes, row indices, and a spatial boundary index. This is a boundary index, not a per-pixel occlusion map.
+2. For each candidate point in the original dot layout, query its owning region and conservative boundary distance once. Intersect only the identified sphere/cylinder once to obtain the normal and lighting; no further depth ordering against other objects is needed.
+3. Limit dot radius using that distance, subtracting allowances for curve subdivision, shared vertices, and coordinate rounding. The old overall dot-size scaling is also retained, so interior point positions, radii, colors, and tone rules match the old version. Edge-dot radii and whether very small dots survive may change.
+4. Build the region index only once per render and cache it for reuse. Calling the legacy seven-argument `buildDots` interface still uses the original algorithm; the renderer supplies shared regions through an optional eighth argument.
 
-填色边界不包含白色柱体之间的三维交线。使用网点区域前，先将完全埋入端点球的柱段排除，再以剩余柱段的胶囊包围体证明不存在外露柱柱穿插。无法证明、区域不能可靠闭合或解析模型不适用时，使用原网点算法；不会拿合并白色后的区域假冒正确表面。四个默认模型、40 个精度测试视角及另 1,325 个乙醇旋转视角均通过共享区域路径，无回退。
+Fill boundaries do not include three-dimensional intersections between white cylinders. Before using dot regions, cylinder portions fully buried in endpoint spheres are excluded, then capsule bounds for the remaining portions prove that no exposed cylinder–cylinder intersections exist. If this cannot be proved, regions cannot be reliably closed, or the analytic model is inapplicable, the original dot algorithm is used. Regions formed by merging white fills are not passed off as correct surfaces. All four default models, 40 accuracy-test views, and another 1,325 ethanol rotation views use the shared-region path with no fallback.
 
-验证：`node test-dot-regions.cjs` 独立检查区域归属、孔洞、白色/同色表面编号、两种点阵、内部圆点与旧版一致、每个候选点仅查询所属表面，以及约 1,427 万个圆周/圆内探针无越界；同时验证外露交叉键回退及浏览器经典脚本加载。`node test-dot-rotations.cjs` 检查 1,325 个视角全部复用区域。`node bench-dots.cjs` 预热 4 轮后交替执行 8 轮，以下是本机 Node v26.8.2、默认乙醇、填色开启、预览 SVG 生成结果（包含建索引，不含浏览器绘制）：
+Validation: `node test-dot-regions.cjs` independently checks region ownership, holes, white/same-color surface IDs, both dot layouts, interior dots matching the old version, only the owning surface being queried per candidate point, and about 14.27 million circumference/interior probes with no boundary crossings. It also validates fallback for exposed crossing bonds and browser classic-script loading. `node test-dot-rotations.cjs` checks region reuse at all 1,325 views. `node bench-dots.cjs` warms up for 4 rounds, then alternates implementations for 8 rounds. Below are preview SVG generation results for default ethanol with fills enabled on the local machine with Node v26.8.2 (including index construction, excluding browser painting):
 
-| 模式 | 原逐点/圆周射线 | 共享区域 | 网点深度查询变化 |
+| Mode | Original per-point/circumference rays | Shared regions | Dot depth-query change |
 | --- | ---: | ---: | ---: |
-| 点刻 | 24.60 ms | 16.07 ms | 252,804 → 3,875 |
-| 规则网点 | 27.23 ms | 14.39 ms | 323,764 → 4,179 |
+| Stippling | 24.60 ms | 16.07 ms | 252,804 → 3,875 |
+| Regular halftone | 27.23 ms | 14.39 ms | 323,764 → 4,179 |
 
-新的深度查询均用于已知表面的交点/法线，不是重新判断遮挡。旧版圆周测试与二分步骤在共享区域路径中完全跳过。样张：`samples/ethanol-shared-stipple.svg`、`samples/ethanol-shared-halftone.svg`。
+All new depth queries obtain intersections/normals for known surfaces, rather than testing occlusion again. The old circumference tests and bisection steps are completely skipped in the shared-region path. Samples: `samples/ethanol-shared-stipple.svg`, `samples/ethanol-shared-halftone.svg`.
 
-运行 `node test-dots.cjs` 验证两种模式的确定性、规则点阵、疏密/点径变化、光源、独立圆点边缘遮挡及端视圆柱。测试用 64 个错相方向复查圆点边缘，而非仅重复渲染器的 16 个方向。
+Run `node test-dots.cjs` to validate determinism, regular dot layouts, density/diameter changes, lighting, individual dot-edge occlusion, and end-on cylinders in both modes. Tests recheck dot edges in 64 phase-shifted directions, rather than simply repeating the renderer's 16 directions.
 
-运行 `node test-stipple-tone.cjs` 检查无轮廓、无填色单球的实际圆点并集覆盖率：高光、中间调、暗部依次加深，改变光源方向会改变暗部方向，正面光下中央亮而四向球缘暗。默认测试样例覆盖率约为 1.6% / 15.8% / 42.6%，不是仅比较点数，也不把重叠面积重复计数。无轮廓细颗粒样张：`samples/sphere-volume-fine.svg`。
+Run `node test-stipple-tone.cjs` to check actual dot-union coverage on a single sphere without outlines or fills: highlights, midtones, and shadows darken in order; changing the light direction changes the shadow direction; with frontal lighting, the center is bright and the sphere's edges are dark in all four directions. Default test-case coverage is about 1.6% / 15.8% / 42.6%, measuring more than dot counts and not double-counting overlaps. Fine-grain sample without outlines: `samples/sphere-volume-fine.svg`.
 
-样张：`samples/sphere-stipple.svg`、`samples/sphere-halftone.svg`、`samples/ethanol-stipple.svg`、`samples/ethanol-halftone.svg`。若希望点刻更细密，可将共享密度从 100% 提高到约 165%（点间距约从 5 降到 3）；点数及文件体积也随之增加。
+Samples: `samples/sphere-stipple.svg`, `samples/sphere-halftone.svg`, `samples/ethanol-stipple.svg`, `samples/ethanol-halftone.svg`. For finer, denser stippling, increase shared density from 100% to about 165% (reducing dot spacing from about 5 to 3); dot count and file size increase accordingly.
 
-## 当前边界
+## Current Limitations
 
-这是视觉与几何原型，不是化学建模软件，也不声称准确复刻某一历史版画流派。示例坐标为手工示意，未经能量优化；原子默认使用有出处的经验共价半径（并非范德华半径），键柱粗细仍是绘图参数。没有 SMILES/XYZ 解析、多重键或立体化学输入。
+This is a visual and geometric prototype, not chemical modeling software, and it does not claim to reproduce any particular historical engraving style accurately. Example coordinates are hand-crafted illustrations, not energy-optimized structures. Atoms default to documented empirical covalent radii (not van der Waals radii), while bond-cylinder thickness remains a drawing parameter. Single-frame standard XYZ parsing is supported as described above; SMILES, multi-frame trajectories, extended XYZ, multiple bonds, and stereochemical input are not supported.
 
-常见球棍模型的填色、球轮廓及排线遮挡采用解析曲线及数值求交；排线明暗断口/线宽、复杂相交回退和圆柱黑轮廓仍有离散采样限制，放大后可能发现细小断口。排线模式下端盖仅参与遮挡；网点模式也会在可见端盖上生成圆点。默认键端埋在原子中。标签只是可选辅助，拥挤场景没有自动避让。解析曲线两两求交的工作量仍随几何体数量增长，目前面向小分子。
+Fills, sphere outlines, and hatch occlusion for ordinary ball-and-stick models use analytic curves and numerical intersections. Hatch tonal breaks/line widths, complex-intersection fallbacks, and cylinder black outlines still have discrete-sampling limitations, so small breaks may become visible when enlarged. In hatch mode, end caps participate only in occlusion; dot modes also generate dots on visible end caps. Default bond ends are buried in atoms. Labels are optional aids, with no automatic collision avoidance in crowded scenes. Pairwise analytic-curve intersection work still grows with the number of objects; the current target is small molecules.
 
-线宽与排线密度尚未按最终印刷毫米数标定，缩放输出后需检查可读性。中文标题依赖本机字体，SVG 未将文字转曲。
+Line widths and hatch density have not yet been calibrated to final printed millimeters; check readability after scaling the output. Chinese titles depend on locally installed fonts, and SVG text is not converted to outlines.
 
-下一步应先与目标历史插图对照，调整排线方向、亮部留白和暗部层次，再考虑接入 RDKit.js 或真实坐标文件。
+Next, compare against the intended historical illustrations and adjust hatch direction, highlight whitespace, and shadow layering before considering RDKit.js integration or additional coordinate-file formats.

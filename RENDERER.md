@@ -55,6 +55,14 @@ const svg = render(examples.c60, { colorWash: true });
 
 **`dist/molplotter.mjs` 是独立单文件**，内部已包含几何、排线、填色和网点实现，不需再加载其他模块。浏览器以模块方式加载时，应遵守浏览器的模块 URL/CORS 限制；直接双击的现有 GUI 仍使用下面的经典脚本方案。
 
+## 四元数姿态与欧拉角
+
+`RenderOptions.orientation?: Quaternion` 为 `[x,y,z,w]`，接受非零、有限的四个分量，归一化副本后使用，优先于 `yaw/pitch`；不传时保留旧旋转算法。只旋转居中的分子坐标，不改 Å 比例、半径或相机空间光照。
+
+包入口同时导出 `normalizeOrientation(q)`、`rotateOrientation(q, axis, radians)`、`orientationFromEulerXYZ([x,y,z])`、`orientationToEulerXYZ(q)`。固定右手轴：X 向右、Y 向上、Z 朝向观察者；增量为 `q_delta * q`，欧拉角约定 `Rz(z) * Ry(y) * Rx(x)`，均用弧度。结果 Y 在 ±π/2 内，X/Z 在 ±π 内；万向锁处选择 Z=0 的等价表示。应始终保存四元数，欧拉角只用于输出，不回写作为下一步旋转状态。
+
+GUI 使用独立 SVG 旋转 Gizmo：红/绿/蓝圆环绕局部 X/Y/Z 轴旋转（`q * q_delta`），灰色外圈绕相机 Z 轴旋转（`q_delta * q`），不支持分子画布拖动。圆环可用左右方向键旋转 5°（Shift：15°）；欧拉角为只读计算结果。`node test-orientation.cjs` 和 `node test-orientation-ui.cjs` 覆盖数学及交互回归。
+
 ## XYZ 文本解析
 
 `parseXYZ` 与渲染器一起导出，无 DOM、文件系统或网络依赖；调用方负责取得文本。返回的坐标原样保留（约定 Å），不修改渲染比例。

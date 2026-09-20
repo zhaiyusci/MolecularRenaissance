@@ -28,6 +28,18 @@ for(const model of [...Object.values(r.examples),{atoms:[{element:'C',position:[
   close(c.project([1,0,0])[0]-c.project([0,0,0])[0],60);
  }
 }
+// The atom-position centroid is the fixed pivot, not the moving silhouette bounds.
+for(const model of [r.examples.water,r.examples.ethanol,r.examples.phospholipid])for(const angles of [[0,0,0],[.8,-1.1,.4],[1.4,Math.PI/2,-.7]])for(const factor of [.2,1,2]){
+ const width=840,height=620,c=capture(model,{width,height,scale:83,atomRadiusScale:factor,orientation:r.orientationFromEulerXYZ(angles)});
+ assert.deepEqual(c.project([0,0,0]),[width/2,height/2]);
+ const points=c.scene.filter(s=>s.kind==='sphere').map(s=>c.project(s.c));
+ close(points.reduce((sum,p)=>sum+p[0],0)/points.length,width/2);
+ close(points.reduce((sum,p)=>sum+p[1],0)/points.length,height/2);
+}
+for(const renderMode of ['precise','fast'])for(const quality of ['preview','export']){
+ const svg=r.render({atoms:[{element:'C',position:[100,-200,50]}],bonds:[]},{renderMode,quality,width:840,height:620,shadingSize:0,colorWash:true});
+ if(renderMode==='fast')assert(svg.includes('cx="420" cy="310"'),'fast mode shares the exact centered projection');
+}
 // Radius display scaling is independent of coordinate/bond geometry and camera scale.
 for(const model of Object.values(r.examples))for(const view of [{},{yaw:1.2,pitch:.4,width:1200,height:800}]){
  const base=capture(model,view);
@@ -65,7 +77,7 @@ for(const [a,c] of r.examples.c60.bonds){
   const points=[...ink.matchAll(/[ML]([-\d.]+) ([-\d.]+)/g)].map(m=>[+m[1],+m[2]]);assert.ok(points.length>10);
   // Preview vertices lie on the circle, rounded to .001 SVG units. The
   // polyline's bounding box need not attain its unsampled cardinal extrema.
-  for(const [x,y] of points)assert.ok(Math.abs(Math.hypot(x-size/2,y-(size/2-12))-radius*factor*60)<=Math.SQRT2*.0005+1e-9);
+  for(const [x,y] of points)assert.ok(Math.abs(Math.hypot(x-size/2,y-size/2)-radius*factor*60)<=Math.SQRT2*.0005+1e-9);
  }
  console.log('PASS cited radii, overrides, unknown-element rejection, fixed scale across models/views/canvas and all three module formats');
 })().catch(error=>{console.error(error);process.exitCode=1;});

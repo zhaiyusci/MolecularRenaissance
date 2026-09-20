@@ -1,5 +1,8 @@
 /** Public input data: coordinates and undirected, zero-based atom-index pairs. */
 export type Vec3 = readonly [number, number, number];
+/** Quaternion (x,y,z,w): right-handed rotation from centered molecule to camera
+ * coordinates (X right, Y up, Z toward viewer). Nonzero finite inputs normalize. */
+export type Quaternion = readonly [number, number, number, number];
 export type Bond = readonly [number, number];
 export interface Atom {
     element: string;
@@ -26,6 +29,9 @@ export interface RenderOptions {
     height?: number;
     yaw?: number;
     pitch?: number;
+    /** Normalized on input; overrides legacy yaw/pitch when supplied. Omit to retain
+     * the exact legacy rotation path. Rotates only geometry; lights stay camera-fixed. */
+    orientation?: Quaternion;
     /** Fixed SVG units per angstrom, default 60. Never auto-fit to model or canvas. */
     scale?: number;
     /** User-controlled sphere-radius multiplier, default 1; never changes atom centers or bonds. */

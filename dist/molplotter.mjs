@@ -46,6 +46,66 @@ function mixColor(hex, strength, saturation) {
     return '#' + rgb.map(v => Math.round(255 * (1 + ((lightness + (v - lightness) * factor) - 1) * strength)).toString(16).padStart(2, '0')).join('');
 }
 
+/** Copy and normalize an (x,y,z,w) quaternion. Components must be finite and
+ * the quaternion must be nonzero. Scaling first avoids overflow/underflow,
+ * including for subnormal inputs. Neither input nor its sign is changed. */
+function normalizeOrientation(q) {
+    if (!Array.isArray(q) || q.length !== 4 || ![q[0], q[1], q[2], q[3]].every(Number.isFinite))
+        throw new Error('Invalid orientation: expected four finite quaternion components');
+    const scale = Math.max(Math.abs(q[0]), Math.abs(q[1]), Math.abs(q[2]), Math.abs(q[3]));
+    if (scale === 0)
+        throw new Error('Invalid orientation: quaternion must be nonzero');
+    const x = q[0] / scale, y = q[1] / scale, z = q[2] / scale, w = q[3] / scale;
+    const length = Math.hypot(x, y, z, w);
+    return [x / length, y / length, z / length, w / length];
+}
+/** Hamilton product: a*b applies b first, then a, to column vectors. */
+function multiply(a, b) {
+    const [x, y, z, w] = a, [X, Y, Z, W] = b;
+    return [w * X + x * W + y * Z - z * Y, w * Y - x * Z + y * W + z * X, w * Z + x * Y - y * X + z * W, w * W - x * X - y * Y - z * Z];
+}
+/** Apply a right-handed rotation in radians about a fixed camera/world axis:
+ * qNext = qDelta * q (not a local/body-axis rotation). Camera coordinates are
+ * X right, Y up, Z toward the viewer. Returns a new normalized quaternion. */
+function rotateOrientation(q, axis, angleRadians) {
+    if (axis !== 'x' && axis !== 'y' && axis !== 'z')
+        throw new Error('Invalid orientation axis: expected x, y, or z');
+    if (!Number.isFinite(angleRadians))
+        throw new Error('Invalid orientation angle: expected finite radians');
+    const unit = normalizeOrientation(q), s = Math.sin(angleRadians / 2), c = Math.cos(angleRadians / 2);
+    const delta = axis === 'x' ? [s, 0, 0, c] : axis === 'y' ? [0, s, 0, c] : [0, 0, s, c];
+    return normalizeOrientation(multiply(delta, unit));
+}
+/** Fixed/extrinsic XYZ angles in radians: R = Rz(z)*Ry(y)*Rx(x).
+ * Rotations act on centered molecular coordinates, not on camera-fixed lights. */
+function orientationFromEulerXYZ(angles) {
+    if (!Array.isArray(angles) || angles.length !== 3 || ![angles[0], angles[1], angles[2]].every(Number.isFinite))
+        throw new Error('Invalid Euler angles: expected three finite radians');
+    const [x, y, z] = angles;
+    const sx = Math.sin(x / 2), cx = Math.cos(x / 2), sy = Math.sin(y / 2), cy = Math.cos(y / 2), sz = Math.sin(z / 2), cz = Math.cos(z / 2);
+    return normalizeOrientation([sx * cy * cz - cx * sy * sz, cx * sy * cz + sx * cy * sz, cx * cy * sz - sx * sy * cz, cx * cy * cz + sx * sy * sz]);
+}
+/** Calculated fixed/extrinsic XYZ angles for R = Rz*Ry*Rx, in radians.
+ * Canonical ranges: x,z in [-pi,pi], y in [-pi/2,pi/2]. At gimbal lock
+ * (|cos(y)| <= 1e-12), choose z=0 and fold the coupled angle into x.
+ * Euler outputs may jump at branch boundaries; retain the quaternion as state. */
+function orientationToEulerXYZ(q) {
+    const [x, y, z, w] = normalizeOrientation(q);
+    const r00 = 1 - 2 * (y * y + z * z), r10 = 2 * (x * y + w * z), r20 = 2 * (x * z - w * y);
+    const r11 = 1 - 2 * (x * x + z * z), r12 = 2 * (y * z - w * x), r21 = 2 * (y * z + w * x), r22 = 1 - 2 * (x * x + y * y);
+    const cosY = Math.hypot(r00, r10);
+    if (cosY <= 1e-12)
+        return [Math.atan2(-r12, r11), Math.atan2(-r20, cosY), 0];
+    return [Math.atan2(r21, r22), Math.atan2(-r20, cosY), Math.atan2(r10, r00)];
+}
+/** Internal rotation by an already normalized quaternion; scene options perform
+ * normalization once. This is q*p*conjugate(q), with no scale or translation. */
+function rotateByOrientation(p, q) {
+    const [x, y, z, w] = q;
+    const tx = 2 * (y * p[2] - z * p[1]), ty = 2 * (z * p[0] - x * p[2]), tz = 2 * (x * p[1] - y * p[0]);
+    return [p[0] + w * tx + y * tz - z * ty, p[1] + w * ty + z * tx - x * tz, p[2] + w * tz + x * ty - y * tx];
+}
+
 const defaults = {
     renderMode: 'precise',
     width: 900, height: 700, scale: 60, atomRadiusScale: 1, yaw: .25, pitch: -0.16, lightAzimuth: -29 * Math.PI / 180, lightElevation: 32 * Math.PI / 180,
@@ -57,6 +117,8 @@ const defaults = {
 };
 function normalizeOptions(options) {
     const o = { ...defaults, ...options };
+    if (options.orientation !== undefined)
+        o.orientation = normalizeOrientation(options.orientation);
     if (typeof o.labelHydrogens !== 'boolean')
         throw new Error('Invalid labelHydrogens');
     if (!['preview', 'export'].includes(o.quality))
@@ -97,7 +159,7 @@ function normalizeOptions(options) {
     if (options.shadingContrast !== undefined)
         o.dotContrast = o.shadingContrast;
     for (const k of ['dotSpacing', 'dotSize', 'dotContrast', 'outlineWidth', 'hatchWidth', 'colorSaturation', 'width', 'height', 'yaw', 'pitch', 'lightAzimuth', 'lightElevation', 'lightDistance', 'density', 'lineWidth', 'labelSize', 'labelStrokeWidth', 'washStrength'])
-        if (!Number.isFinite(o[k]))
+        if (!(o.orientation !== undefined && (k === 'yaw' || k === 'pitch')) && !Number.isFinite(o[k]))
             throw new Error('Invalid option: ' + k);
     if (!Number.isFinite(o.scale) || o.scale <= 0)
         throw new Error('Invalid scale: expected positive finite SVG units per angstrom');
@@ -301,7 +363,8 @@ function prepareScene(molecule, o) {
         if (!Array.isArray(a.position) || a.position.length !== 3 || !a.position.every(Number.isFinite))
             throw new Error('Invalid atom position');
     const center = mul$2(molecule.atoms.reduce((s, a) => add$3(s, a.position), [0, 0, 0]), 1 / molecule.atoms.length);
-    const spheres = molecule.atoms.map(a => ({ kind: 'sphere', c: rotate(sub$1(a.position, center), o.yaw, o.pitch), r: atomRadius(a) * o.atomRadiusScale, element: a.element }));
+    // Keep the legacy arithmetic untouched when no quaternion was supplied.
+    const spheres = molecule.atoms.map(a => ({ kind: 'sphere', c: o.orientation === undefined ? rotate(sub$1(a.position, center), o.yaw, o.pitch) : rotateByOrientation(sub$1(a.position, center), o.orientation), r: atomRadius(a) * o.atomRadiusScale, element: a.element }));
     const cylinders = molecule.bonds.map(b => {
         if (!Array.isArray(b) || b.length !== 2 || !b.every(i => Number.isInteger(i) && spheres[i]))
             throw new Error('Invalid bond');
@@ -311,11 +374,10 @@ function prepareScene(molecule, o) {
         return { kind: 'cylinder', a, u: mul$2(v, 1 / length), length, r: .115 };
     });
     const scene = [...spheres, ...cylinders];
-    const lo = [0, 1].map(i => Math.min(...spheres.map(s => s.c[i] - s.r))), hi = [0, 1].map(i => Math.max(...spheres.map(s => s.c[i] + s.r)));
-    // Translation may center the view, but scale never depends on its bounds.
+    // Rotation is about the atom-position centroid (now the origin). Keep that
+    // pivot at the exact canvas center; projected bounds/radii must not move it.
     const scale = o.scale;
-    const cx = (lo[0] + hi[0]) / 2, cy = (lo[1] + hi[1]) / 2;
-    const project = p => [(p[0] - cx) * scale + o.width / 2, o.height / 2 - 12 - (p[1] - cy) * scale];
+    const project = p => [p[0] * scale + o.width / 2, o.height / 2 - p[1] * scale];
     const light = [Math.sin(o.lightAzimuth) * Math.cos(o.lightElevation), Math.sin(o.lightElevation), Math.cos(o.lightAzimuth) * Math.cos(o.lightElevation)];
     const sceneRadius = Math.max(...spheres.map(s => Math.hypot(...s.c) + s.r));
     const lightPosition = mul$2(light, o.lightDistance * sceneRadius);
@@ -3490,6 +3552,290 @@ function renderFastPainter(molecule, o) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="${prefix}-title" ${stats}><title id="${prefix}-title">${escapeXml(molecule.name || 'Molecular engraving')}</title><defs>${definitions.join('')}</defs><rect width="100%" height="100%" fill="white"/>${layers.join('')}</svg>`;
 }
 
+// Idealized Cartesian geometries in angstrom (Å), not optimized or experimental.
+// Every hydrogen is explicit. Bonds are undirected connectivity only: one cylinder
+// per connected pair, with no aromatic/double-bond order or charge glyphs.
+const radians$1 = (degrees) => degrees * Math.PI / 180;
+const atom$2 = (element, position) => ({ element, position });
+const along = (origin, direction, length) => [
+    origin[0] + length * direction[0],
+    origin[1] + length * direction[1],
+    origin[2] + length * direction[2],
+];
+const polar = (degrees) => [Math.cos(radians$1(degrees)), Math.sin(radians$1(degrees)), 0];
+const tetrahedral = [
+    [1, 0, 0],
+    [-1 / 3, Math.sqrt(8 / 9), 0],
+    [-1 / 3, -Math.sqrt(2 / 9), Math.sqrt(2 / 3)],
+    [-1 / 3, -Math.sqrt(2 / 9), -Math.sqrt(2 / 3)],
+];
+// A unit direction on a cone around a unit axis; deterministic orthonormal frame.
+function cone(axis, cosine, azimuth) {
+    const reference = Math.abs(axis[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
+    const cross = [
+        axis[1] * reference[2] - axis[2] * reference[1],
+        axis[2] * reference[0] - axis[0] * reference[2],
+        axis[0] * reference[1] - axis[1] * reference[0],
+    ];
+    const norm = Math.hypot(...cross);
+    const u = [cross[0] / norm, cross[1] / norm, cross[2] / norm];
+    const v = [axis[1] * u[2] - axis[2] * u[1],
+        axis[2] * u[0] - axis[0] * u[2], axis[0] * u[1] - axis[1] * u[0]];
+    const radial = Math.sqrt(1 - cosine * cosine);
+    const c = radial * Math.cos(radians$1(azimuth)), s = radial * Math.sin(radians$1(azimuth));
+    return [cosine * axis[0] + c * u[0] + s * v[0],
+        cosine * axis[1] + c * u[1] + s * v[1],
+        cosine * axis[2] + c * u[2] + s * v[2]];
+}
+function attachHydrogen(atoms, bonds, parent, direction, length) {
+    bonds.push([parent, atoms.length]);
+    atoms.push(atom$2('H', along(atoms[parent].position, direction, length)));
+}
+function phenol() {
+    const atoms = [0, 60, 120, 180, 240, 300]
+        .map(angle => atom$2('C', along([0, 0, 0], polar(angle), 1.397)));
+    const bonds = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0]];
+    // Carbon 0 has OH instead of H; all ring atoms and substituents are planar.
+    for (let i = 1; i < 6; i++)
+        attachHydrogen(atoms, bonds, i, polar(i * 60), 1.09);
+    const oxygen = atoms.length;
+    atoms.push(atom$2('O', along(atoms[0].position, [1, 0, 0], 1.36)));
+    bonds.push([0, oxygen]);
+    attachHydrogen(atoms, bonds, oxygen, polar(180 - 108.5), 0.96);
+    return { name: 'Phenol · C₆H₆O', atoms, bonds };
+}
+function isopropanol() {
+    const atoms = [atom$2('C', [0, 0, 0]), atom$2('O', [1.43, 0, 0])];
+    const bonds = [[0, 1]];
+    // Secondary carbon and methyl carbons have ideal tetrahedral bond angles.
+    for (const direction of [tetrahedral[1], tetrahedral[2]]) {
+        const carbon = atoms.length;
+        atoms.push(atom$2('C', along(atoms[0].position, direction, 1.52)));
+        bonds.push([0, carbon]);
+        for (const azimuth of [60, 180, 300]) {
+            attachHydrogen(atoms, bonds, carbon, cone(direction, 1 / 3, azimuth), 1.09);
+        }
+    }
+    attachHydrogen(atoms, bonds, 0, tetrahedral[3], 1.09);
+    attachHydrogen(atoms, bonds, 1, cone(tetrahedral[0], -Math.cos(radians$1(108.5)), 0), 0.96);
+    return { name: 'Isopropanol · C₃H₈O', atoms, bonds };
+}
+function sulfuricAcid() {
+    const atoms = [atom$2('S', [0, 0, 0])];
+    const bonds = [];
+    // Neutral HO-S(=O)2-OH: ideal tetrahedral SO4, not a sulfate ion.
+    // Short terminal S=O bonds and longer S-OH bonds still use single cylinders.
+    for (let i = 0; i < 4; i++) {
+        const oxygen = atoms.length;
+        atoms.push(atom$2('O', along(atoms[0].position, tetrahedral[i], i < 2 ? 1.43 : 1.57)));
+        bonds.push([0, oxygen]);
+        if (i >= 2) {
+            attachHydrogen(atoms, bonds, oxygen, cone(tetrahedral[i], -Math.cos(radians$1(108.5)), 180), 0.96);
+        }
+    }
+    return { name: 'Sulfuric acid · H₂SO₄', atoms, bonds };
+}
+function glycine() {
+    // Neutral NH2-CH2-COOH, not the solid-state NH3+/COO- zwitterion.
+    // Tetrahedral alpha carbon, pyramidal N (ideal 109.47°), planar 120° carboxyl C.
+    const atoms = [atom$2('C', [0, 0, 0]), atom$2('C', [1.52, 0, 0]),
+        atom$2('N', along([0, 0, 0], tetrahedral[1], 1.47))];
+    const bonds = [[0, 1], [0, 2]];
+    atoms.push(atom$2('O', along(atoms[1].position, polar(60), 1.21)));
+    atoms.push(atom$2('O', along(atoms[1].position, polar(-60), 1.36)));
+    bonds.push([1, 3], [1, 4]);
+    attachHydrogen(atoms, bonds, 0, tetrahedral[2], 1.09);
+    attachHydrogen(atoms, bonds, 0, tetrahedral[3], 1.09);
+    for (const azimuth of [60, 180]) {
+        attachHydrogen(atoms, bonds, 2, cone(tetrahedral[1], 1 / 3, azimuth), 1.01);
+    }
+    // C-O-H = 108.5°, with an outward-facing hydroxyl hydrogen.
+    attachHydrogen(atoms, bonds, 4, polar(-60 + 180 - 108.5), 0.96);
+    return { name: 'Glycine · C₂H₅NO₂', atoms, bonds };
+}
+const additionalExamples = {
+    phenol: phenol(),
+    isopropanol: isopropanol(),
+    sulfuricAcid: sulfuricAcid(),
+    glycine: glycine(),
+};
+
+const atom$1 = (element, x, y, z) => ({ element, position: [x, y, z] });
+// Illustrative idealized coordinates in angstrom, NOT experimental coordinates
+// or force-field-optimized conformers. All hydrogens are explicit atoms/bonds.
+// Coordinates were constructed with internal bond lengths/angles, then discrete
+// rigid-subtree torsions were selected to reduce close nonbonded contacts. No
+// physical coordinate scaling was used to fit a canvas. Rounded to 0.000001 Å.
+// Bonds are undirected zero-based CONNECTIVITY, not bond-order assignments.
+/** Alpha-D-glucopyranose in the 4C1 chair, not open-chain glucose.
+ * Identity reference (not the source of these custom illustrative coordinates):
+ * https://www.rcsb.org/ligand/GLC — (2S,3R,4S,5S,6R)-6-(hydroxymethyl)oxane-
+ * 2,3,4,5-tetrol. Oxane positions 2..6 correspond to glucose C1..C5.
+ *
+ * Atom indices: 0..4 C1..C5; 5 ring O5; 6 C6; 7..10 hydroxyl O1..O4;
+ * 11 hydroxyl O6; 12..16 H on C1..C5; 17,18 H on C6;
+ * 19..23 H on O1,O2,O3,O4,O6, respectively.
+ *
+ * Ring C-C = 1.52 Å, C-O = 1.43 Å; chair heights alternate ±1.52/6 Å.
+ * Ring O5 is moved radially inward to retain 1.43 Å on BOTH ring C-O bonds.
+ * C1-OH is axial down; C2/C3/C4 OH and C5-C6 are equatorial. C6 is up,
+ * trans to anomeric OH (alpha); absolute chirality is checked, not inferred
+ * from an up/down drawing alone. Explicit descending CIP priority indices:
+ * C1 [5,7,1,12] S; C2 [8,0,2,13] R; C3 [9,1,3,14] S;
+ * C4 [10,4,2,15] S; C5 [5,3,6,16] R. For each tuple [a,b,c,d],
+ * det(a-d,b-d,c-d) is positive for S, negative for R (right-handed xyz).
+ * C4 is S in this ring even though open-chain glucose C4 is R: CIP priorities
+ * change on cyclization. This is the D series, not its mirror image.
+ */
+const glucose = {
+    name: 'α-D-Glucopyranose · C₆H₁₂O₆',
+    atoms: [
+        atom$1('C', 1.433070, 0.000000, -0.253333), // 0
+        atom$1('C', 0.716535, -1.241075, 0.253333), // 1
+        atom$1('C', -0.716535, -1.241075, -0.253333), // 2
+        atom$1('C', -1.43307, 0.000000, 0.253333), // 3
+        atom$1('C', -0.716535, 1.241075, -0.253333), // 4
+        atom$1('O', 0.607226, 1.051747, 0.253333), // 5
+        atom$1('C', -1.331088, 2.476610, 0.383988), // 6
+        atom$1('O', 1.403403, 0.017296, -1.682921), // 7
+        atom$1('O', 1.390643, -2.408665, -0.223333), // 8
+        atom$1('O', -1.390643, -2.408665, 0.223333), // 9
+        atom$1('O', -2.781287, 0.000000, -0.223333), // 10
+        atom$1('O', -1.167806, 2.412186, 1.803173), // 11
+        atom$1('H', 2.420725, 0.061348, 0.203693), // 12
+        atom$1('H', 0.716535, -1.241075, 1.343333), // 13
+        atom$1('H', -0.716535, -1.241075, -1.343333), // 14
+        atom$1('H', -1.43307, 0.000000, 1.343333), // 15
+        atom$1('H', -0.693811, 1.228083, -1.343019), // 16
+        atom$1('H', -2.393002, 2.520203, 0.142042), // 17
+        atom$1('H', -0.834333, 3.368131, 0.001203), // 18
+        atom$1('H', 0.486889, 0.020981, -1.968557), // 19
+        atom$1('H', 1.382507, -2.394573, -1.183195), // 20
+        atom$1('H', -1.382507, -2.394573, 1.183195), // 21
+        atom$1('H', -2.765014, 0.000000, -1.183195), // 22
+        atom$1('H', -0.684872, 1.610842, 2.018167), // 23
+    ],
+    bonds: [
+        [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], // pyranose ring
+        [0, 7], [0, 12], [1, 8], [1, 13], [2, 9], [2, 14], [3, 10], [3, 15],
+        [4, 6], [4, 16], [6, 11], [6, 17], [6, 18],
+        [7, 19], [8, 20], [9, 21], [10, 22], [11, 23],
+    ],
+};
+/** DHPC specifically: 1,2-dihexanoyl-sn-glycero-3-phosphocholine.
+ * A short-chain phosphatidylcholine, not a representation of every phospholipid.
+ * Formula C20H40NO8P: 70 atoms and 69 connectivity edges (acyclic).
+ *
+ * Heavy index graph: glycerol C0-C1-C2; sn2 O3, sn1 O4, sn3 O5;
+ * ester carbonyl C6 (sn2), C7 (sn1); phosphate P8 with O5,O9,O10,O11.
+ * O5 and O11 bridge to glycerol and choline; O9 and O10 are terminal.
+ * O9 is conventionally P=O and O10 is O− (resonance not depicted).
+ * Choline O11-C12-C13-N14+(C15)(C16)(C17), strictly NO N-H.
+ * C6-C18-C19-C20-C21-C22 and C7-C23-C24-C25-C26-C27 are two
+ * SIX-carbon acyl tails, including their carbonyl carbons. Carbonyl O28
+ * is on C6; O29 on C7. Both esters have coplanar C(glycerol)-O-C(=O)-O.
+ *
+ * Hydrogen indices: C1:30; C0:31,32; C2:33,34; C12:35,36;
+ * C13:37,38; C15:39..41; C16:42..44; C17:45..47;
+ * C18:48,49; C19:50,51; C20:52,53; C21:54,55; C22:56..58;
+ * C23:59,60; C24:61,62; C25:63,64; C26:65,66; C27:67..69.
+ * sn-glycerol center C1 (index 1) has descending CIP [O3,C2,C0,H30]: R.
+ *
+ * Target lengths: C-C 1.52, C-H 1.09, alcohol C-O 1.43, ester C-O 1.34,
+ * carbonyl C=O 1.21, N-C 1.48, P-O 1.50/1.52/1.60 Å. Carbon centers are
+ * tetrahedral except planar trigonal carbonyls; P is idealized tetrahedral.
+ * The molecule is a ZWITTERION: N14+ and O10− are NOT representable in the
+ * current glyph API, nor are double bonds. Cylinders show connectivity only.
+ * This snapshot is an illustrative conformer, not a membrane/bilayer model.
+ */
+const phospholipid = {
+    name: 'DHPC · C₂₀H₄₀NO₈P',
+    atoms: [
+        atom$1('C', -1.241075, 0.877572, 0.000000), // 0
+        atom$1('C', 0.000000, 0.000000, 0.000000), // 1
+        atom$1('C', 1.241075, 0.877572, 0.000000), // 2
+        atom$1('O', 0.000000, -0.825611, -1.16759), // 3
+        atom$1('O', -2.07674, 0.521375, 1.104395), // 4
+        atom$1('O', 2.396839, 0.068685, 0.234115), // 5
+        atom$1('C', -0.836613, -1.871909, -1.198223), // 6
+        atom$1('C', -3.368414, 0.874631, 1.055521), // 7
+        atom$1('P', 3.046235, 0.005103, 1.695020), // 8
+        atom$1('O', 3.830617, 1.258296, 1.948498), // 9
+        atom$1('O', 1.944278, -0.121824, 2.734241), // 10
+        atom$1('O', 4.018911, -1.261613, 1.791632), // 11
+        atom$1('C', 3.479731, -2.584168, 1.720690), // 12
+        atom$1('C', 3.070677, -2.888423, 0.288732), // 13
+        atom$1('N', 2.624496, -4.296221, 0.191645), // 14
+        atom$1('C', 1.488394, -4.518378, 1.113772), // 15
+        atom$1('C', 2.197208, -4.583746, -1.195855), // 16
+        atom$1('C', 3.741703, -5.194338, 0.559929), // 17
+        atom$1('C', -1.748097, -2.15109, -0.014308), // 18
+        atom$1('C', -2.253739, -3.582488, -0.090639), // 19
+        atom$1('C', -2.995288, -3.926895, 1.190723), // 20
+        atom$1('C', -2.049083, -3.799817, 2.373493), // 21
+        atom$1('C', -2.279189, -2.466137, 3.065410), // 22
+        atom$1('C', -3.904448, 1.630860, -0.14913), // 23
+        atom$1('C', -4.432377, 0.641109, -1.174842), // 24
+        atom$1('C', -4.578315, 1.334458, -2.519598), // 25
+        atom$1('C', -3.336317, 1.080211, -3.358167), // 26
+        atom$1('C', -2.307629, 2.164549, -3.081738), // 27
+        atom$1('O', -0.866473, -2.594458, -2.168342), // 28
+        atom$1('O', -4.108064, 0.591618, 1.970354), // 29
+        atom$1('H', 0.000000, -0.629312, 0.889981), // 30
+        atom$1('H', -0.946672, 1.923232, 0.089567), // 31
+        atom$1('H', -1.788483, 0.732731, -0.931378), // 32
+        atom$1('H', 1.334808, 1.374326, -0.965686), // 33
+        atom$1('H', 1.156356, 1.626695, 0.787235), // 34
+        atom$1('H', 4.234006, -3.301831, 2.043381), // 35
+        atom$1('H', 2.607808, -2.656424, 2.370789), // 36
+        atom$1('H', 2.254802, -2.227668, -4271e-6), // 37
+        atom$1('H', 3.921825, -2.730536, -0.373627), // 38
+        atom$1('H', 0.794304, -5.232006, 0.669841), // 39
+        atom$1('H', 1.859849, -4.913015, 2.059490), // 40
+        atom$1('H', 0.974305, -3.57373, 1.291119), // 41
+        atom$1('H', 2.053759, -5.657483, -1.316729), // 42
+        atom$1('H', 1.260158, -4.066512, -1.402025), // 43
+        atom$1('H', 2.963016, -4.239, -1.890685), // 44
+        atom$1('H', 4.671484, -4.626042, 0.585374), // 45
+        atom$1('H', 3.552376, -5.625475, 1.542974), // 46
+        atom$1('H', 3.824059, -5.992947, -0.177323), // 47
+        atom$1('H', -1.192516, -2.010973, 0.912945), // 48
+        atom$1('H', -2.59471, -1.464946, -0.03783), // 49
+        atom$1('H', -2.929275, -3.684386, -0.939973), // 50
+        atom$1('H', -1.409033, -4.260077, -0.214915), // 51
+        atom$1('H', -3.833401, -3.242228, 1.320717), // 52
+        atom$1('H', -3.367474, -4.949667, 1.131429), // 53
+        atom$1('H', -2.235888, -4.611137, 3.077031), // 54
+        atom$1('H', -1.01874, -3.853759, 2.021950), // 55
+        atom$1('H', -3.000855, -2.595047, 3.872057), // 56
+        atom$1('H', -1.337095, -2.10223, 3.475448), // 57
+        atom$1('H', -2.664626, -1.744745, 2.344902), // 58
+        atom$1('H', -4.711417, 2.292086, 0.166592), // 59
+        atom$1('H', -3.103291, 2.221686, -0.593171), // 60
+        atom$1('H', -3.734972, -0.191272, -1.269017), // 61
+        atom$1('H', -5.403708, 0.266530, -0.851878), // 62
+        atom$1('H', -5.453208, 0.941827, -3.037771), // 63
+        atom$1('H', -4.698719, 2.406615, -2.364414), // 64
+        atom$1('H', -2.917036, 0.107539, -3.100849), // 65
+        atom$1('H', -3.602631, 1.092976, -4.415056), // 66
+        atom$1('H', -1.44883, 1.728946, -2.571039), // 67
+        atom$1('H', -1.984071, 2.607081, -4.023851), // 68
+        atom$1('H', -2.752309, 2.935206, -2.452097), // 69
+    ],
+    bonds: [
+        [1, 0], [1, 2], [1, 3], [1, 30], [0, 4], [0, 31], [0, 32], [2, 5], [2, 33], [2, 34],
+        [3, 6], [4, 7], [5, 8], [8, 9], [8, 10], [8, 11], [11, 12],
+        [12, 13], [12, 35], [12, 36], [13, 14], [13, 37], [13, 38],
+        [14, 15], [14, 16], [14, 17], [15, 39], [15, 40], [15, 41],
+        [16, 42], [16, 43], [16, 44], [17, 45], [17, 46], [17, 47],
+        [6, 28], [6, 18], [18, 19], [18, 48], [18, 49], [19, 20], [19, 50], [19, 51],
+        [20, 21], [20, 52], [20, 53], [21, 22], [21, 54], [21, 55], [22, 56], [22, 57], [22, 58],
+        [7, 29], [7, 23], [23, 24], [23, 59], [23, 60], [24, 25], [24, 61], [24, 62],
+        [25, 26], [25, 63], [25, 64], [26, 27], [26, 65], [26, 66], [27, 67], [27, 68], [27, 69],
+    ],
+};
+const complexExamples = { glucose, phospholipid };
+
 const atom = (element, x, y, z) => ({ element, position: [x, y, z] });
 // Idealized regular truncated icosahedron, not an optimized two-bond-length geometry.
 function fullerene() {
@@ -3510,12 +3856,63 @@ function fullerene() {
                 bonds.push([i, j]);
     return { name: '富勒烯 · C₆₀', atoms: positions.map(p => atom('C', p[0], p[1], p[2])), bonds };
 }
+// New molecular geometries below are idealized, not optimized; lengths are in angstrom.
+// Bonds are explicit zero-based undirected connectivity, not bond-order assignments.
+// In particular, CO2 and benzene cylinders show connectivity only.
+const radians = (degrees) => degrees * Math.PI / 180;
+// Three tetrahedral directions opposite the +x direction (cos(angle) = -1/3).
+function methylHydrogens() {
+    return [0, 120, 240].map(degrees => atom('H', -1.09 / 3, 1.09 * Math.sqrt(8 / 9) * Math.cos(radians(degrees)), 1.09 * Math.sqrt(8 / 9) * Math.sin(radians(degrees))));
+}
+function methane() {
+    return { name: 'Methane · CH₄', atoms: [atom('C', 0, 0, 0), atom('H', 1.09, 0, 0), ...methylHydrogens()],
+        bonds: [[0, 1], [0, 2], [0, 3], [0, 4]] };
+}
+function ammonia() {
+    // Threefold symmetry gives H-N-H = 107 degrees, with N above the H plane.
+    const height = Math.sqrt((1 + 2 * Math.cos(radians(107))) / 3);
+    const radial = Math.sqrt(1 - height * height);
+    return { name: 'Ammonia · NH₃', atoms: [atom('N', 0, 0, 0),
+            ...[0, 120, 240].map(degrees => atom('H', 1.01 * radial * Math.cos(radians(degrees)), 1.01 * radial * Math.sin(radians(degrees)), -1.01 * height))],
+        bonds: [[0, 1], [0, 2], [0, 3]] };
+}
+function methanol() {
+    // Tetrahedral carbon; the hydroxyl C-O-H angle is idealized to 108.5 degrees.
+    const hydroxyl = radians(180 - 108.5);
+    return { name: 'Methanol · CH₄O', atoms: [atom('C', 0, 0, 0), atom('O', 1.43, 0, 0),
+            ...methylHydrogens(), atom('H', 1.43 + .96 * Math.cos(hydroxyl), .96 * Math.sin(hydroxyl), 0)],
+        bonds: [[0, 1], [0, 2], [0, 3], [0, 4], [1, 5]] };
+}
+function benzene() {
+    const ring = (element, radius) => [0, 60, 120, 180, 240, 300]
+        .map(degrees => atom(element, radius * Math.cos(radians(degrees)), radius * Math.sin(radians(degrees)), 0));
+    return { name: 'Benzene · C₆H₆', atoms: [...ring('C', 1.397), ...ring('H', 1.397 + 1.09)],
+        bonds: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [0, 5],
+            [0, 6], [1, 7], [2, 8], [3, 9], [4, 10], [5, 11]] };
+}
+function hydrogenPeroxide() {
+    // H-O-O = 94.8 degrees at both oxygens; H-O-O-H torsion magnitude = 111 degrees.
+    const angle = radians(94.8), torsion = radians(111);
+    const axial = .97 * Math.cos(angle), radial = .97 * Math.sin(angle);
+    return { name: 'Hydrogen peroxide · H₂O₂', atoms: [atom('O', -0.74, 0, 0), atom('O', .74, 0, 0),
+            atom('H', -0.74 + axial, radial, 0),
+            atom('H', .74 - axial, radial * Math.cos(torsion), radial * Math.sin(torsion))],
+        bonds: [[0, 1], [0, 2], [1, 3]] };
+}
 const examples = {
     sphere: { name: '单球 · 明暗研究', atoms: [atom('C', 0, 0, 0)], bonds: [] },
     pair: { name: '双球 · 遮挡研究', atoms: [atom('C', -0.85, -0.25, -0.3), atom('O', .85, .25, .3)], bonds: [[0, 1]] },
     water: { name: '水 · H₂O', atoms: [atom('O', 0, .25, 0), atom('H', -0.78, -0.35, .1), atom('H', .78, -0.35, .1)], bonds: [[0, 1], [0, 2]] },
     ethanol: { name: '乙醇 · C₂H₆O', atoms: [atom('C', -1.22, 0, 0), atom('C', .12, .55, 0), atom('O', 1.28, -0.2, .15), atom('H', 2.02, .28, .15), atom('H', -1.3, -0.72, .8), atom('H', -1.95, .75, .1), atom('H', -1.38, -0.5, -0.92), atom('H', .2, 1.2, .88), atom('H', .22, 1.14, -0.92)], bonds: [[0, 1], [1, 2], [2, 3], [0, 4], [0, 5], [0, 6], [1, 7], [1, 8]] },
-    c60: fullerene()
+    c60: fullerene(),
+    methane: methane(),
+    ammonia: ammonia(),
+    carbonDioxide: { name: 'Carbon dioxide · CO₂', atoms: [atom('C', 0, 0, 0), atom('O', -1.16, 0, 0), atom('O', 1.16, 0, 0)], bonds: [[0, 1], [0, 2]] },
+    methanol: methanol(),
+    benzene: benzene(),
+    hydrogenPeroxide: hydrogenPeroxide(),
+    ...additionalExamples,
+    ...complexExamples
 };
 
 const MAX_ATOMS = 2000;
@@ -3851,4 +4248,4 @@ function render(molecule, options = {}) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title><rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }
 
-export { covalentRadii, covalentRadiusSource, depthAt, elementColor, elementPalette, engravingWidth, examples, parseXYZ, render };
+export { covalentRadii, covalentRadiusSource, depthAt, elementColor, elementPalette, engravingWidth, examples, normalizeOrientation, orientationFromEulerXYZ, orientationToEulerXYZ, parseXYZ, render, rotateOrientation };

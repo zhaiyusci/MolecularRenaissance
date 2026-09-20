@@ -105,30 +105,30 @@ check('point light extremes and both line modes are finite',()=>{
  }
 });
 check('UI light controls convert angles, update and reset',()=>{
- const vm=require('node:vm');
- const html=fs.readFileSync('index.html','utf8'),elements={};
- for(const match of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)){
-  const tag=match[0];elements[match[1]]={value:(tag.match(/\bvalue="([^"]*)"/)||[])[1]||'',checked:/\bchecked\b/.test(tag),disabled:/\bdisabled\b/.test(tag),textContent:'',listeners:{},addEventListener(e,f){this.listeners[e]=f;},appendChild(o){if(!this.value)this.value=o.value;}};
- }
- for(const match of html.matchAll(/<select\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)){
-  const options=[...match[2].matchAll(/<option\b[^>]*>/g)].map(m=>m[0]);
-   const selected=options.find(tag=>/\bselected\b/.test(tag))||options[0];
-   if(selected)elements[match[1]].value=selected.match(/\bvalue="([^"]+)"/)[1];
- }
- elements.preview.querySelector=()=>({hasAttribute:()=>true,setAttribute(){}});
- let queued,opts;
- vm.runInNewContext(fs.readFileSync('app.js','utf8'),{
-  document:{getElementById:id=>elements[id],createElement:()=>({})},
-  window:{addEventListener(){},MolEngraver:{examples,render(m,o){opts=o;return '<svg></svg>';}}},
-  requestAnimationFrame:f=>{queued=f;return 1;},performance:{now:()=>0},
-  XMLSerializer:class{serializeToString(){return '<svg></svg>';}}
- });
+ const ui=require('./scripts/ui-harness.cjs').makeUI({browserLanguage:'zh-CN'});
+ const {html,elements}=ui;
+ let opts;
+ function queued(){ui.flush();opts=ui.calls.at(-1).options;}
  queued();assert.ok(Math.abs(opts.lightAzimuth-(-29*Math.PI/180))<1e-12);
-  assert.equal(elements['color-mode'].value,'wash');assert.equal(opts.colorMode,'wash');
-  assert.equal(elements['color-mode'].disabled,false);
-  const colorModeOptions=html.match(/<select\b[^>]*id="color-mode"[^>]*>([\s\S]*?)<\/select>/)[1];
-  assert.match(colorModeOptions,/<option value="wash" selected>/);
-  assert.match(colorModeOptions,/<option value="ink">/);
+ const {rotateOrientation,orientationToEulerXYZ}=require('./renderer.js');
+ const initialOrientation=rotateOrientation(rotateOrientation([0,0,0,1],'y',25*Math.PI/180),'x',-15*Math.PI/180);
+ const nearOrientation=expected=>opts.orientation.forEach((n,i)=>assert.ok(Math.abs(n-expected[i])<1e-12));
+ nearOrientation(initialOrientation);
+ assert.equal(elements.yaw,undefined);assert.equal(elements.pitch,undefined);
+ assert.equal(elements['rotation-step'],undefined);
+ assert.equal(Object.hasOwn(opts,'yaw'),false);assert.equal(Object.hasOwn(opts,'pitch'),false);
+ ui.key('z','ArrowRight',true);queued();nearOrientation(require('./scripts/ui-harness.cjs').rotateRing(initialOrientation,'z',Math.PI/12));
+ orientationToEulerXYZ(opts.orientation).forEach((angle,i)=>{
+  const output=elements['euler-'+['x','y','z'][i]];assert.equal(output.tagName,'OUTPUT');
+  assert.ok(Math.abs(parseFloat(output.textContent)-angle*180/Math.PI)<=.051);
+ });
+ assert.equal(ui.document.title,'分子文艺复兴');
+ ui.locale('en');assert.equal(ui.document.title,'Molecular Renaissance');
+ assert.equal(ui.queue.length,0,'locale changes do not rerender or reset light controls');
+ assert.equal(elements['color-scheme'].value,'jmol');assert.equal(opts.colorScheme,'jmol');
+ assert.equal(elements['color-scheme'].disabled,false);
+ const colorSchemeOptions=html.match(/<select\b[^>]*id="color-scheme"[^>]*>([\s\S]*?)<\/select>/)[1];
+ for(const value of ['jmol','rasmol','pymol','greenCarbon','cyanCarbon','magentaCarbon'])assert.ok(colorSchemeOptions.includes('value="'+value+'"'));
  elements['light-azimuth'].value='90';elements['light-elevation'].value='-45';
  elements['light-azimuth'].listeners.input();queued();
  assert.equal(opts.lightAzimuth,Math.PI/2);assert.equal(opts.lightElevation,-Math.PI/4);
@@ -156,23 +156,23 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(elements['label-size-value'].textContent,'36');
  elements['label-font'].value=' ';elements['label-font'].listeners.input();queued();
  assert.equal(opts.labelFont,"Georgia, 'Times New Roman', serif");
- assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,.65);assert.equal(opts.labelMatchFill,true);
+ assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,1);assert.equal(opts.labelMatchFill,true);
  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
- assert.equal(opts.colorWash,false);assert.equal(opts.colorMode,'wash');
-  const colorIds=['color-mode','wash-strength','color-saturation'];
+ assert.equal(opts.colorWash,false);assert.equal(opts.colorScheme,'jmol');
+  const colorIds=['color-scheme','wash-strength','color-saturation'];
   for(const id of colorIds)assert.equal(elements[id].disabled,true);
   elements['color-wash'].checked=true;elements['color-wash'].listeners.change();queued();
-  for(const mode of ['ink','wash','ink']){
-   elements['color-mode'].value=mode;elements['color-mode'].listeners.change();queued();
-   assert.equal(opts.colorMode,mode);assert.equal(opts.colorWash,true);
+  for(const mode of ['rasmol','pymol','greenCarbon','cyanCarbon','magentaCarbon','jmol','rasmol']){
+   elements['color-scheme'].value=mode;elements['color-scheme'].listeners.change();queued();
+   assert.equal(opts.colorScheme,mode);assert.equal(opts.colorWash,true);
    for(const id of colorIds)assert.equal(elements[id].disabled,false);
   }
   elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
-  assert.equal(opts.colorWash,false);assert.equal(opts.colorMode,'ink');
-  assert.equal(elements['color-mode'].value,'ink');
+  assert.equal(opts.colorWash,false);assert.equal(opts.colorScheme,'rasmol');
+  assert.equal(elements['color-scheme'].value,'rasmol');
   for(const id of colorIds)assert.equal(elements[id].disabled,true);
  elements['color-wash'].checked=true;elements['color-wash'].listeners.change();queued();
- assert.equal(opts.colorMode,'ink');assert.equal(elements['color-mode'].value,'ink');
+ assert.equal(opts.colorScheme,'rasmol');assert.equal(elements['color-scheme'].value,'rasmol');
   for(const id of colorIds)assert.equal(elements[id].disabled,false);
   elements['wash-strength'].value='40';elements['wash-strength'].listeners.input();queued();
  assert.equal(opts.washStrength,.4);assert.equal(elements['wash-strength-value'].textContent,'40%');
@@ -180,48 +180,54 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(elements['label-stroke-color'].disabled,true);
  elements['label-match-fill'].checked=false;elements['label-match-fill'].listeners.change();queued();
  assert.equal(opts.labelMatchFill,false);assert.equal(elements['label-stroke-color'].disabled,false);
- for(const [id,value] of [['shading-size','0'],['outline-width','1.2'],['color-saturation','250']]){
+ elements['shading-enabled'].checked=false;elements['shading-enabled'].listeners.change();queued();
+ for(const [id,value] of [['outline-width','1.2'],['color-saturation','250']]){
   elements[id].value=value;elements[id].listeners.input();queued();
  }
  assert.equal(opts.shadingSize,0);assert.equal(opts.outlineWidth,1.2);assert.equal(opts.colorSaturation,2.5);
  elements['outline-width'].value='0';elements['outline-width'].listeners.input();queued();assert.equal(opts.outlineWidth,0);
  elements['color-wash'].checked=false;elements['color-wash'].listeners.change();queued();
  for(const id of colorIds)assert.equal(elements[id].disabled,true);
-  assert.equal(opts.colorMode,'ink');assert.equal(elements['color-mode'].value,'ink');
-  assert.deepEqual(colorIds.map(id=>elements[id].value),['ink','40','250']);
+  assert.equal(opts.colorScheme,'rasmol');assert.equal(elements['color-scheme'].value,'rasmol');
+  assert.deepEqual(colorIds.map(id=>elements[id].value),['rasmol','40','250']);
  assert.equal(opts.shadingMode,'hatch');
  for(const id of ['dot-spacing','dot-size','dot-contrast','density','line-width'])assert.equal(elements[id],undefined);
- const sharedIds=['shading-density','shading-size','shading-contrast'];
- for(const [id,min,max,step,value] of [['shading-density','40','250','5','100'],['shading-size','0','150','5','100'],['shading-contrast','0.5','2.5','0.1','1.2']]){
+ elements['shading-enabled'].checked=true;elements['shading-enabled'].listeners.change();queued();
+ const sharedIds=['texture-scale','shading-brightness','shading-contrast'];
+ for(const [id,min,max,step,value] of [['texture-scale','20','250','5','100'],['shading-brightness','-100','100','5','0'],['shading-contrast','0.5','2.5','0.1','1.2']]){
   const tag=html.match(new RegExp('<input[^>]*id="'+id+'"[^>]*>'))[0];
   for(const [attr,expected] of Object.entries({min,max,step,value}))assert.ok(tag.includes(attr+'="'+expected+'"'));
  }
- for(const [id,value] of [['shading-density','175'],['shading-size','65'],['shading-contrast','2']]){elements[id].value=value;elements[id].listeners.input();queued();}
+ for(const [id,value] of [['texture-scale','175'],['shading-brightness','-25'],['shading-contrast','2']]){elements[id].value=value;elements[id].listeners.input();queued();}
  for(const mode of ['stipple','halftone','hatch']){
   elements['shading-mode'].value=mode;elements['shading-mode'].listeners.change();queued();
   assert.equal(opts.shadingMode,mode);
   for(const id of ['cross-hatch','variable-width'])assert.equal(elements[id].disabled,mode!=='hatch');
   for(const id of sharedIds)assert.equal(elements[id].disabled,false);
-  assert.deepEqual(sharedIds.map(id=>elements[id].value),['175','65','2']);
-  assert.equal(opts.shadingDensity,1.75);assert.equal(opts.shadingSize,.65);assert.equal(opts.shadingContrast,2);
-  assert.equal(elements['shading-density-value'].textContent,'175%');
-  assert.equal(elements['shading-size-value'].textContent,'65%');
+  assert.deepEqual(sharedIds.map(id=>elements[id].value),['175','-25','2']);
+  assert.equal(opts.textureScale,1.75);assert.equal(opts.shadingBrightness,-.25);assert.equal(opts.shadingContrast,2);
+  assert.ok(!Object.hasOwn(opts,'shadingSize'));assert.ok(!Object.hasOwn(opts,'shadingDensity'));
+  assert.equal(elements['texture-scale-value'].textContent,'1.75×');
+  assert.equal(elements['shading-brightness-value'].textContent,'-25');
   assert.equal(elements['shading-contrast-value'].textContent,'2.0');
   for(const key of ['density','hatchWidth','dotSpacing','dotSize','dotContrast'])assert.ok(!Object.hasOwn(opts,key));
   assert.equal(elements['outline-width'].disabled,false);assert.equal(opts.outlineWidth,0);
-  elements['shading-size'].value='0';elements['shading-size'].listeners.input();queued();
-  assert.equal(opts.shadingSize,0);assert.equal(elements['shading-size-value'].textContent,'0%');
-  elements['shading-size'].value='65';elements['shading-size'].listeners.input();queued();
+  elements['shading-enabled'].checked=false;elements['shading-enabled'].listeners.change();queued();
+  assert.equal(opts.shadingSize,0);assert.equal(opts.castShadows,false);
+  for(const id of [...sharedIds,'shading-mode','point-light','cast-shadows','light-distance','light-attenuation','shadow-strength'])assert.equal(elements[id].disabled,true);
+  assert.equal(elements['outline-width'].disabled,false);
+  elements['shading-enabled'].checked=true;elements['shading-enabled'].listeners.change();queued();
+  assert.ok(!Object.hasOwn(opts,'shadingSize'));assert.equal(opts.castShadows,true);assert.equal(opts.textureScale,1.75);
  }
  elements.reset.listeners.click();queued();
-  assert.equal(opts.colorMode,'wash');assert.equal(elements['color-mode'].value,'wash');
+  assert.equal(opts.colorScheme,'jmol');assert.equal(elements['color-scheme'].value,'jmol');
   for(const id of colorIds)assert.equal(elements[id].disabled,false);
- assert.equal(opts.shadingMode,'hatch');assert.equal(opts.shadingDensity,1);assert.equal(opts.shadingSize,1);assert.equal(opts.shadingContrast,1.2);
- assert.deepEqual(sharedIds.map(id=>elements[id].value),['100','100','1.2']);
- assert.deepEqual(sharedIds.map(id=>elements[id+'-value'].textContent),['100%','100%','1.2']);
+ assert.equal(opts.shadingMode,'hatch');assert.equal(opts.textureScale,1);assert.ok(!Object.hasOwn(opts,'shadingSize'));assert.equal(opts.shadingContrast,1.2);
+ assert.deepEqual(sharedIds.map(id=>elements[id].value),['100','0','1.2']);
+ assert.deepEqual(sharedIds.map(id=>elements[id+'-value'].textContent),['1.00×','0','1.2']);
  for(const id of [...sharedIds,'cross-hatch','variable-width'])assert.equal(elements[id].disabled,false);
  assert.equal(opts.outlineWidth,.8);assert.equal(opts.colorSaturation,1);
- assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,.65);assert.equal(opts.labelMatchFill,true);
+ assert.equal(opts.colorWash,true);assert.equal(opts.washStrength,1);assert.equal(opts.labelMatchFill,true);
  assert.equal(opts.labels,false);assert.equal(opts.labelSize,17);assert.equal(opts.labelStrokeWidth,4);
  assert.equal(opts.labelColor,'#161616');assert.equal(opts.labelStrokeColor,'#ffffff');
  assert.equal(opts.labelBold,false);assert.equal(opts.labelItalic,true);
@@ -229,6 +235,7 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(opts.lightType,'directional');assert.equal(opts.lightDistance,3);assert.equal(opts.variableWidth,true);
  assert.equal(elements['light-distance'].disabled,true);
  assert.equal(elements['light-azimuth'].value,'-29');assert.equal(elements['light-elevation'].value,'32');
+ nearOrientation(initialOrientation);assert.equal(elements['rotation-step'],undefined);
 });
 check('element label styles export without affecting plate titles',()=>{
  const svg=render(examples.water,{labels:true,labelSize:32,labelStrokeWidth:7,labelStrokeColor:'#ffcc00',labelColor:'#112233',labelFont:'Arial, sans-serif',labelBold:true,labelItalic:false});

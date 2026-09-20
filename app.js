@@ -3,6 +3,9 @@
   'use strict';
 
   var byId = function (id) { return document.getElementById(id); };
+  var i18n = window.MolI18n;
+  var t = i18n.t;
+  i18n.apply(document);
   var model = byId('model');
   var xyzFile = byId('xyz-file');
   var xyzStatus = byId('xyz-status');
@@ -17,8 +20,8 @@
   var download = byId('download');
   var scale = byId('scale');
   var atomRadiusScale = byId('atom-radius-scale');
-  var yaw = byId('yaw');
-  var pitch = byId('pitch');
+  var rotationGizmo = null;
+  var gizmoInteracting = false;
   var lightAzimuth = byId('light-azimuth');
   var lightElevation = byId('light-elevation');
   var fastOverlay = byId('fast-overlay');
@@ -59,52 +62,133 @@
   var engine = window.MolEngraver;
   var frame = null;
   var lastRender = null;
-  var drag = null;
   var controlPointer = null;
 
-  function showError(message) {
-    error.textContent = message;
+  // Keep message descriptors, not translated strings, so language changes also
+  // update pending imports and errors without rerendering or resetting inputs.
+  var notices = new Map();
+  var modelOptions = {};
+  var displayed = null;
+  function paintMessage(node, message) {
+    var values = Object.assign({}, message.values);
+    if (message.fallback) values.detail = i18n.error(message.cause, message.fallback);
+    node.textContent = message.key ? t(message.key, values) : values.detail;
+  }
+  function message(node, key, values, cause, fallback) {
+    var state = { key: key, values: values, cause: cause, fallback: fallback };
+    notices.set(node, state);
+    paintMessage(node, state);
+  }
+  function uiError(key) {
+    var cause = new Error(key);
+    cause.uiKey = key;
+    return cause;
+  }
+  function modelName(key, molecule) {
+    if (key === importedKey) return molecule.name || key;
+    var name = t('model.' + key);
+    return name === 'model.' + key ? (molecule.name || key) : name;
+  }
+  function localizedModel(key, molecule) {
+    return key === importedKey ? molecule : Object.assign({}, molecule, { name: modelName(key, molecule) });
+  }
+  function updateCaption() {
+    if (!displayed) return;
+    var name = modelName(displayed.key, displayed.model);
+    displayed.root.setAttribute('aria-label', t('status.previewAria', { name: name }));
+    var title = displayed.root.querySelector && displayed.root.querySelector('title');
+    if (title) title.textContent = name;
+    var caption = byId('molecule-caption');
+    if (caption) caption.textContent = name;
+  }
+  byId('language').addEventListener('change', function () {
+    i18n.setLocale(byId('language').value);
+    i18n.apply(document);
+    Object.keys(modelOptions).forEach(function (key) {
+      modelOptions[key].textContent = modelName(key, engine.examples[key]);
+    });
+    if (importedOption) importedOption.textContent = t('model.local', { name: imported.name });
+    notices.forEach(function (state, node) { paintMessage(node, state); });
+    updateCaption();
+    if (rotationGizmo) rotationGizmo.sync();
+    byId('render-mode-status').textContent = t(fastOverlay.checked ? 'status.fast' : 'status.precise');
+  });
+  byId('xyz-choose').addEventListener('click', function () { xyzFile.click(); });
+  message(preview, 'status.preparing');
+  message(timing, 'status.waiting');
+  byId('render-mode-status').textContent = t('status.precise');
+
+  function showError(cause) {
+    message(error, null, null, cause, 'error.renderUnknown');
     error.hidden = false;
-    timing.textContent = '渲染未完成';
+    message(timing, 'status.incomplete');
     download.disabled = true;
     lastRender = null;
   }
 
-  if (!engine || typeof engine.render !== 'function' || !engine.examples) {
-    preview.textContent = '未能载入渲染器。';
-    showError('请确认 renderer.js 与 index.html、app.js 位于同一文件夹，然后重新打开页面。');
+  if (!engine || typeof engine.render !== 'function' || !engine.examples ||
+      typeof engine.rotateOrientation !== 'function' || typeof engine.orientationToEulerXYZ !== 'function') {
+    message(preview, 'status.engineMissing');
+    showError(uiError('error.engineMissing'));
     return;
   }
 
-  var keys = Object.keys(engine.examples);
+  function initialOrientation() {
+    // Preserve the old default view: Y +25°, then X -15°. No Euler feedback loop.
+    return engine.rotateOrientation(engine.rotateOrientation([0, 0, 0, 1], 'y', 25 * Math.PI / 180), 'x', -15 * Math.PI / 180);
+  }
+  var orientation = initialOrientation();
+  if (!window.MolRotationGizmo || typeof window.MolRotationGizmo.create !== 'function') {
+    message(preview, 'status.renderFailed');
+    showError(uiError('error.gizmoMissing'));
+    return;
+  }
+  rotationGizmo = window.MolRotationGizmo.create({
+    root: byId('rotation-gizmo'),
+    engine: engine,
+    getOrientation: function () { return orientation.slice(); },
+    onChange: function (q) { orientation = engine.normalizeOrientation(q); scheduleRender(); },
+    onInteraction: function (active) { gizmoInteracting = active; scheduleRender(); }
+  });
+  byId('rotation-reset').addEventListener('click', function () {
+    rotationGizmo.cancel();
+    orientation = initialOrientation();
+    scheduleRender();
+  });
+
+  // Geometric study fixtures remain API-compatible, but are not molecule presets.
+  var keys = Object.keys(engine.examples).filter(function (key) {
+    return key !== 'sphere' && key !== 'pair';
+  });
   if (!keys.length) {
-    preview.textContent = '没有可用的示例模型。';
-    showError('渲染器的 examples 为空。');
+    message(preview, 'status.noExamples');
+    showError(uiError('error.noExamples'));
     return;
   }
   keys.forEach(function (key) {
     var option = document.createElement('option');
     option.value = key;
-    option.textContent = engine.examples[key].name || key;
+    option.textContent = modelName(key, engine.examples[key]);
+    modelOptions[key] = option;
     model.appendChild(option);
   });
 
   // Keep the local slot separate from the engine's immutable example catalog.
   while (Object.prototype.hasOwnProperty.call(engine.examples, importedKey)) importedKey += '_';
 
-  function setXYZStatus(message, failed) {
-    xyzStatus.textContent = message;
+  function setXYZStatus(key, failed, values, cause) {
+    message(xyzStatus, key, values, cause, failed ? 'error.readUnknown' : null);
     xyzStatus.setAttribute('data-error', failed ? 'true' : 'false');
   }
 
   function cancelImport() {
     importRequest += 1;
-    if (importLoading) setXYZStatus('已取消待完成的 XYZ 导入。', false);
+    if (importLoading) setXYZStatus('status.xyzCancelled', false);
     importLoading = false;
   }
 
   function parseImport(text, name) {
-    if (typeof engine.parseXYZ !== 'function') throw new Error('未能载入 XYZ 解析器，请更新 renderer.js。');
+    if (typeof engine.parseXYZ !== 'function') throw uiError('error.parserMissing');
     var molecule = engine.parseXYZ(text, { name: name, inferBonds: true, maxAtoms: 500 });
     return { name: name, model: molecule };
   }
@@ -116,9 +200,9 @@
       importedOption.value = importedKey;
       model.appendChild(importedOption);
     }
-    importedOption.textContent = '本地 · ' + next.name;
+    importedOption.textContent = t('model.local', { name: next.name });
     if (select) model.value = importedKey;
-    setXYZStatus('已载入 ' + next.name + ' · ' + next.model.atoms.length + ' 个原子 · ' + next.model.bonds.length + ' 个键（距离推断）', false);
+    setXYZStatus('status.xyzLoaded', false, { name: next.name, atoms: next.model.atoms.length, bonds: next.model.bonds.length });
   }
 
   xyzFile.addEventListener('change', async function () {
@@ -129,9 +213,9 @@
     importLoading = true;
     download.disabled = true;
     lastRender = null;
-    setXYZStatus('正在读取 ' + file.name + '…', false);
+    setXYZStatus('status.xyzReading', false, { name: file.name });
     try {
-      if (file.size > 2 * 1024 * 1024) throw new Error('XYZ 文件不能超过 2MiB。');
+      if (file.size > 2 * 1024 * 1024) throw uiError('error.xyzTooLarge');
       var text = await file.text();
       if (request !== importRequest) return;
       var next = parseImport(text, file.name);
@@ -139,7 +223,7 @@
       commitImport(next, true);
     } catch (cause) {
       if (request !== importRequest) return;
-      setXYZStatus('XYZ 导入失败：' + (cause && cause.message ? cause.message : '无法读取文件。'), true);
+      setXYZStatus('status.xyzFailed', true, null, cause);
     } finally {
       if (request === importRequest) {
         importLoading = false;
@@ -175,11 +259,14 @@
     [shadingMode, textureScale, shadingBrightness, shadingContrast, lightAzimuth, lightElevation].forEach(function (input) {
       input.disabled = !shadingEnabled.checked;
     });
-    byId('render-mode-status').textContent = fastOverlay.checked ? '快速覆盖 · 已启用' : '精确渲染';
+    byId('render-mode-status').textContent = t(fastOverlay.checked ? 'status.fast' : 'status.precise');
     byId('scale-value').textContent = scale.value;
     byId('atom-radius-scale-value').textContent = Number(atomRadiusScale.value).toFixed(2) + '×';
-    byId('yaw-value').textContent = yaw.value + '°';
-    byId('pitch-value').textContent = pitch.value + '°';
+    engine.orientationToEulerXYZ(orientation).forEach(function (angle, index) {
+      var degrees = Math.round(angle * 1800 / Math.PI) / 10;
+      byId('euler-' + ['x', 'y', 'z'][index]).textContent = (degrees === 0 ? 0 : degrees).toFixed(1) + '°';
+    });
+    if (rotationGizmo) rotationGizmo.sync();
     byId('light-azimuth-value').textContent = lightAzimuth.value + '°';
     byId('light-elevation-value').textContent = lightElevation.value + '°';
     shadowStrength.disabled = !shadingEnabled.checked || !castShadows.checked;
@@ -213,7 +300,7 @@
     var molecule = modelKey === importedKey && imported ? imported.model : engine.examples[modelKey];
     var filename = modelKey === importedKey && imported ? imported.name.replace(/\.xyz$/i, '') : modelKey;
     var start = performance.now();
-    var interacting = !!drag || !!controlPointer;
+    var interacting = !!controlPointer || gizmoInteracting;
     try {
       var options = {
         quality: 'preview',
@@ -222,8 +309,7 @@
         height: 700,
         scale: Number(scale.value),
         atomRadiusScale: Number(atomRadiusScale.value),
-        yaw: Number(yaw.value) * Math.PI / 180,
-        pitch: Number(pitch.value) * Math.PI / 180,
+        orientation: orientation.slice(),
         lightAzimuth: Number(lightAzimuth.value) * Math.PI / 180,
         lightElevation: Number(lightElevation.value) * Math.PI / 180,
         lightType: pointLight.checked ? 'point' : 'directional',
@@ -259,29 +345,31 @@
         options.castShadows = false;
       }
       // Transient lightweight frame only; never overwrite the user's settings.
-      var svg = engine.render(molecule, interacting ? Object.assign({}, options, { shadingSize: 0, castShadows: false }) : options);
+      var svg = engine.render(localizedModel(modelKey, molecule), interacting ? Object.assign({}, options, { shadingSize: 0, castShadows: false }) : options);
       if (typeof svg !== 'string' || !/<svg[\s>]/i.test(svg)) {
-        throw new Error('渲染器没有返回有效的 SVG。');
+        throw uiError('error.invalidSVG');
       }
+      notices.delete(preview);
       preview.innerHTML = svg;
       var root = preview.querySelector('svg');
-      if (!root) throw new Error('无法显示 SVG。');
+      if (!root) throw uiError('error.displaySVG');
       if (!root.hasAttribute('viewBox')) root.setAttribute('viewBox', '0 0 900 700');
       root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       root.setAttribute('role', 'img');
-      root.setAttribute('aria-label', (molecule.name || model.value) + '分子线刻图');
-      var caption = byId('molecule-caption');
-      if (caption) caption.textContent = molecule.name || model.value;
+      displayed = { key: modelKey, model: molecule, root: root };
+      updateCaption();
       // Keep the successful preview inputs, not its sampled SVG geometry.
       lastRender = interacting || importLoading ? null : { key: modelKey, filename: filename, model: molecule, options: options };
-      byId('model-info').textContent = molecule.atoms.length + ' 个原子 · ' + molecule.bonds.length + ' 个键 · 900 × 700';
-      timing.textContent = (interacting ? '拖动预览（无纹理） ' : '渲染 ') + (performance.now() - start).toFixed(1) + ' ms';
+      message(byId('model-info'), 'status.modelInfo', { atoms: molecule.atoms.length, bonds: molecule.bonds.length });
+      message(timing, interacting ? 'status.dragTime' : 'status.renderTime', { ms: (performance.now() - start).toFixed(1) });
       error.hidden = true;
+      notices.delete(error);
       error.textContent = '';
       download.disabled = interacting || importLoading;
     } catch (cause) {
-      preview.textContent = '图版生成失败，请调整设置后重试。';
-      showError(cause && cause.message ? cause.message : '未知渲染错误');
+      displayed = null;
+      message(preview, 'status.renderFailed');
+      showError(cause);
     }
   }
 
@@ -291,7 +379,7 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [scale, atomRadiusScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
   [fastOverlay, shadingEnabled, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
@@ -300,7 +388,7 @@
 
   // Native range inputs keep their own drag/capture behavior. Window release
   // handlers also cover releasing outside the slider. No idle timer/debounce.
-  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
+  [scale, atomRadiusScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
     input.addEventListener('pointerdown', function (event) {
       if (event.button !== 0 || input.disabled || controlPointer) return;
       controlPointer = { id: event.pointerId, input: input };
@@ -317,18 +405,16 @@
   window.addEventListener('pointercancel', endControl);
   window.addEventListener('blur', function () {
     endControl();
-    if (drag) endDrag({ pointerId: drag.id });
   });
 
   byId('reset').addEventListener('click', function () {
     cancelImport();
     endControl();
-    if (drag) endDrag({ pointerId: drag.id });
     model.value = keys[0];
     scale.value = '60';
     atomRadiusScale.value = '1';
-    yaw.value = '25';
-    pitch.value = '-15';
+    orientation = initialOrientation();
+    rotationGizmo.cancel();
     lightAzimuth.value = '-29';
     lightElevation.value = '32';
     fastOverlay.checked = false;
@@ -382,9 +468,9 @@
     download.disabled = true;
     try {
       // Export is deliberately independent of the displayed preview DOM.
-      var svg = engine.render(snapshot.model, Object.assign({}, snapshot.options, { quality: 'export' }));
+      var svg = engine.render(localizedModel(snapshot.key, snapshot.model), Object.assign({}, snapshot.options, { quality: 'export' }));
       if (typeof svg !== 'string' || !/<svg[\s>]/i.test(svg)) {
-        throw new Error('渲染器没有返回有效的 SVG。');
+        throw uiError('error.invalidSVG');
       }
       var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', svg], { type: 'image/svg+xml;charset=utf-8' });
       url = URL.createObjectURL(blob);
@@ -394,9 +480,10 @@
       document.body.appendChild(link);
       link.click();
       error.hidden = true;
+      notices.delete(error);
       error.textContent = '';
     } catch (cause) {
-      error.textContent = 'SVG 导出失败：' + (cause && cause.message ? cause.message : '未知导出错误');
+      message(error, 'status.exportFailed', null, cause, 'error.exportUnknown');
       error.hidden = false;
     } finally {
       if (link) link.remove();
@@ -405,32 +492,6 @@
       download.disabled = importLoading || frame !== null || !lastRender;
     }
   });
-
-  preview.addEventListener('pointerdown', function (event) {
-    if (event.button !== 0 || drag) return;
-    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, yaw: Number(yaw.value), pitch: Number(pitch.value) };
-    preview.setPointerCapture(event.pointerId);
-    preview.classList.add('dragging');
-    scheduleRender();
-    event.preventDefault();
-  });
-  preview.addEventListener('pointermove', function (event) {
-    if (!drag || drag.id !== event.pointerId) return;
-    var angle = drag.yaw + (event.clientX - drag.x) * 0.45;
-    yaw.value = String(Math.round(((angle + 180) % 360 + 360) % 360 - 180));
-    pitch.value = String(Math.round(Math.max(-90, Math.min(90, drag.pitch + (event.clientY - drag.y) * 0.45))));
-    scheduleRender();
-  });
-  function endDrag(event) {
-    if (!drag || drag.id !== event.pointerId) return;
-    drag = null;
-    preview.classList.remove('dragging');
-    if (preview.hasPointerCapture(event.pointerId)) preview.releasePointerCapture(event.pointerId);
-    scheduleRender();
-  }
-  preview.addEventListener('pointerup', endDrag);
-  preview.addEventListener('pointercancel', endDrag);
-  preview.addEventListener('lostpointercapture', endDrag);
 
   scheduleRender();
 }());

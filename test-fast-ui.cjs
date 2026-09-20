@@ -1,20 +1,8 @@
 'use strict';
-const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const html=fs.readFileSync('index.html','utf8'),elements={},calls=[];
-for(const m of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)){
-  const tag=m[0];elements[m[1]]={value:tag.match(/\bvalue="([^"]*)"/)?.[1]||'',checked:/\bchecked\b/.test(tag),disabled:/\bdisabled\b/.test(tag),listeners:{},textContent:'',addEventListener(e,f){this.listeners[e]=f;},appendChild(o){if(!this.value)this.value=o.value;}};
-}
-for(const m of html.matchAll(/<select\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g))elements[m[1]].value=m[2].match(/<option\b[^>]*value="([^"]+)"/)?.[1]||'';
-elements.preview.classList={add(){},remove(){}};
-elements.preview.querySelector=()=>({hasAttribute:()=>true,setAttribute(){}});
-elements.preview.setPointerCapture=()=>{};elements.preview.hasPointerCapture=()=>false;elements.preview.releasePointerCapture=()=>{};
-let queued;const examples=require('./renderer.js').examples;
-vm.runInNewContext(fs.readFileSync('app.js','utf8'),{
-  document:{getElementById:id=>elements[id],body:{appendChild(){}},createElement:tag=>tag==='a'?{click(){},remove(){}}:{}},
-  window:{addEventListener(){},MolEngraver:{examples,render(model,options){calls.push(JSON.parse(JSON.stringify(options)));return '<svg></svg>';}}},
-  requestAnimationFrame:fn=>{queued=fn;return 1;},performance:{now:()=>0},Blob:class{},URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},setTimeout(){}
-});
-function flush(){assert(queued);const fn=queued;queued=null;fn();}
+const assert=require('node:assert/strict');
+const {makeUI,rotateRing}=require('./scripts/ui-harness.cjs');
+const ui=makeUI({browserLanguage:'zh-CN'}),{html,elements,flush}=ui;
+const calls={at:i=>ui.calls.at(i).options};
 function check(id,value){elements[id].checked=value;elements[id].listeners.change();flush();}
 flush();assert.equal(calls.at(-1).renderMode,'precise');
 check('point-light',true);assert.equal(calls.at(-1).lightType,'point');assert.equal(calls.at(-1).castShadows,true);
@@ -25,7 +13,15 @@ assert.match(elements['render-mode-status'].textContent,/快速覆盖.*已启用
 for(const mode of ['hatch','stipple','halftone']){
   elements['shading-mode'].value=mode;elements['shading-mode'].listeners.change();flush();
   assert.equal(calls.at(-1).renderMode,'fast');assert.equal(calls.at(-1).shadingMode,mode);
+  const engine=require('./renderer.js'),previous=calls.at(-1).orientation.slice();
+  ui.key('z','ArrowRight',true);flush();
+  const expected=rotateRing(previous,'z',Math.PI/12);
+  calls.at(-1).orientation.forEach((n,i)=>assert.ok(Math.abs(n-expected[i])<1e-12));
+  assert.equal(calls.at(-1).renderMode,'fast');assert.equal(calls.at(-1).shadingMode,mode);
+  assert(!Object.hasOwn(calls.at(-1),'shadingSize'),'discrete keyboard rotation does not leave lightweight shading active');
+  const orientation=calls.at(-1).orientation.slice();
   elements.download.listeners.click();assert.equal(calls.at(-1).quality,'export');assert.equal(calls.at(-1).renderMode,'fast');assert.equal(calls.at(-1).castShadows,false);
+  assert.deepEqual(Array.from(calls.at(-1).orientation),Array.from(orientation));
 }
 check('fast-overlay',false);
 assert.equal(calls.at(-1).renderMode,'precise');assert.equal(calls.at(-1).lightType,'point');assert.equal(calls.at(-1).castShadows,true);
@@ -51,17 +47,18 @@ for(const fast of [false,true]){
 assert(!/<p id="(?:xyz-hint|fast-overlay-hint)"/.test(html));
 assert.equal((html.match(/role="tooltip"/g)||[]).length,2);
 assert(!html.includes('shading-hint'),'no unnecessary help icon on shading title');
-assert.match(html.match(/<summary>光影([\s\S]*?)<\/summary>/)[1],/id="shading-enabled"/);
-const shadingGroup=[...html.matchAll(/<details\b[^>]*>([\s\S]*?)<\/details>/g)].map(m=>m[1]).find(s=>s.includes('<summary>光影'));
-for(const id of ['fast-overlay','shading-mode','light-azimuth','cast-shadows'])assert(shadingGroup.includes(`id="${id}"`));
-assert(!shadingGroup.includes('id="outline-width"'));
+const shadingTitle=ui.document.querySelector('[data-i18n="static.shading"]').parent;
+assert(shadingTitle.querySelector('#shading-enabled'));
+const shadingGroup=shadingTitle.parent;
+for(const id of ['fast-overlay','shading-mode','light-azimuth','cast-shadows'])assert(shadingGroup.querySelector('#'+id));
+assert(!shadingGroup.querySelector('#outline-width'));
 assert(html.indexOf('id="outline-width"')<html.indexOf('<details'),'outline is outside all option tabs');
 assert.equal((html.match(/<details\b/g)||[]).length,4);
 for(const id of ['shading-title-controls','color-title-controls','labels-title-controls']){
   let stopped=false;elements[id].listeners.click({stopPropagation(){stopped=true;}});assert(stopped);
 }
-assert.match(html.match(/<summary>配色([\s\S]*?)<\/summary>/)[1],/id="color-wash"/);
-assert.match(html.match(/<summary>元素标签([\s\S]*?)<\/summary>/)[1],/id="labels"/);
+assert(ui.document.querySelector('[data-i18n="static.colors"]').parent.querySelector('#color-wash'));
+assert(ui.document.querySelector('[data-i18n="static.labels"]').parent.querySelector('#labels'));
 check('color-wash',false);assert(elements['color-scheme'].disabled);check('color-wash',true);assert(!elements['color-scheme'].disabled);
 check('labels',true);assert(!elements['label-settings'].disabled);
 check('label-hydrogens',false);assert.equal(calls.at(-1).labelHydrogens,false);
