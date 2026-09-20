@@ -29,6 +29,8 @@
     .settings-group summary { padding: 12px 0; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
     .settings-group[open] summary { margin-bottom: 4px; }
     .control { margin-bottom: 15px; }
+    .mode-hint { margin: 0 0 15px; color: #5b636a; font-size: 12px; line-height: 1.6; }
+    #render-mode-status { color: #303b44; font-weight: 600; }
     .control-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; }
     output { color: #5b636a; font-variant-numeric: tabular-nums; white-space: nowrap; }
     select, button { font: inherit; }
@@ -64,12 +66,14 @@
     <section class="artboard" aria-label="分子图版">
       <div id="preview" aria-label="分子预览，可拖拽旋转；也可使用右侧角度滑块"><p>正在准备图版…</p></div>
       <div class="preview-caption"><p id="molecule-caption" class="molecule-caption"></p><p class="signature-caption" lang="en">Molecular Renaissance</p></div>
-      <div class="board-footer"><span id="model-info">900 × 700 · SVG</span><span id="timing" role="status">等待渲染</span><span>拖拽图版旋转</span></div>
+      <div class="board-footer"><span id="model-info">900 × 700 · SVG</span><span id="timing" role="status">等待渲染</span><span id="render-mode-status" role="status">精确渲染</span><span>拖拽图版旋转</span></div>
     </section>
     <aside aria-label="渲染控制">
       <h2>图版设置</h2>
       <div class="settings-body">
         <div class="control"><label class="control-heading" for="model">模型</label><select id="model" aria-label="示例模型"></select></div>
+        <label class="check"><input id="fast-overlay" type="checkbox" aria-describedby="fast-overlay-hint">快速覆盖</label>
+        <p id="fast-overlay-hint" class="mode-hint">正交投影 · 平行光 · 无投影阴影；球体按深度覆盖，键与原子局部处理</p>
         <details class="settings-group" name="settings" open>
           <summary>大小与视角</summary>
           <div class="control"><div class="control-heading"><label for="scale" title="SVG 单位/Å；只缩放几何，不缩放纹理">整图比例</label><output id="scale-value" for="scale">60</output></div><input id="scale" type="range" min="20" max="200" step="1" value="60"></div>

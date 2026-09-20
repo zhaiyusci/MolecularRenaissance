@@ -7,9 +7,10 @@ import { elementColor } from './palette.js';
 import { createCurveRenderer } from './strokes.js';
 import { trigSpans, intersectSpans, unionSpans, complementSpans, projectedCircle, projectedLine, type ProjectedCurve } from './hatch-curves.js';
 import { createSurfaceAtlas } from './surface-atlas.js';
+import { renderFastPainter } from './fast-painter.js';
 import { hatchCoverage } from './coverage.js';
 import { getBoundaries, getDots, getWash } from './runtime.js';
-export type { Atom, Bond, Molecule, Vec3, RenderOptions, RenderQuality, ShadingMode, ColorScheme, LightType } from './types.js';
+export type { Atom, Bond, Molecule, Vec3, RenderOptions, RenderQuality, ShadingMode, ColorScheme, LightType, RenderMode } from './types.js';
 export { examples } from './examples.js';
 export { covalentRadii, covalentRadiusSource } from './radii.js';
 export { depthAt } from './scene.js';
@@ -18,6 +19,7 @@ export { elementColor, elementPalette } from './palette.js';
 
 export function render(molecule: Molecule,options: RenderOptions={}): string {
   const o=normalizeOptions(options);
+  if(o.renderMode==='fast')return renderFastPainter(molecule,o);
   const prepared=prepareScene(molecule,o);
   const {spheres,cylinders,scene,scale,project,illumination:physicalIllumination,lightDirection,lightingFor,mayShadow,directionalShadows}=prepared;
   let atlas:ReturnType<typeof createSurfaceAtlas>|null=null;
@@ -159,7 +161,7 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
       const outline=layerPaths[id];if(!outline)return '';
       // Opaque paint is essential even with color wash disabled: white atoms
       // and white bonds must naturally cover labels in the rear layers.
-      const fill=`<path data-role="surface-fill" fill="${fillFor(s.kind==='sphere'?s.element:null)}" stroke="none" fill-rule="evenodd" d="${outline}"/>`;
+      const fill=`<path data-role="surface-fill" fill="${s.kind==='sphere'?fillFor(s.element):'#ffffff'}" stroke="none" fill-rule="evenodd" d="${outline}"/>`;
       return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${ownerDots.get(id)||''}${engraving(ownerEngraving.get(s)||'')}${ownerLabels.get(s)||''}</g>`;
     }).join('');
   }

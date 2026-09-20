@@ -14,6 +14,8 @@
   var pitch = byId('pitch');
   var lightAzimuth = byId('light-azimuth');
   var lightElevation = byId('light-elevation');
+  var fastOverlay = byId('fast-overlay');
+  var preciseLightSettings = null;
   var pointLight = byId('point-light');
   var castShadows = byId('cast-shadows');
   var shadowStrength = byId('shadow-strength');
@@ -74,6 +76,21 @@
   });
 
   function syncOutputs() {
+    // Remember precise-mode preferences only on entry; restore them on exit.
+    if (fastOverlay.checked) {
+      if (preciseLightSettings === null) {
+        preciseLightSettings = { pointLight: pointLight.checked, castShadows: castShadows.checked };
+      }
+      pointLight.checked = false;
+      castShadows.checked = false;
+    } else if (preciseLightSettings !== null) {
+      pointLight.checked = preciseLightSettings.pointLight;
+      castShadows.checked = preciseLightSettings.castShadows;
+      preciseLightSettings = null;
+    }
+    pointLight.disabled = fastOverlay.checked;
+    castShadows.disabled = fastOverlay.checked;
+    byId('render-mode-status').textContent = fastOverlay.checked ? '快速覆盖 · 已启用' : '精确渲染';
     byId('scale-value').textContent = scale.value;
     byId('atom-radius-scale-value').textContent = Number(atomRadiusScale.value).toFixed(2) + '×';
     byId('yaw-value').textContent = yaw.value + '°';
@@ -114,6 +131,7 @@
     try {
       var options = {
         quality: 'preview',
+        renderMode: fastOverlay.checked ? 'fast' : 'precise',
         width: 900,
         height: 700,
         scale: Number(scale.value),
@@ -184,7 +202,7 @@
   [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [model, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
+  [model, fastOverlay, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
@@ -220,6 +238,8 @@
     pitch.value = '-15';
     lightAzimuth.value = '-29';
     lightElevation.value = '32';
+    fastOverlay.checked = false;
+    preciseLightSettings = null;
     pointLight.checked = false;
     castShadows.checked = true;
     shadowStrength.value = '80';

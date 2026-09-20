@@ -17,8 +17,11 @@ export type ShadingMode = 'hatch' | 'stipple' | 'halftone';
 export type RenderQuality = 'preview' | 'export';
 export type ColorScheme = 'jmol' | 'rasmol' | 'pymol' | 'greenCarbon' | 'cyanCarbon' | 'magentaCarbon';
 export type LightType = 'directional' | 'point';
+export type RenderMode = 'precise' | 'fast';
 /** Angles are radians; stroke/label sizes are SVG units, not angstrom or print mm. */
 export interface RenderOptions {
+    /** Fast: painter-ordered spheres, local bond–atom masks; directional/no shadows only. */
+    renderMode?: RenderMode;
     width?: number;
     height?: number;
     yaw?: number;

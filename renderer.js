@@ -3,12 +3,12 @@ var MolEngraver = (function (exports) {
     'use strict';
 
     // Preserve arithmetic order: geometry tolerances are covered by numerical tests.
-    const add = (a, b) => a.map((v, i) => v + b[i]);
+    const add$1 = (a, b) => a.map((v, i) => v + b[i]);
     const sub = (a, b) => a.map((v, i) => v - b[i]);
-    const mul = (a, s) => a.map(v => v * s);
-    const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
-    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-    const norm = (a) => mul(a, 1 / Math.hypot(...a));
+    const mul$1 = (a, s) => a.map(v => v * s);
+    const dot$1 = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
+    const cross$1 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const norm = (a) => mul$1(a, 1 / Math.hypot(...a));
     function rotate(p, yaw, pitch) {
         const x = p[0] * Math.cos(yaw) + p[2] * Math.sin(yaw), z = -p[0] * Math.sin(yaw) + p[2] * Math.cos(yaw);
         return [x, p[1] * Math.cos(pitch) - z * Math.sin(pitch), p[1] * Math.sin(pitch) + z * Math.cos(pitch)];
@@ -50,6 +50,7 @@ var MolEngraver = (function (exports) {
     }
 
     const defaults = {
+        renderMode: 'precise',
         width: 900, height: 700, scale: 60, atomRadiusScale: 1, yaw: .25, pitch: -0.16, lightAzimuth: -29 * Math.PI / 180, lightElevation: 32 * Math.PI / 180,
         lightType: 'directional', lightDistance: 3, lightAttenuation: 0, castShadows: false, shadowStrength: .8, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
         variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', textureScale: 1, shadingBrightness: 0, shadingContrast: 1.2,
@@ -134,6 +135,10 @@ var MolEngraver = (function (exports) {
             throw new Error('lightDistance must be at least 1.2 scene radii');
         if (options.textureScale === undefined)
             o.density = Math.round(Math.max(8, Math.min(60, o.density)));
+        if (!['precise', 'fast'].includes(o.renderMode))
+            throw new Error('Invalid renderMode');
+        if (o.renderMode === 'fast' && (o.lightType !== 'directional' || o.castShadows))
+            throw new Error('Fast rendering requires directional light and castShadows=false');
         return o;
     }
 
@@ -277,7 +282,7 @@ var MolEngraver = (function (exports) {
         for (const a of molecule.atoms)
             if (!Array.isArray(a.position) || a.position.length !== 3 || !a.position.every(Number.isFinite))
                 throw new Error('Invalid atom position');
-        const center = mul(molecule.atoms.reduce((s, a) => add(s, a.position), [0, 0, 0]), 1 / molecule.atoms.length);
+        const center = mul$1(molecule.atoms.reduce((s, a) => add$1(s, a.position), [0, 0, 0]), 1 / molecule.atoms.length);
         const spheres = molecule.atoms.map(a => ({ kind: 'sphere', c: rotate(sub(a.position, center), o.yaw, o.pitch), r: atomRadius(a) * o.atomRadiusScale, element: a.element }));
         const cylinders = molecule.bonds.map(b => {
             if (!Array.isArray(b) || b.length !== 2 || !b.every(i => Number.isInteger(i) && spheres[i]))
@@ -285,7 +290,7 @@ var MolEngraver = (function (exports) {
             const a = spheres[b[0]].c, end = spheres[b[1]].c, v = sub(end, a), length = Math.hypot(...v);
             if (length < 1e-8)
                 throw new Error('Zero length bond');
-            return { kind: 'cylinder', a, u: mul(v, 1 / length), length, r: .115 };
+            return { kind: 'cylinder', a, u: mul$1(v, 1 / length), length, r: .115 };
         });
         const scene = [...spheres, ...cylinders];
         const lo = [0, 1].map(i => Math.min(...spheres.map(s => s.c[i] - s.r))), hi = [0, 1].map(i => Math.max(...spheres.map(s => s.c[i] + s.r)));
@@ -295,7 +300,7 @@ var MolEngraver = (function (exports) {
         const project = p => [(p[0] - cx) * scale + o.width / 2, o.height / 2 - 12 - (p[1] - cy) * scale];
         const light = [Math.sin(o.lightAzimuth) * Math.cos(o.lightElevation), Math.sin(o.lightElevation), Math.cos(o.lightAzimuth) * Math.cos(o.lightElevation)];
         const sceneRadius = Math.max(...spheres.map(s => Math.hypot(...s.c) + s.r));
-        const lightPosition = mul(light, o.lightDistance * sceneRadius);
+        const lightPosition = mul$1(light, o.lightDistance * sceneRadius);
         const shadowBias = Math.max(1e-9, Math.min(sceneRadius * 1e-6, ...scene.map(s => s.r * 1e-4)));
         const traceShadows = o.castShadows && o.shadowStrength > 0 && o.shadingSize !== 0;
         // Share the evaluator so broad-phase specialization cannot drift from the
@@ -304,7 +309,7 @@ var MolEngraver = (function (exports) {
             const point = o.lightType === 'point', delta = point ? sub(lightPosition, p) : light;
             const direction = point ? norm(delta) : light;
             const distance = point ? Math.hypot(...delta) : Infinity;
-            const facing = dot(n, direction);
+            const facing = dot$1(n, direction);
             let lit = facing;
             if (point && o.lightAttenuation > 0) {
                 // Soft inverse-square falloff in model units, independent of screen zoom.
@@ -360,8 +365,8 @@ var MolEngraver = (function (exports) {
         return typeof module !== 'undefined' && module.exports ? require('./dots.js') : root.MolDots;
     }
 
-    const TAU$1 = 2 * Math.PI;
-    const fmt$1 = (p) => p.slice(0, 2).map(v => String(Number(v.toFixed(4)))).join(' ');
+    const TAU$2 = 2 * Math.PI;
+    const fmt$2 = (p) => p.slice(0, 2).map(v => String(Number(v.toFixed(4)))).join(' ');
     /** Intervals in normalized circle parameter where k+a*cos+b*sin < limit. */
     function trigSpans(k, a, b, limit) {
         const radius = Math.hypot(a, b), cuts = [0, 1];
@@ -374,12 +379,12 @@ var MolEngraver = (function (exports) {
         if (Math.abs(limit - k) < radius) {
             const phase = Math.atan2(b, a), delta = Math.acos((limit - k) / radius);
             for (const t of [phase - delta, phase + delta])
-                cuts.push(((t / TAU$1) % 1 + 1) % 1);
+                cuts.push(((t / TAU$2) % 1 + 1) % 1);
         }
         cuts.sort((x, y) => x - y);
         const result = [];
         for (let i = 1; i < cuts.length; i++) {
-            const x = cuts[i - 1], y = cuts[i], t = (x + y) / 2 * TAU$1;
+            const x = cuts[i - 1], y = cuts[i], t = (x + y) / 2 * TAU$2;
             if (y > x && k + a * Math.cos(t) + b * Math.sin(t) < limit)
                 result.push([x, y]);
         }
@@ -426,14 +431,14 @@ var MolEngraver = (function (exports) {
     function projectedCircle(project, center, u, v) {
         const c = project(center), pu = project(center.map((x, i) => x + u[i])), pv = project(center.map((x, i) => x + v[i]));
         const U = pu.map((x, i) => x - c[i]), V = pv.map((x, i) => x - c[i]);
-        const point = (t) => { const a = t * TAU$1; return c.map((x, i) => x + U[i] * Math.cos(a) + V[i] * Math.sin(a)); };
-        const tangent = (t) => { const a = t * TAU$1; return U.map((x, i) => TAU$1 * (-x * Math.sin(a) + V[i] * Math.cos(a))); };
+        const point = (t) => { const a = t * TAU$2; return c.map((x, i) => x + U[i] * Math.cos(a) + V[i] * Math.sin(a)); };
+        const tangent = (t) => { const a = t * TAU$2; return U.map((x, i) => TAU$2 * (-x * Math.sin(a) + V[i] * Math.cos(a))); };
         return { point, tangent, clip: region => region.clipEllipse(c, U, V), path: (a, b) => {
-                const count = Math.max(1, Math.ceil(Math.abs(b - a) * 8)), step = (b - a) / count, k = 4 / 3 * Math.tan(step * TAU$1 / 4) / TAU$1;
-                let path = 'M' + fmt$1(point(a));
+                const count = Math.max(1, Math.ceil(Math.abs(b - a) * 8)), step = (b - a) / count, k = 4 / 3 * Math.tan(step * TAU$2 / 4) / TAU$2;
+                let path = 'M' + fmt$2(point(a));
                 for (let i = 0; i < count; i++) {
                     const t0 = a + i * step, t1 = i === count - 1 ? b : a + (i + 1) * step, p = point(t0), q = point(t1), d0 = tangent(t0), d1 = tangent(t1);
-                    path += 'C' + fmt$1(p.map((x, j) => x + k * d0[j])) + ' ' + fmt$1(q.map((x, j) => x - k * d1[j])) + ' ' + fmt$1(q);
+                    path += 'C' + fmt$2(p.map((x, j) => x + k * d0[j])) + ' ' + fmt$2(q.map((x, j) => x - k * d1[j])) + ' ' + fmt$2(q);
                 }
                 return path;
             } };
@@ -441,7 +446,7 @@ var MolEngraver = (function (exports) {
     function projectedLine(project, a, b) {
         const p = project(a), q = project(b), d = q.map((x, i) => x - p[i]);
         const point = (t) => p.map((x, i) => x + t * d[i]);
-        return { point, tangent: () => d, clip: region => region.clipLine(p, q), path: (a, b) => 'M' + fmt$1(point(a)) + 'L' + fmt$1(point(b)) };
+        return { point, tangent: () => d, clip: region => region.clipLine(p, q), path: (a, b) => 'M' + fmt$2(point(a)) + 'L' + fmt$2(point(b)) };
     }
 
     function engravingWidth(base, illumination) {
@@ -661,7 +666,48 @@ var MolEngraver = (function (exports) {
     }
 
     const LEVELS = 16;
-    const fmt = (n) => String(Number(n.toFixed(4)));
+    const fmt$1 = (n) => String(Number(n.toFixed(4)));
+    /** Disk radius / lattice pitch for a desired UNION area (not summed disk area). */
+    function halftoneRadiusRatio(coverage) {
+        if (coverage <= Math.PI / 4)
+            return Math.sqrt(Math.max(0, coverage) / Math.PI);
+        if (coverage >= 1)
+            return Math.SQRT1_2;
+        let lo = .5, hi = Math.SQRT1_2;
+        for (let k = 0; k < 24; k++) {
+            const r = (lo + hi) / 2, r2 = r * r;
+            const area = Math.PI * r2 - 4 * (r2 * Math.acos(.5 / r) - .5 * Math.sqrt(r2 - .25));
+            if (area < coverage)
+                lo = r;
+            else
+                hi = r;
+        }
+        return (lo + hi) / 2;
+    }
+    /** Exact projected union silhouette, including closed-cylinder caps. All parts
+     * in this clipPath are unioned; tone sampling handles front-surface ownership. */
+    function projectedSilhouette(scene, project, scale) {
+        const parts = [];
+        for (const s of scene) {
+            const r = s.r * scale;
+            if (s.kind === 'sphere') {
+                const [x, y] = project(s.c);
+                parts.push(`<circle cx="${fmt$1(x)}" cy="${fmt$1(y)}" r="${fmt$1(r)}"/>`);
+                continue;
+            }
+            const a = project(s.a), b = project(s.a.map((v, i) => v + s.u[i] * s.length));
+            const dx = b[0] - a[0], dy = b[1] - a[1], length = Math.hypot(dx, dy);
+            const vx = length > 1e-12 ? -dy / length : 1, vy = length > 1e-12 ? dx / length : 0;
+            const angle = Math.atan2(vy, vx) * 180 / Math.PI;
+            for (const p of [a, b])
+                parts.push(`<ellipse cx="${fmt$1(p[0])}" cy="${fmt$1(p[1])}" rx="${fmt$1(r)}" ry="${fmt$1(r * Math.abs(s.u[2]))}" transform="rotate(${fmt$1(angle)} ${fmt$1(p[0])} ${fmt$1(p[1])})"/>`);
+            if (length > 1e-12) {
+                const p = [[a[0] + r * vx, a[1] + r * vy], [b[0] + r * vx, b[1] + r * vy], [b[0] - r * vx, b[1] - r * vy], [a[0] - r * vx, a[1] - r * vy]];
+                parts.push(`<path d="M${p.map(v => v.map(fmt$1).join(' ')).join('L')}Z"/>`);
+            }
+        }
+        return parts.join('');
+    }
     /** Marching-squares contours of a cumulative tone region. Shared grid edges
      * have shared vertices. Evenodd filling preserves holes/disconnected islands. */
     function contour(values, nx, ny, x0, y0, step, threshold, refine) {
@@ -726,7 +772,7 @@ var MolEngraver = (function (exports) {
                 return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-9;
             });
             if (simple.length >= 3)
-                paths.push('M' + simple.map(p => p.map(fmt).join(' ')).join('L') + 'Z');
+                paths.push('M' + simple.map(p => p.map(fmt$1).join(' ')).join('L') + 'Z');
         }
         return paths.join('');
     }
@@ -772,8 +818,72 @@ var MolEngraver = (function (exports) {
         } : undefined;
         return thresholds.map(t => maximum < t ? '' : contour(values, nx, ny, x0, y0, step, t, refineEdge));
     }
+    /** Paint precomputed geometric contours with a shared aligned pattern palette. */
+    function buildSurfacePatterns(o, emitSurface) {
+        const [left, top, right, bottom] = o.bounds;
+        if (!(right > left && bottom > top))
+            return '';
+        const used = new Set();
+        let hash1 = 2166136261, hash2 = 5381;
+        const hash = (text) => { for (let i = 0; i < text.length; i++) {
+            const n = text.charCodeAt(i);
+            hash1 = Math.imul(hash1 ^ n, 16777619);
+            hash2 = Math.imul(hash2, 33) ^ n;
+        } };
+        hash(o.bounds.join(',') + ',' + o.pitch + o.silhouette);
+        function collect(layer) {
+            hash(layer.clip);
+            layer.tones.forEach((path, i) => { hash(path); if (path && path !== layer.tones[i + 1])
+                used.add(i + 1); });
+            if (layer.shadow)
+                collect(layer.shadow);
+        }
+        o.layers.forEach(collect);
+        if (!used.size)
+            return '';
+        const prefix = 'mp-screen-' + (hash1 >>> 0).toString(16) + (hash2 >>> 0).toString(16);
+        const defs = [`<clipPath id="${prefix}-surface" clipPathUnits="userSpaceOnUse">${o.silhouette}</clipPath>`];
+        for (const level of [...used].sort((a, b) => a - b)) {
+            const ink = level / LEVELS, r = o.pitch * halftoneRadiusRatio(ink), dots = [], wrap = r > o.pitch / 2 ? 1 : 0;
+            for (let y = -wrap; y <= wrap; y++)
+                for (let x = -wrap; x <= wrap; x++)
+                    dots.push(`<circle cx="${fmt$1((x + .5) * o.pitch)}" cy="${fmt$1((y + .5) * o.pitch)}" r="${fmt$1(r)}"/>`);
+            defs.push(`<pattern id="${prefix}-${level}" data-coverage="${ink}" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" x="0" y="0" width="${fmt$1(o.pitch)}" height="${fmt$1(o.pitch)}" patternTransform="rotate(45)" overflow="hidden"><g fill="#161616" stroke="none">${dots.join('')}</g></pattern>`);
+        }
+        function clip(id, path) { defs.push(`<clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path clip-rule="evenodd" fill-rule="evenodd" d="${path}"/></clipPath>`); }
+        function paint(layer, index) {
+            const [left, top, right, bottom] = layer.bounds || o.bounds;
+            let body = '';
+            layer.tones.forEach((path, i) => {
+                if (!path || path === layer.tones[i + 1])
+                    return;
+                const id = prefix + '-tone-' + index + '-' + i;
+                clip(id, path);
+                body += `<rect data-tone-level="${i + 1}" x="${fmt$1(left)}" y="${fmt$1(top)}" width="${fmt$1(right - left)}" height="${fmt$1(bottom - top)}" fill="url(#${prefix}-${i + 1})" clip-path="url(#${id})"/>`;
+            });
+            if (layer.shadow)
+                body += paint(layer.shadow, index + 's');
+            if (body && layer.clip) {
+                const id = prefix + '-face-' + index;
+                clip(id, layer.clip);
+                body = `<g clip-path="url(#${id})">${body}</g>`;
+            }
+            return body;
+        }
+        if (emitSurface) {
+            for (const [i, layer] of o.layers.entries()) {
+                if (layer.sourceId === undefined || !Number.isSafeInteger(layer.sourceId) || layer.sourceId < 0)
+                    throw new Error('Per-surface patterns require a primitive sourceId');
+                const body = paint(layer, String(i));
+                emitSurface(layer.sourceId, `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${LEVELS}" stroke="none"><g clip-path="url(#${prefix}-surface)">${body}</g></g>`);
+            }
+            return `<defs>${defs.join('')}</defs>`;
+        }
+        const body = o.layers.map((layer, i) => paint(layer, String(i))).join('');
+        return `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${LEVELS}" stroke="none"><defs>${defs.join('')}</defs><g clip-path="url(#${prefix}-surface)">${body}</g></g>`;
+    }
 
-    const TAU = 2 * Math.PI, EPS = Number.EPSILON;
+    const TAU$1 = 2 * Math.PI, EPS = Number.EPSILON;
     function overlaps(a, b) {
         return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
     }
@@ -902,7 +1012,7 @@ var MolEngraver = (function (exports) {
                     if (t < -32 * EPS || t > 1 + 32 * EPS)
                         continue;
                     const f = Math.max(0, Math.min(1, t));
-                    let angle = Math.atan2(p[1] + f * dy, p[0] + f * dx) / TAU;
+                    let angle = Math.atan2(p[1] + f * dy, p[0] + f * dx) / TAU$1;
                     if (angle < 0)
                         angle += 1;
                     cuts.push(angle);
@@ -918,7 +1028,7 @@ var MolEngraver = (function (exports) {
             if (unsafe)
                 return null;
             return intervals(cuts, t => {
-                const a = TAU * t, co = Math.cos(a), si = Math.sin(a);
+                const a = TAU$1 * t, co = Math.cos(a), si = Math.sin(a);
                 return [c[0] + u[0] * co + v[0] * si, c[1] + u[1] * co + v[1] * si];
             }, contains, accept);
         }
@@ -983,13 +1093,13 @@ var MolEngraver = (function (exports) {
                     if (amplitude > 0 && Math.abs(z0) <= amplitude) {
                         const phase = Math.atan2(zs, zc), alpha = Math.acos(Math.max(-1, Math.min(1, -z0 / amplitude)));
                         for (const angle of [phase - alpha, phase + alpha]) {
-                            const t = angle / TAU;
+                            const t = angle / TAU$1;
                             cuts.push(t - Math.floor(t));
                         }
                     }
                     // The height index contains only front-lift intersections. Explicit
                     // silhouette cuts prevent an uncut back arc from becoming visible.
-                    return clipEllipse(c, eu, ev, bins[bin(h)], cuts, t => z0 + zc * Math.cos(TAU * t) + zs * Math.sin(TAU * t) >= 0);
+                    return clipEllipse(c, eu, ev, bins[bin(h)], cuts, t => z0 + zc * Math.cos(TAU$1 * t) + zs * Math.sin(TAU$1 * t) >= 0);
                 };
             },
             clipLine(a, b) {
@@ -1142,6 +1252,431 @@ var MolEngraver = (function (exports) {
         return { visible, shadow, lightingFor, stats };
     }
 
+    const TAU = 2 * Math.PI;
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const mul = (a, k) => a.map(x => x * k);
+    const add = (a, b) => a.map((x, i) => x + b[i]);
+    const cross = (a, b) => [
+        a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0],
+    ];
+    const positiveAngle = (t) => ((t % TAU) + TAU) % TAU;
+    const clamp$1 = (x) => Math.max(-1, Math.min(1, x));
+    const fmt = (p) => `${p[0].toFixed(4)} ${p[1].toFixed(4)}`;
+    /** Affine (orthographic) projection preserves these circle/ellipse controls. */
+    function ellipse(project, center, u, v) {
+        const c = project(center), pu = project(add(center, u)), pv = project(add(center, v));
+        const U = [pu[0] - c[0], pu[1] - c[1]], V = [pv[0] - c[0], pv[1] - c[1]];
+        return {
+            at: t => [c[0] + U[0] * Math.cos(t) + V[0] * Math.sin(t),
+                c[1] + U[1] * Math.cos(t) + V[1] * Math.sin(t)],
+            tangent: t => [-U[0] * Math.sin(t) + V[0] * Math.cos(t),
+                -U[1] * Math.sin(t) + V[1] * Math.cos(t)],
+        };
+    }
+    /** Optional anchors make adjoining carriers use identical intersection points. */
+    function arc(e, start, end, first, last) {
+        const count = Math.max(1, Math.ceil(Math.abs(end - start) / (Math.PI / 4)));
+        const step = (end - start) / count, k = 4 / 3 * Math.tan(step / 4);
+        let out = '', p = first ?? e.at(start);
+        for (let i = 0; i < count; i++) {
+            const a = start + i * step, b = i === count - 1 ? end : start + (i + 1) * step;
+            const q = i === count - 1 && last ? last : e.at(b);
+            const da = e.tangent(a), db = e.tangent(b);
+            out += `C${fmt([p[0] + k * da[0], p[1] + k * da[1]])} ${fmt([q[0] - k * db[0], q[1] - k * db[1]])} ${fmt(q)}`;
+            p = q;
+        }
+        return out;
+    }
+    function full(e) {
+        const p = e.at(0);
+        return `M${fmt(p)}${arc(e, 0, TAU, p, p)}Z`;
+    }
+    /**
+     * Closed analytic directional-light tone boundaries, for SVG fill-rule="evenodd".
+     * Coordinates/normals are in view space (+z faces the viewer); project must be
+     * affine/orthographic. Occlusion is deliberately left to the caller's clip path.
+     * Circular arcs use standard cubic approximations spanning at most pi/4.
+     * A zero/nonfinite light or NaN threshold produces an empty path.
+     */
+    function directionalTonePath(s, project, light, threshold) {
+        const lightLength = Math.hypot(light[0], light[1], light[2]);
+        if (!(lightLength > 0) || !Number.isFinite(lightLength) || Number.isNaN(threshold) || !(s.r > 0))
+            return '';
+        const L = mul(light, 1 / lightLength), T = threshold;
+        if (s.kind === 'sphere') {
+            if (T <= -1)
+                return '';
+            const rim = ellipse(project, s.c, [s.r, 0, 0], [0, s.r, 0]);
+            if (T >= 1)
+                return full(rim);
+            const h = Math.hypot(L[0], L[1]), q = Math.sqrt((1 - T) * (1 + T));
+            const e = h > 0 ? [-L[1] / h, L[0] / h, 0] : [1, 0, 0];
+            const f = cross(L, e);
+            const iso = ellipse(project, add(s.c, mul(L, s.r * T)), mul(e, s.r * q), mul(f, s.r * q));
+            // Axial T=0 has coincident rim/isocircle: do not XOR the rim with itself.
+            if (h === 0) {
+                if (L[2] > 0)
+                    return T <= 0 ? '' : full(rim) + full(iso);
+                return T >= 0 ? full(rim) : full(iso);
+            }
+            if (Math.abs(T) < h) {
+                const phi = Math.atan2(L[1], L[0]), alpha = Math.acos(clamp$1(T / h));
+                // This increasing equator arc contains phi+pi, the darkest rim point.
+                const a = phi + alpha, b = phi + TAU - alpha;
+                const n0 = [Math.cos(a), Math.sin(a), 0], n1 = [Math.cos(b), Math.sin(b), 0];
+                const p0 = project(add(s.c, mul(n0, s.r))), p1 = project(add(s.c, mul(n1, s.r)));
+                // n dot e/f = q cos/sin(t); the center T*L is perpendicular to e/f.
+                const t0 = Math.atan2(dot(n1, f), dot(n1, e));
+                const t1 = Math.atan2(dot(n0, f), dot(n0, e));
+                let sweep = positiveAngle(t1 - t0);
+                const mid = t0 + sweep / 2;
+                if (T * L[2] + q * (e[2] * Math.cos(mid) + f[2] * Math.sin(mid)) < 0)
+                    sweep -= TAU;
+                return `M${fmt(p0)}${arc(rim, a, b, p0, p1)}${arc(iso, t0, t0 + sweep, p1, p0)}Z`;
+            }
+            // No transverse crossings (including tangency): each entire boundary is
+            // either eligible or hidden. Center z decides frontness here; using it
+            // avoids cancellation in min-z at a tangent. Evenodd gives holes or caps.
+            let out = T >= h ? full(rim) : '';
+            if (T * L[2] > 0)
+                out += full(iso);
+            return out;
+        }
+        // Primitive cylinder axes are unit vectors, as required by the scene model.
+        const u = s.u, h = Math.hypot(u[0], u[1]);
+        const e = h > 0 ? [-u[1] / h, u[0] / h, 0] : [1, 0, 0];
+        const f = cross(u, e), b = add(s.a, mul(u, s.length));
+        const ca = ellipse(project, s.a, mul(e, s.r), mul(f, s.r));
+        const cb = ellipse(project, b, mul(e, s.r), mul(f, s.r));
+        let out = '';
+        if (h > 0 && s.length > 0) {
+            // f.z=h, so precisely theta in [0,pi] faces the viewer.
+            const A = dot(e, L), B = dot(f, L), R = Math.hypot(A, B);
+            const cuts = [0, Math.PI];
+            if (R > 0 && Math.abs(T) < R) {
+                const phase = Math.atan2(B, A), delta = Math.acos(clamp$1(T / R));
+                for (const base of [phase - delta, phase + delta]) {
+                    const t = positiveAngle(base);
+                    if (t > 0 && t < Math.PI)
+                        cuts.push(t);
+                }
+            }
+            // A tangent root does not change interval eligibility and needs no split.
+            cuts.sort((x, y) => x - y);
+            for (let i = 1; i < cuts.length; i++) {
+                const t0 = cuts[i - 1], t1 = cuts[i], mid = (t0 + t1) / 2;
+                if (!(t1 > t0) || A * Math.cos(mid) + B * Math.sin(mid) > T)
+                    continue;
+                // At an exact minimum, only a generator is eligible (zero filled area).
+                if (R > 0 && T <= -R)
+                    continue;
+                const a0 = ca.at(t0), b0 = cb.at(t0), b1 = cb.at(t1), a1 = ca.at(t1);
+                out += `M${fmt(a0)}L${fmt(b0)}${arc(cb, t0, t1, b0, b1)}L${fmt(a1)}${arc(ca, t1, t0, a1, a0)}Z`;
+            }
+        }
+        // End-on cylinders intentionally contribute only the visible planar cap.
+        const axialLight = dot(u, L);
+        if (u[2] > 0 && axialLight <= T)
+            out += full(cb);
+        if (u[2] < 0 && -axialLight <= T)
+            out += full(ca);
+        return out;
+    }
+
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    function hash(x, y, salt) {
+        let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(salt, 1274126177);
+        h = Math.imul(h ^ (h >>> 13), 1274126177);
+        return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
+    function buildDots(scene, depthAt, project, scale, illumination, options, regions = null, referenceCoverage, surfaces) {
+        const o = { shadingMode: 'stipple', dotSpacing: 2.5, dotSize: .5, dotContrast: 1.2, ...options };
+        if (!['stipple', 'halftone'].includes(o.shadingMode))
+            throw new Error('Invalid dot mode');
+        if (!Number.isFinite(o.dotSpacing) || o.dotSpacing < .3 || o.dotSpacing > 19 || !Number.isFinite(o.dotSize) || o.dotSize < 0 || o.dotSize > 4 || !Number.isFinite(o.dotContrast) || o.dotContrast < .5 || o.dotContrast > 2.5)
+            throw new Error('Invalid dot settings');
+        if (!(scale > 0) || !Number.isFinite(scale))
+            throw new Error('Invalid scale');
+        if (o.dotSize === 0 || scene.length === 0)
+            return '';
+        const origin = project([0, 0, 0]), g = o.dotSpacing;
+        const maxRadius = o.dotSize;
+        const fineScale = Math.min(1, o.dotSize), minRadius = .03 * fineScale;
+        const shapes = scene.map((s, id) => {
+            const a = project(s.kind === 'sphere' ? s.c : s.a);
+            const b = s.kind === 'sphere' ? a : project(s.a.map((v, i) => v + s.u[i] * s.length));
+            const r = s.r * scale;
+            return { s, id, b: [Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r, Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r] };
+        });
+        const minX = Math.min(...shapes.map(s => s.b[0])), minY = Math.min(...shapes.map(s => s.b[1]));
+        const maxX = Math.max(...shapes.map(s => s.b[2])), maxY = Math.max(...shapes.map(s => s.b[3]));
+        function hit(x, y, queryRadius = maxRadius * 1.03) {
+            const wx = (x - origin[0]) / scale, wy = (origin[1] - y) / scale;
+            if (regions && o.shadingMode !== 'halftone') {
+                // Visibility/occlusion is already solved. The one surface intersection
+                // below only reconstructs this known owner's position for its normal.
+                const region = regions.query(x, y, queryRadius);
+                if (!region)
+                    return null;
+                const s = scene[region.id], z = depthAt(s, wx, wy);
+                return Number.isFinite(z) ? { id: region.id, s, p: [wx, wy, z], clearance: region.clearance } : null;
+            }
+            let best = -Infinity, item = null;
+            for (const shape of shapes) {
+                const b = shape.b;
+                if (x < b[0] || y < b[1] || x > b[2] || y > b[3])
+                    continue;
+                const z = depthAt(shape.s, wx, wy);
+                if (Number.isFinite(z) && z > best) {
+                    best = z;
+                    item = shape;
+                }
+            }
+            return item ? { id: item.id, s: item.s, p: [wx, wy, best] } : null;
+        }
+        function normal(h) {
+            const s = h.s, p = h.p;
+            if (s.kind === 'sphere')
+                return p.map((v, i) => (v - s.c[i]) / s.r);
+            const q = p.map((v, i) => v - s.a[i]), t = q.reduce((sum, v, i) => sum + v * s.u[i], 0);
+            if (t < 1e-7)
+                return s.u.map(v => -v);
+            if (t > s.length - 1e-7)
+                return s.u.slice();
+            const radial = q.map((v, i) => v - t * s.u[i]), length = Math.hypot(...radial);
+            return length ? radial.map(v => v / length) : [0, 0, 1];
+        }
+        const dirs = Array.from({ length: 16 }, (_, i) => [Math.cos(i * Math.PI / 8), Math.sin(i * Math.PI / 8)]);
+        function safeRadius(x, y, r, owner) {
+            // The whole sampled disk must stay on the same visible primitive, not
+            // merely its center. Shrink at silhouettes and occlusion boundaries.
+            // Two rings are a numerical footprint test, not an exact curve boolean.
+            function fits(radius) {
+                for (const k of [.5, 1])
+                    for (const d of dirs) {
+                        const h = hit(x + d[0] * radius * k, y + d[1] * radius * k);
+                        if (!h || h.id !== owner)
+                            return false;
+                    }
+                return true;
+            }
+            if (fits(r))
+                return r;
+            let lo = 0, hi = r;
+            for (let i = 0; i < 9; i++) {
+                const mid = (lo + hi) / 2;
+                if (fits(mid))
+                    lo = mid;
+                else
+                    hi = mid;
+            }
+            return lo;
+        }
+        // Normalize the MEAN, never the spatial pattern of the reference hatches.
+        // Local tone depends only on smooth illumination, not line direction,
+        // projected crowding, or the thresholds that turn hatch families on/off.
+        const exponent = referenceCoverage ? o.dotContrast / 1.2 : o.dotContrast;
+        const smoothTone = (lit) => Math.pow(clamp((1 - lit) / 2, 0, 1), exponent);
+        const surfaceIllumination = surfaces?.illumination;
+        const lightAt = (h, n) => surfaceIllumination ? surfaceIllumination(h.s, n, h.p) : illumination(n, h.p);
+        let toneGain = 1;
+        if (referenceCoverage) {
+            const left = o.width === undefined ? minX : Math.max(0, minX), right = o.width === undefined ? maxX : Math.min(o.width, maxX);
+            const top = o.height === undefined ? minY : Math.max(0, minY), bottom = o.height === undefined ? maxY : Math.min(o.height, maxY);
+            const step = Math.max(2, (right - left) / 128, (bottom - top) / 128), tones = [];
+            let target = 0;
+            for (let y = top + .61 * step; y < bottom; y += step)
+                for (let x = left + .37 * step; x < right; x += step) {
+                    const h = hit(x, y);
+                    if (!h)
+                        continue;
+                    const n = normal(h), lit = clamp(lightAt(h, n), -1, 1);
+                    tones.push(smoothTone(lit));
+                    target += clamp(referenceCoverage(h.s, n, lit), 0, 1);
+                }
+            const total = (gain) => tones.reduce((sum, t) => sum + Math.min(1, gain * t), 0);
+            if (target === 0)
+                toneGain = 0;
+            else if (tones.length) {
+                let lo = 0, hi = 1;
+                while (hi < 1048576 && total(hi) < target)
+                    hi *= 2;
+                for (let i = 0; i < 24; i++) {
+                    const mid = (lo + hi) / 2;
+                    if (total(mid) < target)
+                        lo = mid;
+                    else
+                        hi = mid;
+                }
+                toneGain = (lo + hi) / 2;
+            }
+        }
+        function coverage(h) {
+            const lit = clamp(lightAt(h, normal(h)), -1, 1);
+            return clamp(toneGain * smoothTone(lit), 0, 1);
+        }
+        if (o.shadingMode === 'halftone') {
+            if (toneGain === 0)
+                return '';
+            const bounds = [
+                o.width === undefined ? minX : Math.max(0, minX), o.height === undefined ? minY : Math.max(0, minY),
+                o.width === undefined ? maxX : Math.min(o.width, maxX), o.height === undefined ? maxY : Math.min(o.height, maxY)
+            ];
+            const layers = [];
+            const thresholds = Array.from({ length: 16 }, (_, i) => (i + .5) / 16), brightness = o.shadingBrightness ?? 0;
+            const step = o.quality === 'preview' ? 2 : 1;
+            for (const { s, id, b } of shapes) {
+                if (surfaces?.paths && !surfaces.paths[id])
+                    continue;
+                const visiblePath = surfaces?.paths?.[id] || '';
+                const box = [Math.max(bounds[0], b[0]), Math.max(bounds[1], b[1]), Math.min(bounds[2], b[2]), Math.min(bounds[3], b[3])];
+                // Exact visible paths' Bezier control hulls conservatively bound the
+                // local work. Hidden surfaces and hidden parts need no tone sampling.
+                if (visiblePath) {
+                    const coords = (visiblePath.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi) || []).map(Number);
+                    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+                    for (let i = 0; i < coords.length; i += 2) {
+                        x0 = Math.min(x0, coords[i]);
+                        x1 = Math.max(x1, coords[i]);
+                        y0 = Math.min(y0, coords[i + 1]);
+                        y1 = Math.max(y1, coords[i + 1]);
+                    }
+                    box[0] = Math.max(box[0], x0);
+                    box[1] = Math.max(box[1], y0);
+                    box[2] = Math.min(box[2], x1);
+                    box[3] = Math.min(box[3], y1);
+                }
+                if (!(box[2] > box[0] && box[3] > box[1]))
+                    continue;
+                const onSurface = (x, y) => {
+                    if (!visiblePath) {
+                        const h = hit(x, y);
+                        return h?.id === id ? h : null;
+                    }
+                    const wx = (x - origin[0]) / scale, wy = (origin[1] - y) / scale, z = depthAt(s, wx, wy);
+                    return Number.isFinite(z) ? { id, s, p: [wx, wy, z] } : null;
+                };
+                if (surfaces?.light && visiblePath) {
+                    const light = surfaces.light;
+                    const threshold = (ink) => 1 - 2 * Math.pow(ink / toneGain, 1 / exponent) - 2 * brightness;
+                    const layer = { sourceId: id, clip: visiblePath, bounds: box, tones: thresholds.map(t => t > toneGain ? '' : directionalTonePath(s, project, light, threshold(t))) };
+                    // Only one binary shadow contour is sampled locally. Its shaded tone
+                    // boundaries remain analytic, with the shadow attenuation inverted.
+                    if (surfaces.shadowed && surfaces.mayShadow?.[id]) {
+                        const shadowed = surfaces.shadowed;
+                        const mask = sampledTonePaths(box, (x, y) => { const h = onSurface(x, y); return h && shadowed(id, normal(h), h.p) ? 1 : 0; }, step, [.5], true)[0];
+                        if (mask) {
+                            const strength = o.shadowStrength ?? .8;
+                            const constant = clamp(toneGain * smoothTone(clamp(-1 + 2 * brightness, -1, 1)), 0, 1);
+                            layer.shadow = { sourceId: id, clip: mask, bounds: box, tones: thresholds.map(t => {
+                                    if (strength >= 1)
+                                        return constant >= t ? visiblePath : '';
+                                    return t > toneGain ? '' : directionalTonePath(s, project, light, (threshold(t) + 1) / (1 - strength) - 1);
+                                }) };
+                        }
+                    }
+                    layers.push(layer);
+                }
+                else {
+                    // Point-light attenuation, unsupported visibility arrangements, and
+                    // custom low-level light callbacks stay local to each primitive.
+                    layers.push({ sourceId: id, clip: visiblePath, bounds: box, tones: sampledTonePaths(box, (x, y) => { const h = onSurface(x, y); return h ? coverage(h) : null; }, step) });
+                }
+            }
+            return buildSurfacePatterns({ bounds, pitch: g * Math.SQRT2 / 5, silhouette: projectedSilhouette(scene, project, scale), layers,
+                method: surfaces?.paths ? (surfaces.light ? (surfaces.shadowed ? 'analytic-local-shadows' : 'analytic') : 'surface-sampled') : 'local-fallback' }, surfaces?.emitSurface);
+        }
+        const circles = [], batches = new Map() ;
+        const emitSurface = surfaces?.emitSurface;
+        const owners = new Map();
+        let markCount = 0;
+        function emit(x, y, certifiedCell = false, cellOwner = -1) {
+            if (x < minX || y < minY || x > maxX || y > maxY)
+                return;
+            const h = certifiedCell ? null : hit(x, y);
+            if (!certifiedCell && !h)
+                return;
+            let radius = o.dotSize;
+            if (radius < minRadius)
+                return;
+            // Contract only near actual boundaries, not every interior mark: a global
+            // radius contraction would silently reduce the calibrated coverage.
+            const clearance = certifiedCell ? maxRadius * 1.03 : regions ? h.clearance : safeRadius(x, y, radius * 1.03, h.id);
+            radius = Math.floor(Math.min(radius, Math.max(0, clearance * Math.cos(Math.PI / 16) - .003 * fineScale)) * 1000) / 1000;
+            if (radius < minRadius)
+                return;
+            markCount++;
+            let targetCircles = circles, targetBatches = batches;
+            if (emitSurface) {
+                const owner = certifiedCell ? cellOwner : h.id;
+                let target = owners.get(owner);
+                if (!target) {
+                    target = { circles: [], batches: batches ? new Map() : null };
+                    owners.set(owner, target);
+                }
+                targetCircles = target.circles;
+                targetBatches = target.batches;
+            }
+            if (targetBatches) {
+                let batch = targetBatches.get(radius);
+                if (!batch) {
+                    batch = [];
+                    targetBatches.set(radius, batch);
+                }
+                batch.push(`M${x.toFixed(3)} ${y.toFixed(3)}h0`);
+            }
+            else
+                targetCircles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"/>`);
+        }
+        if (o.shadingMode === 'stipple' && toneGain > 0) {
+            // Certify a whole candidate cell plus its largest disk once. Interior
+            // Poisson marks then need neither owner/depth nor boundary-distance queries.
+            const cellRadius = Math.SQRT1_2 * g + maxRadius * 1.03;
+            const i0 = Math.floor(minX / g) - 1, i1 = Math.ceil(maxX / g) + 1, j0 = Math.floor(minY / g) - 1, j1 = Math.ceil(maxY / g) + 1;
+            if ((i1 - i0 + 1) * (j1 - j0 + 1) > 1000000)
+                throw new Error('Dot screen too large; increase spacing or reduce output size');
+            for (let j = j0; j <= j1; j++)
+                for (let i = i0; i <= i1; i++) {
+                    const h = hit((i + .5) * g, (j + .5) * g, regions ? cellRadius : maxRadius * 1.03);
+                    if (!h)
+                        continue;
+                    const certifiedCell = !!regions && h.clearance >= cellRadius - 1e-12;
+                    // Equal-radius Poisson marks. Account for overlap using
+                    // coverage = 1-exp(-numberDensity * diskArea), rather than adding areas.
+                    const ink = Math.min(.995, coverage(h));
+                    if (ink <= 0)
+                        continue;
+                    const mean = -Math.log1p(-ink) * g * g / (Math.PI * o.dotSize * o.dotSize);
+                    if (mean > 1000)
+                        throw new Error('Stipple density too high; increase dot size');
+                    const stop = Math.exp(-mean);
+                    let product = 1, count = 0;
+                    while ((product *= 1 - hash(i, j, 100 + count)) > stop)
+                        count++;
+                    for (let k = 0; k < count; k++) {
+                        emit((i + hash(i, j, 10000 + 2 * k)) * g, (j + hash(i, j, 10001 + 2 * k)) * g, certifiedCell, h.id);
+                        if (markCount > 1000000)
+                            throw new Error('Too many stipple marks; use a coarser texture');
+                    }
+                }
+        }
+        // SVG round caps on zero-length subpaths are exact disks. This batches
+        // serialization/DOM nodes, not positions: there is no tile or repeated motif.
+        if (emitSurface) {
+            for (const [id, target] of owners) {
+                if (target.batches)
+                    for (const [r, points] of target.batches)
+                        target.circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2 * r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+                emitSurface(id, `<g data-role="dots" data-mode="stipple" fill="#161616" stroke="none">${target.circles.join('')}</g>`);
+            }
+            return '';
+        }
+        if (batches)
+            for (const [r, points] of batches)
+                circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2 * r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+        return `<g data-role="dots" data-mode="${o.shadingMode}" fill="#161616" stroke="none">${circles.join('')}</g>`;
+    }
+
     /** Expected projected hatch coverage, not a second illumination model.
      * Ignores individual stroke phase/taper and estimates crossings as independent.
      * Use its spatial average to calibrate smooth dot lighting, never its local
@@ -1178,6 +1713,200 @@ var MolEngraver = (function (exports) {
         };
     }
 
+    /** Already-normalized options; the public renderer owns eligibility/dispatch. */
+    function renderFastPainter(molecule, o) {
+        const { spheres, cylinders, project, scale, lightDirection, unshadowedIllumination } = prepareScene(molecule, o);
+        const illumination = o.shadingBrightness === 0 ? unshadowedIllumination :
+            (n, p) => Math.max(-1, Math.min(1, unshadowedIllumination(n, p) + 2 * o.shadingBrightness));
+        const threshold = (limit) => 1 - 2 * Math.pow((1 - limit) / 2, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
+        const fillFor = (element) => o.colorWash ? elementColor(element, o.washStrength, o.colorSaturation, o.colorScheme) : '#ffffff';
+        // Geometry, styles AND title enter the namespace, including texture-only edits.
+        let hash1 = 2166136261, hash2 = 5381;
+        for (const ch of JSON.stringify([molecule, o])) {
+            const n = ch.charCodeAt(0);
+            hash1 = Math.imul(hash1 ^ n, 16777619);
+            hash2 = Math.imul(hash2, 33) ^ n;
+        }
+        const prefix = 'fast-painter-' + (hash1 >>> 0).toString(16) + '-' + (hash2 >>> 0).toString(16);
+        const definitions = [], layers = [], paths = [];
+        const counts = { templates: 0, hatchCurves: 0, hatchPaths: 0, labels: 0, masks: 0, maskTiles: 0,
+            visibleBonds: 0, emptyBonds: 0, containedBonds: 0, maskSamples: 0, atomDepthTests: 0, candidatePairs: 0 };
+        const localProject = p => [p[0] * scale, -p[1] * scale];
+        const neverVisible = () => { throw new Error('Fast painter must not query global visibility'); };
+        const curve = createCurveRenderer({ options: o, project: localProject, illumination, paths, visible: neverVisible });
+        const density = o.density * scale / 60, templates = new Map();
+        const coverage = hatchCoverage(scale, o);
+        const engraving = (body) => `<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+        // Reuse the standard texture engine with exactly ONE primitive. It cannot
+        // perform sphere/sphere or bond/atom visibility here. Visibility is the outer
+        // local clip. Global cell coordinates preserve nonrepeating stipple seeds.
+        function dots(s, projection, namespace) {
+            if (o.shadingMode === 'hatch' || o.dotSize === 0)
+                return '';
+            const center = s.kind === 'sphere' ? projection(s.c) : null;
+            const regions = center ? { query: (x, y) => {
+                    const clearance = s.r * scale - Math.hypot(x - center[0], y - center[1]);
+                    return clearance >= 0 ? { id: 0, clearance } : null;
+                } } : null;
+            const a = projection(s.kind === 'sphere' ? s.c : s.a);
+            const b = s.kind === 'sphere' ? a : projection(add$1(s.a, mul$1(s.u, s.length)));
+            const r = s.r * scale, left = Math.min(a[0], b[0]) - r, top = Math.min(a[1], b[1]) - r;
+            const right = Math.max(a[0], b[0]) + r, bottom = Math.max(a[1], b[1]) + r;
+            // A full support rectangle selects analytic directional tones. buildDots
+            // additionally clips against its EXACT projected single-primitive silhouette;
+            // coordinate-pair bounds extraction there must not receive SVG arc operands.
+            const support = `M${left} ${top}L${right} ${top}L${right} ${bottom}L${left} ${bottom}Z`;
+            const result = buildDots([s], depthAt, projection, scale, illumination, o, regions, coverage, { paths: [support], light: lightDirection,
+                illumination: (_source, n, p) => illumination(n, p) });
+            // buildDots owns content-derived pattern IDs, but namespacing also separates
+            // otherwise equal local geometry under different fast-painter options.
+            return result.replace(/mp-screen-[\w-]+/g, id => namespace + '-' + id);
+        }
+        function sphereTemplate(radius) {
+            const cached = templates.get(radius);
+            if (cached !== undefined)
+                return cached;
+            paths.length = 0;
+            function hatch(axis, count, secondary) {
+                axis = norm(axis);
+                const e = norm(cross$1(axis, [1, 0, 0])), f = cross$1(axis, e);
+                for (let j = 1; j < count; j++) {
+                    counts.hatchCurves++;
+                    const h = -1 + 2 * j / count, r = Math.sqrt(1 - h * h), limit = secondary ? .12 : (j % 2 === 0 ? .88 : .58);
+                    const center = mul$1(axis, h * radius), u = mul$1(e, r * radius), v = mul$1(f, r * radius);
+                    const geometry = projectedCircle(localProject, center, u, v);
+                    const front = trigSpans(-axis[2] * h, -r * e[2], -r * f[2], 1e-12);
+                    const tonal = trigSpans(h * dot$1(axis, lightDirection), r * dot$1(e, lightDirection), r * dot$1(f, lightDirection), threshold(limit));
+                    const spans = intersectSpans(front, tonal);
+                    curve(t => {
+                        const a = t * Math.PI * 2, cos = Math.cos(a), sin = Math.sin(a);
+                        const n = axis.map((v, k) => v * h + (e[k] * cos + f[k] * sin) * r);
+                        return { p: mul$1(n, radius), n };
+                    }, Math.max(120, Math.ceil(2 * Math.PI * radius * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, _p, lit) => n[2] >= -1e-12 && lit < limit, true, true, () => front, { geometry, spans, illumination });
+                }
+            }
+            if (o.shadingMode === 'hatch' && o.hatchWidth > 0) {
+                hatch([.12, 1, .40], Math.max(2, Math.round(density * radius / .48)), false);
+                if (o.crossHatch)
+                    hatch([1, .22, -0.32], Math.max(2, Math.round(density * .8 * radius / .48)), true);
+            }
+            counts.hatchPaths += paths.length;
+            const id = `${prefix}-texture-${counts.templates++}`;
+            definitions.push(`<g id="${id}">${engraving(paths.join(''))}</g>`);
+            templates.set(radius, id);
+            return id;
+        }
+        for (const { s, id } of spheres.map((s, id) => ({ s, id })).sort((a, b) => a.s.c[2] - b.s.c[2] || a.id - b.id)) {
+            const [x, y] = project(s.c), radius = s.r * scale, fill = fillFor(s.element);
+            const circle = `cx="${x}" cy="${y}" r="${radius}"`, template = o.shadingMode === 'hatch' ? sphereTemplate(s.r) : null, clipId = `${prefix}-atom-${id}`;
+            definitions.push(`<clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><circle ${circle}/></clipPath>`);
+            const texture = `<g clip-path="url(#${clipId})">${template ? `<use href="#${template}" transform="translate(${x} ${y})"/>` : ''}${dots(s, project, clipId)}</g>`;
+            const outline = o.outlineWidth > 0 ? `<circle data-role="outline" ${circle} fill="none" stroke="#161616" stroke-width="${o.outlineWidth * 1.4}"/>` : '';
+            const label = o.labels ? `<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${escapeXml(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fill : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${escapeXml(s.element)}</text>` : '';
+            if (o.labels)
+                counts.labels++;
+            layers.push(`<g data-role="surface-layer" data-surface-id="${id}" data-atom-id="${id}"><circle data-role="surface-fill" ${circle} fill="${fill}" stroke="none"/>${texture}${outline}${label}</g>`);
+        }
+        const origin = project([0, 0, 0]), step = o.quality === 'preview' ? .5 : .25;
+        const margin = Math.max(2, o.outlineWidth * 2, o.hatchWidth * 2, o.dotSize * 2);
+        // Fail explicitly rather than coarsening or dropping bonds in huge scenes.
+        const maskSampleBudget = 16000000;
+        let discoveryBudget = 0;
+        const atomBoxes = spheres.map(s => { const p = project(s.c), r = s.r * scale; return { s, b: [p[0] - r, p[1] - r, p[0] + r, p[1] + r] }; });
+        const bondCurve = createCurveRenderer({ options: o, project, illumination, paths, visible: neverVisible });
+        const bondOrder = cylinders.map((s, id) => ({ s, id, z: s.a[2] + s.u[2] * s.length / 2 })).sort((a, b) => a.z - b.z || a.id - b.id);
+        for (const { s, id } of bondOrder) {
+            counts.masks++;
+            // Along a parent-centered cylinder, the entire radius-r cross section lies
+            // inside its endpoint sphere for axial distance <= sqrt(R²-r²). If both
+            // covered intervals meet, the WHOLE bond is inside their union, at any view.
+            // This is bond/atom containment, not a sphere-pair intersection calculation.
+            const endpoints = molecule.bonds[id].map(index => spheres[index]);
+            const covered = endpoints.reduce((sum, atom) => sum + Math.sqrt(Math.max(0, atom.r * atom.r - s.r * s.r)), 0);
+            if (endpoints.every(atom => atom.r > s.r) && covered > s.length + 1e-9) {
+                counts.containedBonds++;
+                counts.emptyBonds++;
+                layers.push(`<g data-role="bond-layer" data-surface-id="${spheres.length + id}" data-bond-id="${id}" data-mask-empty="true" data-contained="true" data-mask-samples="0"/>`);
+                continue;
+            }
+            const a = project(s.a), b = project(add$1(s.a, mul$1(s.u, s.length)));
+            // Exact AABB of the closed projected cylinder (cap radii along x/y).
+            const rx = s.r * scale * Math.sqrt(Math.max(0, 1 - s.u[0] ** 2));
+            const ry = s.r * scale * Math.sqrt(Math.max(0, 1 - s.u[1] ** 2));
+            const box = [Math.max(-margin, Math.min(a[0], b[0]) - rx), Math.max(-margin, Math.min(a[1], b[1]) - ry), Math.min(o.width + margin, Math.max(a[0], b[0]) + rx), Math.min(o.height + margin, Math.max(a[1], b[1]) + ry)];
+            if (!box.every(Number.isFinite))
+                throw new Error('Fast painter bond projection exceeds finite SVG coordinates');
+            const candidates = atomBoxes.filter(({ b }) => b[0] <= box[2] && b[2] >= box[0] && b[1] <= box[3] && b[3] >= box[1]);
+            counts.candidatePairs += candidates.length;
+            const before = counts.maskSamples;
+            function sample(x, y) {
+                if (++counts.maskSamples > maskSampleBudget)
+                    throw new Error('Fast painter bond mask sample budget exceeded; reduce scale/output size or use precise mode');
+                const wx = (x - origin[0]) / scale, wy = (origin[1] - y) / scale, z = depthAt(s, wx, wy);
+                if (!Number.isFinite(z))
+                    return 0;
+                for (const { s: atom, b } of candidates) {
+                    if (x < b[0] || x > b[2] || y < b[1] || y > b[3])
+                        continue;
+                    counts.atomDepthTests++;
+                    if (depthAt(atom, wx, wy) > z + 1e-9)
+                        return 0;
+                }
+                return 1;
+            }
+            const maskPaths = [];
+            // Each tile stays below sampledTonePaths' memory cap at either quality;
+            // hence its discovery step NEVER silently grows with model/canvas size.
+            // A one-step overlap closes tile borders safely. Separate SVG paths union
+            // in clipPath (do not concatenate overlapping contours under evenodd).
+            const tile = 64;
+            for (let y = box[1]; y < box[3]; y += tile)
+                for (let x = box[0]; x < box[2]; x += tile) {
+                    const bounds = [Math.max(box[0], x - step), Math.max(box[1], y - step), Math.min(box[2], x + tile + step), Math.min(box[3], y + tile + step)];
+                    discoveryBudget += (Math.ceil((bounds[2] - bounds[0]) / step) + 3) * (Math.ceil((bounds[3] - bounds[1]) / step) + 3);
+                    if (discoveryBudget > maskSampleBudget)
+                        throw new Error('Fast painter bond mask grid budget exceeded; reduce scale/output size or use precise mode');
+                    counts.maskTiles++;
+                    const path = sampledTonePaths(bounds, sample, step, [.5], true)[0];
+                    if (path)
+                        maskPaths.push(`<path fill-rule="evenodd" clip-rule="evenodd" d="${path}"/>`);
+                }
+            const surfaceId = spheres.length + id, clipId = `${prefix}-bond-${id}`;
+            // Direct paths in clipPath avoid SVG 1.1 use-of-group clip restrictions.
+            definitions.push(`<clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${maskPaths.join('')}</clipPath>`);
+            if (!maskPaths.length) {
+                counts.emptyBonds++;
+                layers.push(`<g data-role="bond-layer" data-surface-id="${surfaceId}" data-bond-id="${id}" data-mask-empty="true" data-mask-samples="${counts.maskSamples - before}"/>`);
+                continue;
+            }
+            counts.visibleBonds++;
+            paths.length = 0;
+            const e = norm(cross$1(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross$1(s.u, e);
+            function line(n, width, engrave = false) {
+                const offset = mul$1(n, s.r), start = add$1(s.a, offset), end = add$1(start, mul$1(s.u, s.length));
+                const geometry = projectedLine(project, start, end);
+                const spans = !engrave || dot$1(n, lightDirection) < threshold(.65) ? [[0, 1]] : [];
+                bondCurve(t => ({ p: add$1(start, mul$1(s.u, t * s.length)), n }), Math.max(60, Math.ceil(s.length * scale / .7)), width, (_n, _p, lit) => !engrave || lit < .65, engrave, false, () => [[0, 1]], { geometry, spans, illumination, ignoreLighting: !engrave });
+            }
+            if (Math.hypot(s.u[0], s.u[1]) > 1e-8) {
+                const edge = norm([-s.u[1], s.u[0], 0]);
+                line(edge, o.outlineWidth * 1.1);
+                line(mul$1(edge, -1), o.outlineWidth * 1.1);
+            }
+            const count = Math.max(3, Math.round(density * .8 * s.r / .115));
+            for (let j = 0; o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
+                const a = j / count * 2 * Math.PI, n = add$1(mul$1(e, Math.cos(a)), mul$1(f, Math.sin(a)));
+                if (n[2] > 0)
+                    line(n, o.hatchWidth * .68, true);
+            }
+            const fill = `<g data-role="surface-fill" fill="#ffffff" stroke="none">${maskPaths.map(path => path.replace('<path ', '<path data-role="bond-fill" ')).join('')}</g>`;
+            const texture = dots(s, project, clipId);
+            layers.push(`<g data-role="bond-layer" data-surface-id="${surfaceId}" data-bond-id="${id}" data-mask-empty="false" data-mask-samples="${counts.maskSamples - before}">${fill}<g clip-path="url(#${clipId})">${texture}${engraving(paths.join(''))}</g></g>`);
+        }
+        const stats = `data-render-mode="fast" data-sphere-count="${spheres.length}" data-bond-count="${cylinders.length}" data-bond-mask-count="${counts.masks}" data-bond-visible-count="${counts.visibleBonds}" data-bond-empty-count="${counts.emptyBonds}" data-bond-contained-count="${counts.containedBonds}" data-bond-mask-tiles="${counts.maskTiles}" data-bond-mask-samples="${counts.maskSamples}" data-bond-atom-depth-tests="${counts.atomDepthTests}" data-bond-atom-candidates="${counts.candidatePairs}" data-bond-mask-step="${step}" data-bond-mask-bisections="9" data-texture-templates="${counts.templates}" data-hatch-curves="${counts.hatchCurves}" data-hatch-paths="${counts.hatchPaths}" data-whole-labels="${counts.labels}" data-boundary-builds="0" data-sphere-pair-tests="0"`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="${prefix}-title" ${stats}><title id="${prefix}-title">${escapeXml(molecule.name || 'Molecular engraving')}</title><defs>${definitions.join('')}</defs><rect width="100%" height="100%" fill="white"/>${layers.join('')}</svg>`;
+    }
+
     const atom = (element, x, y, z) => ({ element, position: [x, y, z] });
     // Idealized regular truncated icosahedron, not an optimized two-bond-length geometry.
     function fullerene() {
@@ -1189,7 +1918,7 @@ var MolEngraver = (function (exports) {
         for (let i = 0; i < vertices.length; i++)
             for (let j = 0; j < vertices.length; j++) {
                 if (Math.abs(Math.hypot(...sub(vertices[i], vertices[j])) - 2) < 1e-9)
-                    positions.push(mul(add(mul(vertices[i], 2), vertices[j]), factor / 3));
+                    positions.push(mul$1(add$1(mul$1(vertices[i], 2), vertices[j]), factor / 3));
             }
         const bonds = [];
         for (let i = 0; i < positions.length; i++)
@@ -1208,6 +1937,8 @@ var MolEngraver = (function (exports) {
 
     function render(molecule, options = {}) {
         const o = normalizeOptions(options);
+        if (o.renderMode === 'fast')
+            return renderFastPainter(molecule, o);
         const prepared = prepareScene(molecule, o);
         const { spheres, cylinders, scene, scale, project, illumination: physicalIllumination, lightDirection, lightingFor, mayShadow, directionalShadows } = prepared;
         let atlas = null;
@@ -1275,10 +2006,10 @@ var MolEngraver = (function (exports) {
             if (boundaries)
                 paths.push(boundaries.outline(s, o.quality === 'preview' || !o.optimizePaths, o.outlineWidth * 1.4));
             else
-                curve(t => { const a = t * Math.PI * 2, n = [Math.cos(a), Math.sin(a), 0]; return { p: add(s.c, mul(n, s.r)), n }; }, Math.ceil(2 * Math.PI * s.r * scale / 0.65), o.outlineWidth * 1.4);
+                curve(t => { const a = t * Math.PI * 2, n = [Math.cos(a), Math.sin(a), 0]; return { p: add$1(s.c, mul$1(n, s.r)), n }; }, Math.ceil(2 * Math.PI * s.r * scale / 0.65), o.outlineWidth * 1.4);
             function hatch(axis, count, secondary) {
                 axis = norm(axis);
-                const e = norm(cross(axis, [1, 0, 0])), f = cross(axis, e), light = lightFor(s);
+                const e = norm(cross$1(axis, [1, 0, 0])), f = cross$1(axis, e), light = lightFor(s);
                 const face = atlas?.visible(s);
                 if (atlas && !face)
                     return;
@@ -1287,10 +2018,10 @@ var MolEngraver = (function (exports) {
                 const shadowFamily = o.lightType === 'directional' && atlas && mayShadow(s) ? atlas.shadow(s).sphereFamily?.(c, radius, screen(axis), screen(e), screen(f)) : undefined;
                 for (let j = 1; j < count; j++) {
                     const h = -1 + 2 * j / count, r = Math.sqrt(1 - h * h), limit = secondary ? .12 : (j % 2 === 0 ? .88 : .58);
-                    const center = add(s.c, mul(axis, h * s.r)), u = mul(e, r * s.r), v = mul(f, r * s.r);
+                    const center = add$1(s.c, mul$1(axis, h * s.r)), u = mul$1(e, r * s.r), v = mul$1(f, r * s.r);
                     const geometry = projectedCircle(project, center, u, v);
                     const front = trigSpans(-axis[2] * h, -r * e[2], -r * f[2], 1e-12);
-                    const tonal = tonalSpans(s, geometry, t => trigSpans(h * dot(axis, lightDirection), r * dot(e, lightDirection), r * dot(f, lightDirection), t), limit, shadowFamily?.(h));
+                    const tonal = tonalSpans(s, geometry, t => trigSpans(h * dot$1(axis, lightDirection), r * dot$1(e, lightDirection), r * dot$1(f, lightDirection), t), limit, shadowFamily?.(h));
                     const spans = tonal.spans ? intersectSpans(tonal.spans, front) : undefined;
                     const clip = () => {
                         let result = visibleFamily?.(h) ?? (face ? geometry.clip(face) : null);
@@ -1315,23 +2046,23 @@ var MolEngraver = (function (exports) {
         }
         for (const s of cylinders) {
             const start = paths.length;
-            const e = norm(cross(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross(s.u, e);
+            const e = norm(cross$1(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross$1(s.u, e);
             const line = (n, w, engrave = false) => {
-                const offset = mul(n, s.r), a = add(s.a, offset), b = add(a, mul(s.u, s.length));
+                const offset = mul$1(n, s.r), a = add$1(s.a, offset), b = add$1(a, mul$1(s.u, s.length));
                 const geometry = projectedLine(project, a, b), face = engrave ? atlas?.visible(s) : null;
                 if (engrave && atlas && !face)
                     return;
-                const tonal = engrave ? tonalSpans(s, geometry, t => dot(n, lightDirection) < t ? [[0, 1]] : [], .65) : { spans: undefined, breaks: undefined };
+                const tonal = engrave ? tonalSpans(s, geometry, t => dot$1(n, lightDirection) < t ? [[0, 1]] : [], .65) : { spans: undefined, breaks: undefined };
                 curve(t => { const d = t * s.length; return { p: [s.a[0] + s.u[0] * d + offset[0], s.a[1] + s.u[1] * d + offset[1], s.a[2] + s.u[2] * d + offset[2]], n }; }, Math.max(60, Math.ceil(s.length * scale / .7)), w, (normal, p, lit) => !engrave || lit < .65, engrave, false, engrave ? () => face ? geometry.clip(face) : boundaries?.clipLine ? boundaries.clipLine(s, a, b) : null : null, { geometry, spans: tonal.spans, breaks: tonal.breaks, illumination: lightFor(s), ignoreLighting: !engrave });
             };
             if (Math.hypot(s.u[0], s.u[1]) > 1e-8) {
                 const edge = norm([-s.u[1], s.u[0], 0]);
                 line(edge, o.outlineWidth * 1.1);
-                line(mul(edge, -1), o.outlineWidth * 1.1);
+                line(mul$1(edge, -1), o.outlineWidth * 1.1);
             }
             const count = Math.max(3, Math.round(hatchDensity * .8 * s.r / .115));
             for (let j = 0; o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
-                const a = j / count * 2 * Math.PI, n = add(mul(e, Math.cos(a)), mul(f, Math.sin(a)));
+                const a = j / count * 2 * Math.PI, n = add$1(mul$1(e, Math.cos(a)), mul$1(f, Math.sin(a)));
                 if (n[2] > 0)
                     line(n, o.hatchWidth * .68, true);
             }
@@ -1358,7 +2089,7 @@ var MolEngraver = (function (exports) {
         // unrelated foreground geometry. The underlying scene keeps its fallback.
         if (o.labels && layerPaths)
             for (const [id, s] of spheres.entries()) {
-                const p = add(s.c, [0, 0, s.r]);
+                const p = add$1(s.c, [0, 0, s.r]);
                 if (!layerPaths[id] || !visible(p))
                     continue;
                 const [x, y] = project(p);
@@ -1375,7 +2106,7 @@ var MolEngraver = (function (exports) {
                     return '';
                 // Opaque paint is essential even with color wash disabled: white atoms
                 // and white bonds must naturally cover labels in the rear layers.
-                const fill = `<path data-role="surface-fill" fill="${fillFor(s.kind === 'sphere' ? s.element : null)}" stroke="none" fill-rule="evenodd" d="${outline}"/>`;
+                const fill = `<path data-role="surface-fill" fill="${s.kind === 'sphere' ? fillFor(s.element) : '#ffffff'}" stroke="none" fill-rule="evenodd" d="${outline}"/>`;
                 return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${ownerDots.get(id) || ''}${engraving(ownerEngraving.get(s) || '')}${ownerLabels.get(s) || ''}</g>`;
             }).join('');
         }

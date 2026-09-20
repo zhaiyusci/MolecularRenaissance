@@ -2,6 +2,7 @@ import type { RenderOptions } from './types.js';
 import { colorSchemes } from './palette.js';
 export type NormalizedOptions = Required<Omit<RenderOptions,'shadingDensity'|'shadingSize'>> & Pick<RenderOptions,'shadingDensity'|'shadingSize'>;
 const defaults: NormalizedOptions = {
+  renderMode:'precise',
   width:900,height:700,scale:60,atomRadiusScale:1,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
   lightType:'directional',lightDistance:3,lightAttenuation:0,castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
   variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',textureScale:1,shadingBrightness:0,shadingContrast:1.2,
@@ -56,5 +57,7 @@ export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   if(!['directional','point'].includes(o.lightType))throw new Error('Invalid lightType');
   if(o.lightDistance<1.2)throw new Error('lightDistance must be at least 1.2 scene radii');
   if(options.textureScale===undefined)o.density=Math.round(Math.max(8,Math.min(60,o.density)));
+  if(!['precise','fast'].includes(o.renderMode))throw new Error('Invalid renderMode');
+  if(o.renderMode==='fast'&&(o.lightType!=='directional'||o.castShadows))throw new Error('Fast rendering requires directional light and castShadows=false');
   return o;
 }

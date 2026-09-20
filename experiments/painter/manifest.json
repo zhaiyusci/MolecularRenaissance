@@ -1,0 +1,305 @@
+{
+  "baselineCommit": "b79d28d",
+  "options": {
+    "width": 1000,
+    "height": 1000,
+    "scale": 60,
+    "yaw": 0,
+    "pitch": 0,
+    "labels": true,
+    "labelSize": 24,
+    "colorWash": true,
+    "quality": "preview",
+    "shadingMode": "hatch",
+    "castShadows": false
+  },
+  "cases": [
+    {
+      "name": "overlap-separated",
+      "route": "painter",
+      "reason": "certified",
+      "order": [
+        0,
+        1
+      ],
+      "edges": [
+        [
+          0,
+          1
+        ]
+      ],
+      "sphereCount": 2,
+      "totalPairs": 1,
+      "testedPairs": 1,
+      "projectedDisjointPairs": 0,
+      "projectedOverlapPairs": 1,
+      "disjoint3DPairs": 1,
+      "nestedPairs": 0,
+      "intersectingPairs": 0,
+      "depthSamples": 1,
+      "edgeCount": 1,
+      "hatchCurves": 88,
+      "hatchPaths": 100,
+      "hatchTemplates": 1,
+      "paintedSpheres": 2,
+      "wholeLabels": 2,
+      "ownSilhouetteClips": 2,
+      "boundaryBuilds": 0,
+      "sceneVisibilityTests": 0,
+      "measurement": {
+        "name": "overlap-separated",
+        "route": "painter",
+        "reason": "certified",
+        "beforeMs": 13.468,
+        "overpaintOnlyMs": 11.489,
+        "afterMs": 5.865,
+        "planningMs": 0.054,
+        "beforeBytes": 269199,
+        "overpaintOnlyBytes": 320758,
+        "afterBytes": 161466,
+        "spheres": 2,
+        "templates": 1,
+        "labels": 2,
+        "pairs": 1,
+        "pairDepthSamples": 1,
+        "boundaryBuilds": 0
+      }
+    },
+    {
+      "name": "stack-32",
+      "route": "painter",
+      "reason": "certified",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "edges": [
+        [
+          0,
+          16
+        ],
+        [
+          1,
+          17
+        ],
+        [
+          2,
+          18
+        ],
+        [
+          3,
+          19
+        ],
+        [
+          4,
+          20
+        ],
+        [
+          5,
+          21
+        ],
+        [
+          6,
+          22
+        ],
+        [
+          7,
+          23
+        ],
+        [
+          8,
+          24
+        ],
+        [
+          9,
+          25
+        ],
+        [
+          10,
+          26
+        ],
+        [
+          11,
+          27
+        ],
+        [
+          12,
+          28
+        ],
+        [
+          13,
+          29
+        ],
+        [
+          14,
+          30
+        ],
+        [
+          15,
+          31
+        ]
+      ],
+      "sphereCount": 32,
+      "totalPairs": 496,
+      "testedPairs": 496,
+      "projectedDisjointPairs": 480,
+      "projectedOverlapPairs": 16,
+      "disjoint3DPairs": 16,
+      "nestedPairs": 0,
+      "intersectingPairs": 0,
+      "depthSamples": 16,
+      "edgeCount": 16,
+      "hatchCurves": 66,
+      "hatchPaths": 75,
+      "hatchTemplates": 1,
+      "paintedSpheres": 32,
+      "wholeLabels": 32,
+      "ownSilhouetteClips": 32,
+      "boundaryBuilds": 0,
+      "sceneVisibilityTests": 0,
+      "measurement": {
+        "name": "stack-32",
+        "route": "painter",
+        "reason": "certified",
+        "beforeMs": 130.266,
+        "overpaintOnlyMs": 226.89,
+        "afterMs": 7.781,
+        "planningMs": 0.594,
+        "beforeBytes": 2100525,
+        "overpaintOnlyBytes": 3509585,
+        "afterBytes": 139686,
+        "spheres": 32,
+        "templates": 1,
+        "labels": 32,
+        "pairs": 496,
+        "pairDepthSamples": 16,
+        "boundaryBuilds": 0
+      }
+    },
+    {
+      "name": "c60-original",
+      "route": "fallback",
+      "reason": "unsupported-bonds",
+      "order": [],
+      "edges": [],
+      "sphereCount": 60,
+      "totalPairs": 1770,
+      "testedPairs": 0,
+      "projectedDisjointPairs": 0,
+      "projectedOverlapPairs": 0,
+      "disjoint3DPairs": 0,
+      "nestedPairs": 0,
+      "intersectingPairs": 0,
+      "depthSamples": 0,
+      "edgeCount": 0,
+      "hatchCurves": 0,
+      "hatchPaths": 0,
+      "hatchTemplates": 0,
+      "paintedSpheres": 0,
+      "wholeLabels": 0,
+      "ownSilhouetteClips": 0,
+      "boundaryBuilds": null,
+      "sceneVisibilityTests": null,
+      "measurement": {
+        "name": "c60-original",
+        "route": "fallback",
+        "reason": "unsupported-bonds",
+        "beforeMs": 229.778,
+        "overpaintOnlyMs": 240.728,
+        "afterMs": 241.012,
+        "planningMs": 0.146,
+        "beforeBytes": 3279744,
+        "overpaintOnlyBytes": 3279744,
+        "afterBytes": 3279744,
+        "spheres": 60,
+        "templates": 0,
+        "labels": 0,
+        "pairs": 0,
+        "pairDepthSamples": 0,
+        "boundaryBuilds": null
+      }
+    },
+    {
+      "name": "c60-atoms-only",
+      "route": "fallback",
+      "reason": "front-surfaces-swap",
+      "order": [],
+      "edges": [
+        [
+          1,
+          0
+        ]
+      ],
+      "sphereCount": 60,
+      "totalPairs": 1770,
+      "testedPairs": 4,
+      "projectedDisjointPairs": 2,
+      "projectedOverlapPairs": 2,
+      "disjoint3DPairs": 0,
+      "nestedPairs": 0,
+      "intersectingPairs": 2,
+      "depthSamples": 1,
+      "edgeCount": 1,
+      "failedPair": [
+        0,
+        4
+      ],
+      "hatchCurves": 0,
+      "hatchPaths": 0,
+      "hatchTemplates": 0,
+      "paintedSpheres": 0,
+      "wholeLabels": 0,
+      "ownSilhouetteClips": 0,
+      "boundaryBuilds": null,
+      "sceneVisibilityTests": null,
+      "measurement": {
+        "name": "c60-atoms-only",
+        "route": "fallback",
+        "reason": "front-surfaces-swap",
+        "beforeMs": 208.979,
+        "overpaintOnlyMs": 210.251,
+        "afterMs": 199.397,
+        "planningMs": 0.145,
+        "beforeBytes": 3279781,
+        "overpaintOnlyBytes": 3279781,
+        "afterBytes": 3279781,
+        "spheres": 60,
+        "templates": 0,
+        "labels": 0,
+        "pairs": 4,
+        "pairDepthSamples": 1,
+        "boundaryBuilds": null
+      }
+    }
+  ]
+}

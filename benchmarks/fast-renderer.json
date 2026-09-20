@@ -1,0 +1,91 @@
+{
+  "options": {
+    "quality": "preview",
+    "labels": true,
+    "labelSize": 24,
+    "colorWash": true,
+    "lightType": "directional",
+    "castShadows": false
+  },
+  "note": "Same integrated renderer; actual C60 including all bonds; 2 warmups each, 5 alternating pairs, medians. Core SVG generation only, not browser paint. Radius .65 is an explicit exposed-bond stress fixture, not the default scientific radii.",
+  "rows": [
+    {
+      "model": "c60",
+      "shadingMode": "hatch",
+      "atomRadiusScale": 1,
+      "preciseMs": 209.729,
+      "fastMs": 5.018,
+      "preciseBytes": 4010013,
+      "fastBytes": 181028,
+      "bonds": 90,
+      "visibleBonds": 0,
+      "containedBonds": 90,
+      "maskSamples": 0
+    },
+    {
+      "model": "c60",
+      "shadingMode": "hatch",
+      "atomRadiusScale": 0.65,
+      "preciseMs": 238.131,
+      "fastMs": 70.188,
+      "preciseBytes": 3914369,
+      "fastBytes": 896006,
+      "bonds": 90,
+      "visibleBonds": 74,
+      "containedBonds": 0,
+      "maskSamples": 1104712
+    },
+    {
+      "model": "c60",
+      "shadingMode": "stipple",
+      "atomRadiusScale": 1,
+      "preciseMs": 209.409,
+      "fastMs": 170.505,
+      "preciseBytes": 3533178,
+      "fastBytes": 6778875,
+      "bonds": 90,
+      "visibleBonds": 0,
+      "containedBonds": 90,
+      "maskSamples": 0
+    },
+    {
+      "model": "c60",
+      "shadingMode": "stipple",
+      "atomRadiusScale": 0.65,
+      "preciseMs": 221.95,
+      "fastMs": 279.321,
+      "preciseBytes": 2909915,
+      "fastBytes": 4741224,
+      "bonds": 90,
+      "visibleBonds": 74,
+      "containedBonds": 0,
+      "maskSamples": 1104712
+    },
+    {
+      "model": "c60",
+      "shadingMode": "halftone",
+      "atomRadiusScale": 1,
+      "preciseMs": 72.698,
+      "fastMs": 49.013,
+      "preciseBytes": 870245,
+      "fastBytes": 1008659,
+      "bonds": 90,
+      "visibleBonds": 0,
+      "containedBonds": 90,
+      "maskSamples": 0
+    },
+    {
+      "model": "c60",
+      "shadingMode": "halftone",
+      "atomRadiusScale": 0.65,
+      "preciseMs": 141.03,
+      "fastMs": 109.176,
+      "preciseBytes": 1674983,
+      "fastBytes": 2238688,
+      "bonds": 90,
+      "visibleBonds": 74,
+      "containedBonds": 0,
+      "maskSamples": 1104712
+    }
+  ]
+}
