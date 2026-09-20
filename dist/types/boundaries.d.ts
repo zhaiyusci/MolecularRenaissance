@@ -51,6 +51,8 @@ export interface BoundaryArrangement {
     clipCircle(source: Primitive, center: Vector, u: Vector, v: Vector): Intervals | null;
     clipLine(source: Primitive, a: Vector, b: Vector): Intervals | null;
     dotRegions(): DotRegions | null;
+    /** Scene-indexed compound paths (use evenodd); null entries are hidden surfaces. */
+    surfacePaths(preview: boolean): (string | null)[] | null;
     validate(colorFor: BoundaryPalette): boolean;
     curveCount: number;
     segmentCount: number;

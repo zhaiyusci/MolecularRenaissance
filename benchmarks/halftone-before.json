@@ -1,0 +1,89 @@
+{
+  "note": "Core SVG generation only; same options, warmup + median of 3; excludes browser paint.",
+  "rows": [
+    {
+      "model": "sphere",
+      "castShadows": false,
+      "shadingMode": "hatch",
+      "ms": 5.64,
+      "bytes": 211138
+    },
+    {
+      "model": "sphere",
+      "castShadows": false,
+      "shadingMode": "halftone",
+      "ms": 16.11,
+      "bytes": 90986
+    },
+    {
+      "model": "sphere",
+      "castShadows": true,
+      "shadingMode": "hatch",
+      "ms": 4.73,
+      "bytes": 211138
+    },
+    {
+      "model": "sphere",
+      "castShadows": true,
+      "shadingMode": "halftone",
+      "ms": 12.69,
+      "bytes": 90986
+    },
+    {
+      "model": "ethanol",
+      "castShadows": false,
+      "shadingMode": "hatch",
+      "ms": 36.62,
+      "bytes": 693259
+    },
+    {
+      "model": "ethanol",
+      "castShadows": false,
+      "shadingMode": "halftone",
+      "ms": 53.33,
+      "bytes": 383980
+    },
+    {
+      "model": "ethanol",
+      "castShadows": true,
+      "shadingMode": "hatch",
+      "ms": 27.33,
+      "bytes": 718785
+    },
+    {
+      "model": "ethanol",
+      "castShadows": true,
+      "shadingMode": "halftone",
+      "ms": 59.98,
+      "bytes": 427241
+    },
+    {
+      "model": "c60",
+      "castShadows": false,
+      "shadingMode": "hatch",
+      "ms": 267.27,
+      "bytes": 5750673
+    },
+    {
+      "model": "c60",
+      "castShadows": false,
+      "shadingMode": "halftone",
+      "ms": 521.11,
+      "bytes": 2229898
+    },
+    {
+      "model": "c60",
+      "castShadows": true,
+      "shadingMode": "hatch",
+      "ms": 486.75,
+      "bytes": 6790885
+    },
+    {
+      "model": "c60",
+      "castShadows": true,
+      "shadingMode": "halftone",
+      "ms": 766.19,
+      "bytes": 2173164
+    }
+  ]
+}

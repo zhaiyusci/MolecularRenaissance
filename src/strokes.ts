@@ -1,4 +1,4 @@
-import type { Vector, Project, Illumination, ElementColor, Intervals } from './types.js';
+import type { Vector, Project, Illumination, Intervals } from './types.js';
 import type { NormalizedOptions } from './options.js';
 import { getWash } from './runtime.js';
 
@@ -8,15 +8,15 @@ export function engravingWidth(base: number,illumination: number): number {
 }
 interface StrokeContext {
   options: NormalizedOptions; project: Project; illumination: Illumination;
-  visible: (p: Vector)=>boolean; inkFor: ElementColor;
-  paths: string[]; inkPaths: string[]; coloredTexture: boolean;
+  visible: (p: Vector)=>boolean;
+  paths: string[];
 }
 interface CurvePoint { p: Vector; n: Vector; }
 interface Sample { xy: Vector; lit: number; index: number; }
 
 /** Sample lighting/width only within known visible spans; emit strokes or ribbons. */
 export function createCurveRenderer(context: StrokeContext) {
-  const {options:o,project,illumination,visible,inkFor,paths,inkPaths,coloredTexture}=context;
+  const {options:o,project,illumination,visible,paths}=context;
   const fitter=o.optimizePaths?getWash():null;
   if(o.optimizePaths&&(!fitter||typeof fitter.fitContour!=='function'))throw new Error('Load updated wash.js before renderer.js');
   const coord=(p: Vector)=>p.map(v=>String(Number(v.toFixed(3)))).join(' ');
@@ -40,10 +40,8 @@ export function createCurveRenderer(context: StrokeContext) {
   return function curve(
     fn: (t: number)=>CurvePoint,steps: number,width: number,
     accept: (n: Vector,p: Vector,lit: number)=>boolean=()=>true,
-    engrave=false,closed=false,element: string|null=null,clip: (()=>Intervals|null)|null=null
+    engrave=false,closed=false,clip: (()=>Intervals|null)|null=null
   ): void {
-    const target=coloredTexture&&engrave?inkPaths:paths;
-    const ink=coloredTexture&&engrave?inkFor(element):'#161616';
     if(width===0||(engrave&&o.shadingMode!=='hatch'))return;
     let run: Sample[]=[];
     const runs: Sample[][]=[];
@@ -77,7 +75,7 @@ export function createCurveRenderer(context: StrokeContext) {
     for(const points of runs){
       if(!engrave||!o.variableWidth){
         const d=o.optimizePaths?compactPath(points.map(q=>q.xy)):points.map(({xy:p},i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join('');
-        target.push(`<path${coloredTexture&&engrave?' stroke="'+ink+'"':''} stroke-width="${width.toFixed(3)}" d="${d}"/>`);
+        paths.push(`<path stroke-width="${width.toFixed(3)}" d="${d}"/>`);
         continue;
       }
       const clean=points.filter((q,i)=>i===0||Math.hypot(q.xy[0]-points[i-1].xy[0],q.xy[1]-points[i-1].xy[1])>1e-6);
@@ -105,7 +103,7 @@ export function createCurveRenderer(context: StrokeContext) {
         const outline=left.concat(right);
         d=outline.map((p,i)=>(i?'L':'M')+p[0].toFixed(3)+' '+p[1].toFixed(3)).join('')+'Z';
       }
-      target.push(`<path fill="${ink}" stroke="none" d="${d}"/>`);
+      paths.push(`<path fill="#161616" stroke="none" d="${d}"/>`);
     }
   };
 }

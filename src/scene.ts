@@ -34,6 +34,7 @@ export function depthAt(s: Primitive,x: number,y: number): number {
 export interface PreparedScene {
   spheres: Sphere[]; cylinders: Cylinder[]; scene: Primitive[];
   scale: number; project: Project; illumination: Illumination;
+  lightDirection: Vector; shadowBias: number;
 }
 export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedScene {
   if(!molecule||!Array.isArray(molecule.atoms)||!molecule.atoms.length||!Array.isArray(molecule.bonds))throw new Error('Expected atoms and bonds');
@@ -76,5 +77,5 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
     }
     return lit;
   };
-  return {spheres,cylinders,scene,scale,project,illumination};
+  return {spheres,cylinders,scene,scale,project,illumination,lightDirection:light,shadowBias};
 }

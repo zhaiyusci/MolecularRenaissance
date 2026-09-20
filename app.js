@@ -21,13 +21,13 @@
   var lightAttenuation = byId('light-attenuation');
   var variableWidth = byId('variable-width');
   var shadingMode = byId('shading-mode');
-  var shadingDensity = byId('shading-density');
-  var shadingSize = byId('shading-size');
+  var textureScale = byId('texture-scale');
+  var shadingBrightness = byId('shading-brightness');
   var shadingContrast = byId('shading-contrast');
   var outlineWidth = byId('outline-width');
   var crossHatch = byId('cross-hatch');
   var colorWash = byId('color-wash');
-  var colorMode = byId('color-mode');
+  var colorScheme = byId('color-scheme');
   var washStrength = byId('wash-strength');
   var colorSaturation = byId('color-saturation');
   var labelMatchFill = byId('label-match-fill');
@@ -90,11 +90,11 @@
     [crossHatch, variableWidth].forEach(function (input) {
       input.disabled = !isHatch;
     });
-    byId('shading-density-value').textContent = shadingDensity.value + '%';
-    byId('shading-size-value').textContent = shadingSize.value + '%';
+    byId('texture-scale-value').textContent = (Number(textureScale.value) / 100).toFixed(2) + '×';
+    byId('shading-brightness-value').textContent = (Number(shadingBrightness.value) > 0 ? '+' : '') + shadingBrightness.value;
     byId('shading-contrast-value').textContent = Number(shadingContrast.value).toFixed(1);
     byId('outline-width-value').textContent = Number(outlineWidth.value).toFixed(2);
-    [colorMode, washStrength, colorSaturation].forEach(function (input) {
+    [colorScheme, washStrength, colorSaturation].forEach(function (input) {
       input.disabled = !colorWash.checked;
     });
     byId('wash-strength-value').textContent = washStrength.value + '%';
@@ -128,14 +128,14 @@
         castShadows: castShadows.checked,
         shadowStrength: Number(shadowStrength.value) / 100,
         shadingMode: shadingMode.value,
-        shadingDensity: Number(shadingDensity.value) / 100,
-        shadingSize: Number(shadingSize.value) / 100,
+        textureScale: Number(textureScale.value) / 100,
+        shadingBrightness: Number(shadingBrightness.value) / 100,
         shadingContrast: Number(shadingContrast.value),
         variableWidth: variableWidth.checked,
         outlineWidth: Number(outlineWidth.value),
         crossHatch: crossHatch.checked,
         colorWash: colorWash.checked,
-        colorMode: colorMode.value,
+        colorScheme: colorScheme.value,
         washStrength: Number(washStrength.value) / 100,
         colorSaturation: Number(colorSaturation.value) / 100,
         labelMatchFill: labelMatchFill.checked,
@@ -181,16 +181,16 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [model, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorMode, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
+  [model, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
   // Native range inputs keep their own drag/capture behavior. Window release
   // handlers also cover releasing outside the slider. No idle timer/debounce.
-  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, shadingDensity, shadingSize, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
+  [scale, atomRadiusScale, yaw, pitch, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
     input.addEventListener('pointerdown', function (event) {
       if (event.button !== 0 || input.disabled || controlPointer) return;
       controlPointer = { id: event.pointerId, input: input };
@@ -226,15 +226,15 @@
     lightDistance.value = '3';
     lightAttenuation.value = '0';
     shadingMode.value = 'hatch';
-    shadingDensity.value = '100';
-    shadingSize.value = '100';
+    textureScale.value = '100';
+    shadingBrightness.value = '0';
     shadingContrast.value = '1.2';
     variableWidth.checked = true;
     outlineWidth.value = '0.8';
     crossHatch.checked = true;
     colorWash.checked = true;
-    colorMode.value = 'wash';
-    washStrength.value = '65';
+    colorScheme.value = 'jmol';
+    washStrength.value = '100';
     colorSaturation.value = '100';
     labelMatchFill.checked = true;
     labels.checked = false;

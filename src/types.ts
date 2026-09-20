@@ -11,7 +11,7 @@ export interface Atom {
 export interface Molecule { name?: string; atoms: readonly Atom[]; bonds: readonly Bond[]; }
 export type ShadingMode = 'hatch' | 'stipple' | 'halftone';
 export type RenderQuality = 'preview' | 'export';
-export type ColorMode = 'wash' | 'ink';
+export type ColorScheme = 'jmol' | 'rasmol' | 'pymol' | 'greenCarbon' | 'cyanCarbon' | 'magentaCarbon';
 export type LightType = 'directional' | 'point';
 
 /** Angles are radians; stroke/label sizes are SVG units, not angstrom or print mm. */
@@ -29,9 +29,16 @@ export interface RenderOptions {
   /** Fraction of light removed by an occluder, 0–1; default 0.8. */
   shadowStrength?: number;
   quality?: RenderQuality; shadingMode?: ShadingMode;
+  /** Joint spacing and mark-size scale, 0.2–2.5; larger means coarser at similar mean coverage. */
+  textureScale?: number;
+  /** Texture brightness offset, -1–1; positive is brighter, default 0. Does not recolor fills. */
+  shadingBrightness?: number;
+  /** Legacy independent controls; textureScale overrides them except shadingSize=0 for no-texture previews. */
   shadingDensity?: number; shadingSize?: number; shadingContrast?: number;
   outlineWidth?: number; hatchWidth?: number; variableWidth?: boolean; crossHatch?: boolean;
-  colorWash?: boolean; colorMode?: ColorMode; washStrength?: number; colorSaturation?: number;
+  /** Sourced element fill palettes; default jmol. Textures always use black ink. */
+  colorScheme?: ColorScheme;
+  colorWash?: boolean; washStrength?: number; colorSaturation?: number;
   labels?: boolean; labelMatchFill?: boolean; labelSize?: number; labelStrokeWidth?: number;
   labelStrokeColor?: string; labelColor?: string; labelFont?: string; labelBold?: boolean; labelItalic?: boolean;
   /** Legacy controls; the corresponding shared shading control takes precedence. */
@@ -53,4 +60,12 @@ export type ElementColor = (element: string | null | undefined) => string;
 export type Intervals = [number, number][];
 export interface DotRegionHit { id: number; clearance: number; }
 export interface DotRegions { query(x: number, y: number, maxRadius: number): DotRegionHit | null; }
-export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast'>;
+export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast' | 'width' | 'height' | 'quality' | 'shadingBrightness' | 'shadowStrength'>;
+/** Internal geometric context; custom low-level callbacks may omit it. */
+export interface SurfaceToneContext {
+  paths: readonly (string|null)[] | null;
+  /** Present only for a directional light, in view coordinates. */
+  light?: Vector;
+  mayShadow?: readonly boolean[];
+  shadowed?: (id:number,normal:Vector,position:Vector)=>boolean;
+}

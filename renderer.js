@@ -18,11 +18,42 @@ var MolEngraver = (function (exports) {
         return String(s).replace(/[&<>"']/g, c => escapes[c]);
     }
 
+    // Source tables and conversion rules: PALETTES.md. No artist-picked replacements.
+    const elementPalette = Object.freeze({ H: '#ffffff', C: '#909090', N: '#3050f8', O: '#ff0d0d', P: '#ff8000', S: '#ffff30' });
+    const rasmol = Object.freeze({ H: '#ffffff', C: '#c8c8c8', N: '#8f8fff', O: '#f00000', P: '#ffa500', S: '#ffc832' });
+    // PyMOL Color.cpp named element RGB values, rounded to 8-bit RGB.
+    const rgb = (r, g, b) => '#' + [r, g, b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+    const pymol = Object.freeze({ H: rgb(.9, .9, .9), C: rgb(.2, 1, .2), N: rgb(.2, .2, 1), O: rgb(1, .3, .3), P: rgb(1, .501960784, 0), S: rgb(.9, .775, .25) });
+    const colorSchemes = Object.freeze({
+        jmol: elementPalette,
+        rasmol,
+        pymol,
+        greenCarbon: Object.freeze({ ...rasmol, C: '#00ff00' }),
+        cyanCarbon: Object.freeze({ ...rasmol, C: '#00ffff' }),
+        magentaCarbon: Object.freeze({ ...rasmol, C: '#ff00ff' })
+    });
+    function selectPalette(scheme) {
+        if (!Object.hasOwn(colorSchemes, scheme))
+            throw new Error('Invalid colorScheme');
+        return colorSchemes[scheme];
+    }
+    function elementColor(element, strength = 1, saturation = 1, scheme = 'jmol') {
+        const palette = selectPalette(scheme);
+        return mixColor(element != null && Object.hasOwn(palette, element) ? palette[element] : palette.C, strength, saturation);
+    }
+    function mixColor(hex, strength, saturation) {
+        const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+        const max = Math.max(...rgb), min = Math.min(...rgb), lightness = (max + min) / 2, chroma = max - min;
+        const capacity = 1 - Math.abs(2 * lightness - 1);
+        const factor = chroma > 0 ? Math.min(capacity, chroma * saturation) / chroma : 1;
+        return '#' + rgb.map(v => Math.round(255 * (1 + ((lightness + (v - lightness) * factor) - 1) * strength)).toString(16).padStart(2, '0')).join('');
+    }
+
     const defaults = {
         width: 900, height: 700, scale: 60, atomRadiusScale: 1, yaw: .25, pitch: -0.16, lightAzimuth: -29 * Math.PI / 180, lightElevation: 32 * Math.PI / 180,
         lightType: 'directional', lightDistance: 3, lightAttenuation: 0, castShadows: false, shadowStrength: .8, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
-        variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', shadingContrast: 1.2,
-        dotSpacing: 5, dotSize: 1, dotContrast: 1.2, crossHatch: true, colorWash: false, colorMode: 'wash', washStrength: .65,
+        variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', textureScale: 1, shadingBrightness: 0, shadingContrast: 1.2,
+        dotSpacing: 2.5, dotSize: .5, dotContrast: 1.2, crossHatch: true, colorWash: false, colorScheme: 'jmol', washStrength: 1,
         colorSaturation: 1, labelMatchFill: false, labels: false, labelSize: 17, labelStrokeWidth: 4, labelStrokeColor: '#ffffff',
         labelColor: '#161616', labelFont: "Georgia, 'Times New Roman', serif", labelBold: false, labelItalic: true
     };
@@ -34,7 +65,7 @@ var MolEngraver = (function (exports) {
             o.optimizePaths = false;
         o.outlineWidth = options.outlineWidth === undefined ? o.lineWidth : options.outlineWidth;
         o.hatchWidth = options.hatchWidth === undefined ? o.lineWidth : options.hatchWidth;
-        for (const [key, min, max] of [['shadingDensity', .4, 2.5], ['shadingSize', 0, 1.5], ['shadingContrast', .5, 2.5]]) {
+        for (const [key, min, max] of [['shadingBrightness', -1, 1], ['textureScale', .2, 2.5], ['shadingDensity', .4, 2.5], ['shadingSize', 0, 1.5], ['shadingContrast', .5, 2.5]]) {
             const value = options[key];
             if (value !== undefined && (!Number.isFinite(value) || value < min || value > max))
                 throw new Error('Invalid option: ' + key);
@@ -46,6 +77,21 @@ var MolEngraver = (function (exports) {
         if (options.shadingSize !== undefined) {
             o.hatchWidth = .8 * options.shadingSize;
             o.dotSize = options.shadingSize;
+        }
+        // The UI always starts at 1x; each style has its own mark-size calibration.
+        const dotStyleScale = o.shadingMode === 'stipple' ? .6 : o.shadingMode === 'halftone' ? 3 : 1;
+        if (options.dotSpacing === undefined && options.shadingDensity === undefined)
+            o.dotSpacing = 2.5 * dotStyleScale;
+        if (options.dotSize === undefined && options.shadingSize === undefined)
+            o.dotSize = .5 * dotStyleScale;
+        if (options.textureScale !== undefined) {
+            const k = options.textureScale, dotK = k * dotStyleScale, hidden = options.shadingSize === 0;
+            // Dot area scales as k² while count scales as 1/k²; line width and
+            // spacing both scale as k. Preserve tone approximately, not mark count.
+            o.density = 24 / k;
+            o.dotSpacing = 2.5 * dotK;
+            o.hatchWidth = hidden ? 0 : .8 * k;
+            o.dotSize = hidden ? 0 : .5 * dotK;
         }
         o.shadingContrast = options.shadingContrast === undefined ? 1.2 : options.shadingContrast;
         if (options.shadingContrast !== undefined)
@@ -63,11 +109,11 @@ var MolEngraver = (function (exports) {
             throw new Error('Invalid castShadows');
         if (!Number.isFinite(o.shadowStrength) || o.shadowStrength < 0 || o.shadowStrength > 1)
             throw new Error('Invalid shadowStrength: expected 0–1');
-        if (!['wash', 'ink'].includes(o.colorMode))
-            throw new Error('Invalid colorMode');
+        if (typeof o.colorScheme !== 'string' || !Object.hasOwn(colorSchemes, o.colorScheme))
+            throw new Error('Invalid colorScheme');
         if (!['hatch', 'stipple', 'halftone'].includes(o.shadingMode))
             throw new Error('Invalid shadingMode');
-        if (o.dotSpacing < 2 || o.dotSpacing > 14 || o.dotSize < 0 || o.dotSize > 1.5 || o.dotContrast < .5 || o.dotContrast > 2.5)
+        if (o.dotSpacing < .3 || o.dotSpacing > 19 || o.dotSize < 0 || o.dotSize > 4 || o.dotContrast < .5 || o.dotContrast > 2.5)
             throw new Error('Invalid dot settings');
         if (o.width < 200 || o.height < 200 || o.lineWidth < 0 || o.outlineWidth < 0 || o.hatchWidth < 0)
             throw new Error('Invalid output dimensions or line width');
@@ -86,7 +132,8 @@ var MolEngraver = (function (exports) {
             throw new Error('Invalid lightType');
         if (o.lightDistance < 1.2)
             throw new Error('lightDistance must be at least 1.2 scene radii');
-        o.density = Math.round(Math.max(8, Math.min(60, o.density)));
+        if (options.textureScale === undefined)
+            o.density = Math.round(Math.max(8, Math.min(60, o.density)));
         return o;
     }
 
@@ -114,6 +161,25 @@ var MolEngraver = (function (exports) {
         return covalentRadii[atom.element];
     }
 
+    /** Conservative directional-light broad phase, once per visible surface.
+     * A convex primitive cannot shadow its own outward-facing surface. */
+    function directionalShadowContext(scene, light, bias) {
+        const bounds = scene.map(s => s.kind === 'sphere' ? { c: s.c, r: s.r } : { c: s.a.map((v, i) => v + s.u[i] * s.length / 2), r: Math.hypot(s.length / 2, s.r) });
+        const lists = scene.map((receiver, i) => scene.filter((caster, j) => {
+            if (i === j)
+                return false;
+            const a = bounds[i], b = bounds[j], d = b.c.map((v, k) => v - a.c[k]), ahead = d.reduce((sum, v, k) => sum + v * light[k], 0), r = a.r + b.r;
+            if (ahead + r <= 0 || d.reduce((sum, v) => sum + v * v, 0) - ahead * ahead > r * r)
+                return false;
+            if (receiver.kind === 'sphere' && Math.hypot(...d) + b.r < receiver.r - bias)
+                return false;
+            return true;
+        }));
+        return {
+            mayShadow: lists.map(list => list.length > 0),
+            shadowed: (id, n, p) => n.reduce((sum, v, k) => sum + v * light[k], 0) > 0 && shadowBlocked(lists[id], p, n, light, Infinity, bias)
+        };
+    }
     /** Any solid intersecting the ray toward the light (finite for a point source).
      * Normal bias avoids self-shadow acne; closed cylinders include both end caps.
      */
@@ -245,23 +311,7 @@ var MolEngraver = (function (exports) {
             }
             return lit;
         };
-        return { spheres, cylinders, scene, scale, project, illumination };
-    }
-
-    const elementPalette = Object.freeze({ C: '#ded8cf', H: '#ffffff', O: '#eab5ac', N: '#b8ccdf', S: '#ead99e', P: '#ebc39f' });
-    const elementInkPalette = Object.freeze({ C: '#79451d', H: '#555555', O: '#972b25', N: '#245889', S: '#886219', P: '#a24b21' });
-    function elementColor(element, strength = .65, saturation = 1) {
-        return mixColor(element != null && Object.hasOwn(elementPalette, element) ? elementPalette[element] : '#ded8cf', strength, saturation);
-    }
-    function elementInkColor(element, strength = .65, saturation = 1) {
-        return mixColor(element != null && Object.hasOwn(elementInkPalette, element) ? elementInkPalette[element] : '#555555', strength, saturation);
-    }
-    function mixColor(hex, strength, saturation) {
-        const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
-        const max = Math.max(...rgb), min = Math.min(...rgb), lightness = (max + min) / 2, chroma = max - min;
-        const capacity = 1 - Math.abs(2 * lightness - 1);
-        const factor = chroma > 0 ? Math.min(capacity, chroma * saturation) / chroma : 1;
-        return '#' + rgb.map(v => Math.round(255 * (1 + ((lightness + (v - lightness) * factor) - 1) * strength)).toString(16).padStart(2, '0')).join('');
+        return { spheres, cylinders, scene, scale, project, illumination, lightDirection: light, shadowBias };
     }
 
     const root = globalThis;
@@ -281,7 +331,7 @@ var MolEngraver = (function (exports) {
     }
     /** Sample lighting/width only within known visible spans; emit strokes or ribbons. */
     function createCurveRenderer(context) {
-        const { options: o, project, illumination, visible, inkFor, paths, inkPaths, coloredTexture } = context;
+        const { options: o, project, illumination, visible, paths } = context;
         const fitter = o.optimizePaths ? getWash() : null;
         if (o.optimizePaths && (!fitter || typeof fitter.fitContour !== 'function'))
             throw new Error('Load updated wash.js before renderer.js');
@@ -309,9 +359,7 @@ var MolEngraver = (function (exports) {
                 curves = fitter.fitContour(points, tolerance);
             return 'M' + coord(a) + curves.map(c => c.length === 2 ? 'L' + coord(c[1]) : 'C' + c.slice(1).map(coord).join(' ')).join('');
         }
-        return function curve(fn, steps, width, accept = () => true, engrave = false, closed = false, element = null, clip = null) {
-            const target = coloredTexture && engrave ? inkPaths : paths;
-            const ink = coloredTexture && engrave ? inkFor(element) : '#161616';
+        return function curve(fn, steps, width, accept = () => true, engrave = false, closed = false, clip = null) {
             if (width === 0 || (engrave && o.shadingMode !== 'hatch'))
                 return;
             let run = [];
@@ -357,7 +405,7 @@ var MolEngraver = (function (exports) {
             for (const points of runs) {
                 if (!engrave || !o.variableWidth) {
                     const d = o.optimizePaths ? compactPath(points.map(q => q.xy)) : points.map(({ xy: p }, i) => (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join('');
-                    target.push(`<path${coloredTexture && engrave ? ' stroke="' + ink + '"' : ''} stroke-width="${width.toFixed(3)}" d="${d}"/>`);
+                    paths.push(`<path stroke-width="${width.toFixed(3)}" d="${d}"/>`);
                     continue;
                 }
                 const clean = points.filter((q, i) => i === 0 || Math.hypot(q.xy[0] - points[i - 1].xy[0], q.xy[1] - points[i - 1].xy[1]) > 1e-6);
@@ -388,8 +436,44 @@ var MolEngraver = (function (exports) {
                     const outline = left.concat(right);
                     d = outline.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(3) + ' ' + p[1].toFixed(3)).join('') + 'Z';
                 }
-                target.push(`<path fill="${ink}" stroke="none" d="${d}"/>`);
+                paths.push(`<path fill="#161616" stroke="none" d="${d}"/>`);
             }
+        };
+    }
+
+    /** Expected projected hatch coverage, not a second illumination model.
+     * Ignores individual stroke phase/taper and estimates crossings as independent.
+     * Use its spatial average to calibrate smooth dot lighting, never its local
+     * pattern as a lighting field. Small surfaces and silhouettes can still differ.
+     */
+    function hatchCoverage(scale, o) {
+        const unit = (v) => { const d = Math.hypot(...v); return v.map(x => x / d); };
+        const primary = unit([.12, 1, .40]), secondary = unit([1, .22, -0.32]);
+        const density = o.density * scale / 60;
+        const cap = (x) => Math.max(0, Math.min(1, x));
+        return (s, n, light) => {
+            const darkness = Math.pow(cap((1 - light) / 2), o.shadingContrast / 1.2);
+            const lit = 1 - 2 * darkness;
+            const widthFactor = o.variableWidth ? .4 + 1.15 * darkness : 1;
+            const nz = Math.max(1e-4, Math.abs(n[2]));
+            if (s.kind === 'sphere') {
+                const family = (axis, count, width, active) => {
+                    const gradient = Math.hypot(axis[0] - axis[2] * n[0] / nz, axis[1] - axis[2] * n[1] / nz) / (s.r * scale);
+                    return cap(width * widthFactor * count * .5 * gradient * active);
+                };
+                const count = Math.max(2, Math.round(density * s.r / .48));
+                const even = Math.floor((count - 1) / 2) / (count - 1);
+                const active = (lit < .88 ? even : 0) + (lit < .58 ? 1 - even : 0);
+                const a = family(primary, count, o.hatchWidth * .8, active);
+                const b = o.crossHatch ? family(secondary, Math.max(2, Math.round(density * .8 * s.r / .48)), o.hatchWidth * .63, lit < .12 ? 1 : 0) : 0;
+                return 1 - (1 - a) * (1 - b);
+            }
+            // Axial hatches do not cover the cylinder end caps.
+            if (Math.abs(n.reduce((sum, v, i) => sum + v * s.u[i], 0)) > .99 || lit >= .65)
+                return 0;
+            const count = Math.max(3, Math.round(density * .8 * s.r / .115));
+            const projectedAxis = Math.sqrt(Math.max(0, 1 - s.u[2] * s.u[2]));
+            return cap(o.hatchWidth * .68 * widthFactor * count * projectedAxis / (2 * Math.PI * s.r * scale * nz));
         };
     }
 
@@ -423,20 +507,21 @@ var MolEngraver = (function (exports) {
 
     function render(molecule, options = {}) {
         const o = normalizeOptions(options);
-        const { spheres, cylinders, scene, scale, project, illumination } = prepareScene(molecule, o);
-        const paths = [], inkPaths = [];
-        const coloredTexture = o.colorWash && o.colorMode === 'ink';
-        const inkFor = element => elementInkColor(element, o.washStrength, o.colorSaturation);
+        const { spheres, cylinders, scene, scale, project, illumination: physicalIllumination, lightDirection, shadowBias } = prepareScene(molecule, o);
+        // Shift tonal input after lighting/shadows, leaving color fills and outlines alone.
+        const illumination = o.shadingBrightness === 0 ? physicalIllumination :
+            (n, p) => Math.max(-1, Math.min(1, physicalIllumination(n, p) + 2 * o.shadingBrightness));
+        const paths = [];
         // Preserve the tolerant legacy oracle for outlines/fallbacks and labels.
         const visible = (p) => !scene.some(s => depthAt(s, p[0], p[1]) > p[2] + .00015);
-        const curve = createCurveRenderer({ options: o, project, illumination, visible, inkFor, paths, inkPaths, coloredTexture });
-        const fillFor = element => o.colorWash && !coloredTexture ? elementColor(element, o.washStrength, o.colorSaturation) : '#ffffff';
+        const curve = createCurveRenderer({ options: o, project, illumination, visible, paths });
+        const fillFor = element => o.colorWash ? elementColor(element, o.washStrength, o.colorSaturation, o.colorScheme) : '#ffffff';
         const analytic = getBoundaries();
         const built = analytic ? analytic.build(scene, depthAt, project, scale) : null;
         // Validate independently of the selected palette; styles must not change outlines.
         const boundaries = built && built.validate(elementColor) ? built : null;
         let wash = '';
-        if (o.colorWash && !coloredTexture && o.washStrength > 0) {
+        if (o.colorWash && o.washStrength > 0) {
             if (boundaries)
                 wash = boundaries.wash(fillFor, o.quality === 'preview');
             if (!boundaries || wash === null) {
@@ -463,18 +548,20 @@ var MolEngraver = (function (exports) {
                         const a = t * Math.PI * 2, cos = Math.cos(a), sin = Math.sin(a);
                         const n = [axis[0] * h + (e[0] * cos + f[0] * sin) * r, axis[1] * h + (e[1] * cos + f[1] * sin) * r, axis[2] * h + (e[2] * cos + f[2] * sin) * r];
                         return { p: [s.c[0] + n[0] * s.r, s.c[1] + n[1] * s.r, s.c[2] + n[2] * s.r], n };
-                    }, Math.max(120, Math.ceil(2 * Math.PI * s.r * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, p, lit) => n[2] >= -1e-12 && lit < (secondary ? .12 : (j % 2 === 0 ? .88 : .58)), true, true, s.element, boundaries?.clipCircle ? () => boundaries.clipCircle(s, add(s.c, mul(axis, h * s.r)), mul(e, r * s.r), mul(f, r * s.r)) : null);
+                    }, Math.max(120, Math.ceil(2 * Math.PI * s.r * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, p, lit) => n[2] >= -1e-12 && lit < (secondary ? .12 : (j % 2 === 0 ? .88 : .58)), true, true, boundaries?.clipCircle ? () => boundaries.clipCircle(s, add(s.c, mul(axis, h * s.r)), mul(e, r * s.r), mul(f, r * s.r)) : null);
                 }
             }
-            hatch([.12, 1, .40], Math.max(2, Math.round(hatchDensity * s.r / .48)), false);
-            if (o.crossHatch)
-                hatch([1, .22, -0.32], Math.max(2, Math.round(hatchDensity * .8 * s.r / .48)), true);
+            if (o.shadingMode === 'hatch' && o.hatchWidth > 0) {
+                hatch([.12, 1, .40], Math.max(2, Math.round(hatchDensity * s.r / .48)), false);
+                if (o.crossHatch)
+                    hatch([1, .22, -0.32], Math.max(2, Math.round(hatchDensity * .8 * s.r / .48)), true);
+            }
         }
         for (const s of cylinders) {
             const e = norm(cross(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross(s.u, e);
             const line = (n, w, engrave = false) => {
                 const offset = mul(n, s.r), a = add(s.a, offset), b = add(a, mul(s.u, s.length));
-                curve(t => { const d = t * s.length; return { p: [s.a[0] + s.u[0] * d + offset[0], s.a[1] + s.u[1] * d + offset[1], s.a[2] + s.u[2] * d + offset[2]], n }; }, Math.max(60, Math.ceil(s.length * scale / .7)), w, (normal, p, lit) => !engrave || lit < .65, engrave, false, null, engrave && boundaries?.clipLine ? () => boundaries.clipLine(s, a, b) : null);
+                curve(t => { const d = t * s.length; return { p: [s.a[0] + s.u[0] * d + offset[0], s.a[1] + s.u[1] * d + offset[1], s.a[2] + s.u[2] * d + offset[2]], n }; }, Math.max(60, Math.ceil(s.length * scale / .7)), w, (normal, p, lit) => !engrave || lit < .65, engrave, false, engrave && boundaries?.clipLine ? () => boundaries.clipLine(s, a, b) : null);
             };
             if (Math.hypot(s.u[0], s.u[1]) > 1e-8) {
                 const edge = norm([-s.u[1], s.u[0], 0]);
@@ -482,7 +569,7 @@ var MolEngraver = (function (exports) {
                 line(mul(edge, -1), o.outlineWidth * 1.1);
             }
             const count = Math.max(3, Math.round(hatchDensity * .8 * s.r / .115));
-            for (let j = 0; j < count; j++) {
+            for (let j = 0; o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
                 const a = j / count * 2 * Math.PI, n = add(mul(e, Math.cos(a)), mul(f, Math.sin(a)));
                 if (n[2] > 0)
                     line(n, o.hatchWidth * .68, true);
@@ -493,13 +580,13 @@ var MolEngraver = (function (exports) {
             const dotter = getDots();
             if (!dotter)
                 throw new Error('Load dots.js before renderer.js');
-            const regions = boundaries?.dotRegions ? boundaries.dotRegions() : null;
-            dots = dotter.buildDots(scene, depthAt, project, scale, illumination, o, coloredTexture ? inkFor : null, regions);
-        }
-        let texture = '';
-        if (coloredTexture) {
-            texture = `<g data-role="color-texture" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${dots}${inkPaths.join('')}</g>`;
-            dots = '';
+            const regions = o.shadingMode === 'stipple' && boundaries?.dotRegions ? boundaries.dotRegions() : null;
+            const surfaces = o.shadingMode === 'halftone' ? {
+                paths: boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null,
+                light: o.lightType === 'directional' ? lightDirection : undefined,
+                ...(o.lightType === 'directional' && o.castShadows && o.shadowStrength > 0 ? directionalShadowContext(scene, lightDirection, shadowBias) : {})
+            } : undefined;
+            dots = dotter.buildDots(scene, depthAt, project, scale, illumination, o, regions, hatchCoverage(scale, o), surfaces);
         }
         let labels = '';
         if (o.labels)
@@ -510,15 +597,13 @@ var MolEngraver = (function (exports) {
                 const [x, y] = project(p);
                 labels += `<text data-role="element-label" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${escapeXml(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fillFor(s.element) : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${escapeXml(s.element)}</text>`;
             }
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title><rect width="100%" height="100%" fill="white"/>${wash}${dots}${texture}<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${paths.join('')}</g><g font-family="Georgia, 'Times New Roman', serif">${labels}</g></svg>`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title><rect width="100%" height="100%" fill="white"/>${wash}${dots}<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${paths.join('')}</g><g font-family="Georgia, 'Times New Roman', serif">${labels}</g></svg>`;
     }
 
     exports.covalentRadii = covalentRadii;
     exports.covalentRadiusSource = covalentRadiusSource;
     exports.depthAt = depthAt;
     exports.elementColor = elementColor;
-    exports.elementInkColor = elementInkColor;
-    exports.elementInkPalette = elementInkPalette;
     exports.elementPalette = elementPalette;
     exports.engravingWidth = engravingWidth;
     exports.examples = examples;

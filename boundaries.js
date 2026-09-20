@@ -424,6 +424,71 @@ var MolBoundaries = (function (exports) {
             }
             return text;
         }
+        function directedPath(edges, preview, validateOnly = false) {
+            const starts = new Map(), ins = new Map();
+            for (const edge of edges) {
+                if (!starts.has(edge.start))
+                    starts.set(edge.start, []);
+                starts.get(edge.start).push(edge);
+                ins.set(edge.end, (ins.get(edge.end) || 0) + 1);
+            }
+            // A numerically ambiguous/tangent junction must never close by a chord.
+            // Reject the arrangement and let the proven general path handle it.
+            for (const [v, list] of starts)
+                if (list.length !== 1 || ins.get(v) !== 1)
+                    return null;
+            if (ins.size !== starts.size)
+                return null;
+            if (validateOnly)
+                return '';
+            const used = new Set();
+            let path = '';
+            for (const first of edges) {
+                if (used.has(first))
+                    continue;
+                path += 'M' + fmt(nodes[first.start]);
+                let edge = first;
+                do {
+                    if (!edge || used.has(edge))
+                        return null;
+                    used.add(edge);
+                    path += commands(edge.s, preview, edge.reverse);
+                    edge = starts.get(edge.end)?.[0];
+                } while (edge !== first);
+                path += 'Z';
+            }
+            return path;
+        }
+        // Keep every primitive's boundary, including white rods and same-color
+        // neighbors. Multiple loops remain in one compound path, preserving holes
+        // and disconnected components without sampling a full-frame owner map.
+        const cachedSurfacePaths = new Map();
+        function surfacePaths(preview) {
+            if (cachedSurfacePaths.has(preview))
+                return cachedSurfacePaths.get(preview);
+            cachedSurfacePaths.set(preview, null);
+            if (!certifySurfaceOwnership())
+                return null;
+            const groups = scene.map(() => []);
+            for (const s of segments) {
+                if (s.left === s.right)
+                    continue;
+                if (s.left >= 0)
+                    groups[s.left].push({ s, reverse: false, start: s.start, end: s.end });
+                if (s.right >= 0)
+                    groups[s.right].push({ s, reverse: true, start: s.end, end: s.start });
+            }
+            const paths = scene.map(() => null);
+            for (let i = 0; i < groups.length; i++)
+                if (groups[i].length) {
+                    const path = directedPath(groups[i], preview);
+                    if (path === null)
+                        return null;
+                    paths[i] = path;
+                }
+            cachedSurfacePaths.set(preview, paths);
+            return paths;
+        }
         function wash(colorFor, preview, validateOnly = false) {
             const colors = scene.map(s => {
                 if (s.kind !== 'sphere')
@@ -452,38 +517,11 @@ var MolBoundaries = (function (exports) {
             }
             let svg = '<g class="mol-wash" data-boundaries="analytic" stroke="none">';
             for (const [color, edges] of groups) {
-                const starts = new Map(), ins = new Map();
-                for (const edge of edges) {
-                    if (!starts.has(edge.start))
-                        starts.set(edge.start, []);
-                    starts.get(edge.start).push(edge);
-                    ins.set(edge.end, (ins.get(edge.end) || 0) + 1);
-                }
-                // A numerically ambiguous/tangent junction must never close by a chord.
-                // Reject the arrangement and let the proven general path handle it.
-                for (const [v, list] of starts)
-                    if (list.length !== 1 || ins.get(v) !== 1)
-                        return null;
-                if (ins.size !== starts.size)
+                const path = directedPath(edges, preview, validateOnly);
+                if (path === null)
                     return null;
                 if (validateOnly)
                     continue;
-                const used = new Set();
-                let path = '';
-                for (const first of edges) {
-                    if (used.has(first))
-                        continue;
-                    path += 'M' + fmt(nodes[first.start]);
-                    let edge = first;
-                    do {
-                        if (!edge || used.has(edge))
-                            return null;
-                        used.add(edge);
-                        path += commands(edge.s, preview, edge.reverse);
-                        edge = starts.get(edge.end)?.[0];
-                    } while (edge !== first);
-                    path += 'Z';
-                }
                 svg += '<path fill="' + color + '" fill-rule="evenodd" d="' + path + '"/>';
             }
             return svg + '</g>';
@@ -649,11 +687,11 @@ var MolBoundaries = (function (exports) {
                 curves.length = count;
             }
         }
-        let cachedDotRegions;
-        function dotRegions() {
-            if (cachedDotRegions !== undefined)
-                return cachedDotRegions;
-            cachedDotRegions = null;
+        let certifiedSurfaceOwnership;
+        function certifySurfaceOwnership() {
+            if (certifiedSurfaceOwnership !== undefined)
+                return certifiedSurfaceOwnership;
+            certifiedSurfaceOwnership = false;
             // Fill may merge white rods, but dots need each actual visible surface.
             // Our arrangement omits rod/rod intersection seams. Certify that exposed
             // rod bodies cannot intersect before using it for dot ownership. Trim off
@@ -674,20 +712,30 @@ var MolBoundaries = (function (exports) {
                     const u = sub(x.b, x.a), v = sub(y.b, y.a), w = sub(x.a, y.a), a = dot(u, u), b = dot(u, v), c = dot(v, v), d = dot(u, w), e = dot(v, w), det = a * c - b * b;
                     // Nearly parallel axes: do not turn cancellation into a false proof.
                     if (det <= 1e-12 * a * c)
-                        return null;
+                        return false;
                     let distance = Math.min(pointSegment(x.a, y.a, y.b), pointSegment(x.b, y.a, y.b), pointSegment(y.a, x.a, x.b), pointSegment(y.b, x.a, x.b));
                     const s = (b * e - c * d) / det, t = (a * e - b * d) / det;
                     if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
                         distance = Math.min(distance, dist(add(x.a, mul(u, s)), add(y.a, mul(v, t))));
                     if (distance <= r)
-                        return null;
+                        return false;
                 }
+            certifiedSurfaceOwnership = true;
+            return true;
+        }
+        let cachedDotRegions;
+        function dotRegions() {
+            if (cachedDotRegions !== undefined)
+                return cachedDotRegions;
+            cachedDotRegions = null;
+            if (!certifySurfaceOwnership())
+                return null;
             const helper = getDotRegions();
             if (helper)
                 cachedDotRegions = helper.create(scene, segments, nodes, project, scale);
             return cachedDotRegions;
         }
-        return { wash, outline, clipCircle, clipLine, dotRegions, validate: colorFor => wash(colorFor, true, true) !== null, curveCount: curves.length, segmentCount: segments.length };
+        return { wash, outline, clipCircle, clipLine, dotRegions, surfacePaths, validate: colorFor => wash(colorFor, true, true) !== null, curveCount: curves.length, segmentCount: segments.length };
     }
 
     exports.build = build;

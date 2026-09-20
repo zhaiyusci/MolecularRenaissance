@@ -15,41 +15,46 @@
     .artboard { background: #fff; border: 1px solid #d9dde0; min-width: 0; }
     #preview { width: 100%; aspect-ratio: 9 / 7; min-height: 0; display: flex; overflow: auto; cursor: grab; touch-action: none; user-select: none; }
     #preview.dragging { cursor: grabbing; }
-    /* Auto margins center spare space; overflow margins become zero, keeping all edges reachable. */
+    /* Auto margins center spare space without shrinking the SVG. */
     #preview svg { display: block; flex: 0 0 auto; margin: auto; width: auto; height: auto; max-width: none; max-height: none; }
     #preview p { padding: 24px; color: #73787c; text-align: center; }
     .preview-caption { padding: 0 20px 24px; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
     .molecule-caption { margin: 0 0 8px; font-size: 24px; line-height: 1.2; color: #161616; }
     .signature-caption { margin: 0; font-size: 20px; line-height: 1.3; letter-spacing: 2px; font-variant: small-caps; color: #555; }
     .board-footer { padding: 13px 18px; border-top: 1px solid #edf0f2; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: #72777b; font-size: 12px; }
-    aside { padding: 23px; background: #e2e5e7; border: 1px solid #d4d8db; border-radius: 6px; }
-    h2 { margin: 0 0 22px; font-size: 15px; font-weight: 650; }
-    .control { margin-bottom: 23px; }
-    .control-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 13px; }
-    output { color: #5b636a; font-variant-numeric: tabular-nums; }
+    aside { padding: 16px; background: #e2e5e7; border: 1px solid #d4d8db; border-radius: 6px; position: sticky; top: 20px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; }
+    h2 { margin: 0 0 16px; font-size: 15px; font-weight: 650; flex-shrink: 0; }
+    .settings-body { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+    .settings-group { border-top: 1px solid #cbd1d5; }
+    .settings-group summary { padding: 12px 0; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
+    .settings-group[open] summary { margin-bottom: 4px; }
+    .control { margin-bottom: 15px; }
+    .control-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+    output { color: #5b636a; font-variant-numeric: tabular-nums; white-space: nowrap; }
     select, button { font: inherit; }
-    select { width: 100%; padding: 9px 10px; border: 1px solid #bfc5c9; background: #fff; color: #25282b; border-radius: 4px; font-size: 14px; }
+    select { width: 100%; padding: 7px 9px; border: 1px solid #bfc5c9; background: #fff; color: #25282b; border-radius: 4px; font-size: 13px; }
     input[type="range"] { width: 100%; margin: 0; accent-color: #566571; cursor: pointer; }
-    .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 15px 0; cursor: pointer; }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0; cursor: pointer; }
     input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: #566571; }
     .label-settings { border: 0; padding: 0; margin: 0; min-width: 0; }
     .label-settings:disabled { opacity: .5; }
-    .label-settings input[type="text"] { width: 100%; padding: 8px; border: 1px solid #bfc5c9; border-radius: 4px; font: inherit; font-size: 13px; }
-    .color-control { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 14px; }
-    .color-control input { width: 48px; height: 29px; padding: 2px; border: 1px solid #bfc5c9; background: white; }
-    .actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 25px; }
+    .label-settings input[type="text"] { width: 100%; padding: 7px 8px; border: 1px solid #bfc5c9; border-radius: 4px; font: inherit; font-size: 13px; }
+    .color-control { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 12px; }
+    .color-control input { width: 48px; height: 27px; padding: 2px; border: 1px solid #bfc5c9; background: white; }
+    .check-row { display: flex; gap: 20px; }
+    .actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #cbd1d5; flex-shrink: 0; }
     button { padding: 10px 6px; border: 1px solid #b8c0c6; border-radius: 4px; background: #f7f8f9; color: #303b44; font-size: 13px; cursor: pointer; }
     button:hover:not(:disabled) { background: #fff; border-color: #82929e; }
     button:disabled { opacity: .5; cursor: not-allowed; }
     :focus-visible { outline: 2px solid #57778f; outline-offset: 4px; }
-    .note { margin: 22px 0 0; border-top: 1px solid #cbd1d5; padding-top: 17px; color: #656d73; font-size: 12px; line-height: 1.9; }
-    #error { margin: 12px 0 0; color: #9d3434; font-size: 13px; line-height: 1.6; }
+    #error { margin: 12px 0 0; color: #9d3434; font-size: 13px; line-height: 1.6; overflow-y: auto; }
     [hidden] { display: none !important; }
     @media (max-width: 760px) {
       header { padding: 22px 16px 18px; display: block; }
       header p { margin-top: 8px; }
       main { padding: 0 16px 22px; grid-template-columns: 1fr; gap: 16px; }
-      aside { padding: 20px; }
+      aside { position: static; max-height: none; }
+      .settings-body { overflow: visible; padding-right: 0; }
     }
   </style>
 </head>
@@ -63,59 +68,67 @@
     </section>
     <aside aria-label="渲染控制">
       <h2>图版设置</h2>
-      <div class="control"><label class="control-heading" for="model">示例模型</label><select id="model" aria-label="示例模型"></select></div>
-      <div class="control"><div class="control-heading"><label for="scale">整图比例（SVG 单位/Å）</label><output id="scale-value" for="scale">60</output></div><input id="scale" type="range" min="20" max="200" step="1" value="60" aria-describedby="scale-help"></div>
-      <p id="scale-help" style="font-size:12px;color:#656d73;line-height:1.7">坐标与基础半径单位为 Å。整图比例控制整个分子的绘图大小，与原子半径倍率独立。两者均仅由用户手动调整；切换模型、旋转或改变窗口不自动适配。SVG 保持原始 900 × 700 尺寸，窗口较小时可用滚动条查看；模型超出图版可手动缩小整图比例。</p>
-      <div class="control"><div class="control-heading"><label for="atom-radius-scale">原子半径倍率</label><output id="atom-radius-scale-value" for="atom-radius-scale">1.00×</output></div><input id="atom-radius-scale" type="range" min="0.2" max="2" step="0.05" value="1" aria-describedby="atom-radius-scale-help"></div>
-      <p id="atom-radius-scale-help" style="font-size:12px;color:#656d73;line-height:1.7">仅缩放原子球体：显示半径 = 基础共价半径（或显式 atom.radius）× 倍率；默认 1。原子中心、键长及键半径不变，科学基础数值不被改写。基础共价半径采用 Cordero 等（2008）的经验值（碳采用 sp³ 参考值），并非硬球边界；球体相交不触发自动调整。</p>
-      <div class="control"><div class="control-heading"><label for="yaw">水平旋转</label><output id="yaw-value" for="yaw">25°</output></div><input id="yaw" type="range" min="-180" max="180" step="1" value="25"></div>
-      <div class="control"><div class="control-heading"><label for="pitch">俯仰角度</label><output id="pitch-value" for="pitch">−15°</output></div><input id="pitch" type="range" min="-90" max="90" step="1" value="-15"></div>
-      <div class="control"><label class="control-heading" for="shading-mode">明暗模式</label><select id="shading-mode" aria-describedby="shading-help"><option value="hatch" selected>排线</option><option value="stipple">点刻</option><option value="halftone">规则网点</option></select></div>
-      <div class="control"><div class="control-heading"><label for="shading-density">密度</label><output id="shading-density-value" for="shading-density">100%</output></div><input id="shading-density" type="range" min="40" max="250" step="5" value="100" aria-describedby="shading-help"></div>
-      <div class="control"><div class="control-heading"><label for="shading-size">大小</label><output id="shading-size-value" for="shading-size">100%</output></div><input id="shading-size" type="range" min="0" max="150" step="5" value="100" aria-describedby="shading-help"></div>
-      <div class="control"><div class="control-heading"><label for="shading-contrast">对比度</label><output id="shading-contrast-value" for="shading-contrast">1.2</output></div><input id="shading-contrast" type="range" min="0.5" max="2.5" step="0.1" value="1.2" aria-describedby="shading-help"></div>
-      <p id="shading-help" style="font-size:12px;color:#656d73;line-height:1.7">排线、点刻、规则网点共用密度、大小和对比度，切换模式保留设置。密度越高，排线越多、点越密；大小控制排线线宽或点径。大小 0 关闭所有模式的明暗纹理，不影响轮廓、底色和标签。对比度对三种模式均生效；建议从密度 100%、大小 100%、对比度 1.2 开始。点刻用疏密和点径表现曲面；规则网点使用固定 45° 点阵。</p>
-      <div class="control"><div class="control-heading"><label for="outline-width">轮廓线宽</label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8" aria-describedby="width-help"></div>
-      <p id="width-help" style="font-size:12px;color:#656d73;line-height:1.7">轮廓线宽独立于大小，设为 0 仅关闭轮廓；关闭明暗纹理请将大小设为 0。</p>
-      <div class="control"><div class="control-heading"><label for="light-azimuth">光源方位</label><output id="light-azimuth-value" for="light-azimuth">−29°</output></div><input id="light-azimuth" type="range" min="-180" max="180" step="1" value="-29" aria-describedby="light-help"></div>
-      <div class="control"><div class="control-heading"><label for="light-elevation">光源仰角</label><output id="light-elevation-value" for="light-elevation">32°</output></div><input id="light-elevation" type="range" min="-90" max="90" step="1" value="32" aria-describedby="light-help"></div>
-      <label class="check"><input id="point-light" type="checkbox" aria-describedby="light-help">点光源</label>
-      <div class="control"><div class="control-heading"><label for="light-distance">光源距离</label><output id="light-distance-value" for="light-distance">∞</output></div><input id="light-distance" type="range" min="1.2" max="12" step="0.1" value="3" disabled aria-describedby="light-help"></div>
-      <div class="control"><div class="control-heading"><label for="light-attenuation">衰减强度</label><output id="light-attenuation-value" for="light-attenuation">0.000</output></div><input id="light-attenuation" type="range" min="0" max="0.2" step="0.005" value="0" disabled aria-describedby="light-help"></div>
-      <label class="check"><input id="cast-shadows" type="checkbox" checked aria-describedby="light-help">投射阴影（停止拖动后计算）</label>
-      <div class="control"><div class="control-heading"><label for="shadow-strength">阴影强度</label><output id="shadow-strength-value" for="shadow-strength">80%</output></div><input id="shadow-strength" type="range" min="0" max="100" step="5" value="80" aria-describedby="light-help"></div>
-      <p id="light-help" style="font-size:12px;color:#656d73;line-height:1.7">方位 0° 为正前方，负值向左、正值向右，±180° 为背后；仰角正值向上。光源独立于分子旋转。默认平行光；点光源距离以场景包围半径 R 为单位，沿当前方向从模型中心移近移远（不是独立 Z 轴），衰减强度 0 关闭距离衰减；增大后，离光源远的表面更暗。采用柔化平方反比衰减 1/(1+k·(d/R)²)，作用于明暗纹理，不改变元素底色、几何和基础纹理参数；平行光不衰减。投射阴影支持平行光与点光源：球体和键柱均可挡光，通过纹理加深表现硬阴影；强度 80% 时保留原亮度的 20%。拖动期间跳过阴影，松开后恢复；不模拟柔边阴影或间接光反弹。</p>
-      <label class="check"><input id="color-wash" type="checkbox" checked aria-describedby="wash-help">元素上色</label>
-      <div class="control"><label class="control-heading" for="color-mode">上色模式</label><select id="color-mode" aria-describedby="wash-help"><option value="wash" selected>底色＋黑色纹理</option><option value="ink">彩色纹理＋白底</option></select></div>
-      <div class="control"><div class="control-heading"><label for="wash-strength">上色浓度</label><output id="wash-strength-value" for="wash-strength">65%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="65" aria-describedby="wash-help"></div>
-      <div class="control"><div class="control-heading"><label for="color-saturation">上色饱和度</label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="400" step="5" value="100" aria-describedby="wash-help"></div>
-      <p id="wash-help" style="font-size:12px;color:#656d73;line-height:1.7">元素上色为总开关；关闭后保留上色模式和参数。wash（底色＋黑色纹理）保持原有底色与黑纹：碳暖灰、氢白、氧朱红、氮灰蓝、硫赭黄、磷橙，键保持白色。ink（彩色纹理＋白底）不铺底色，点刻、规则网点和排线自身使用元素深色墨色，氢与键使用灰色。<br>浓度与白色混合：0% 白、100% 当前配色；饱和度：0% 灰度、100% 原配色、400% 鲜明。</p>
-      <label class="check"><input id="variable-width" type="checkbox" checked>渐变线宽（亮细暗粗）</label>
-      <label class="check"><input id="cross-hatch" type="checkbox" checked>交叉排线</label>
-      <label class="check"><input id="labels" type="checkbox">元素标签</label>
-      <fieldset id="label-settings" class="label-settings" disabled aria-label="元素标签样式">
-        <div class="control"><div class="control-heading"><label for="label-size">标签字号</label><output id="label-size-value" for="label-size">17</output></div><input id="label-size" type="range" min="6" max="96" step="1" value="17"></div>
-        <div class="control"><label class="control-heading" for="label-font">标签字体（可输入本机字体）</label><input id="label-font" type="text" list="label-font-options" maxlength="200" value="Georgia, 'Times New Roman', serif" aria-describedby="label-help">
-          <datalist id="label-font-options">
-            <option value="Georgia, 'Times New Roman', serif"></option>
-            <option value="'Times New Roman', serif"></option>
-            <option value="'EB Garamond', Garamond, serif"></option>
-            <option value="Baskerville, 'Baskerville Old Face', serif"></option>
-            <option value="Arial, sans-serif"></option>
-            <option value="'Courier New', monospace"></option>
-          </datalist>
-        </div>
-        <label class="check"><input id="label-bold" type="checkbox">粗体</label>
-        <label class="check"><input id="label-italic" type="checkbox" checked>斜体</label>
-        <div class="color-control"><label for="label-color">文字颜色</label><input id="label-color" type="color" value="#161616"></div>
-        <div class="control"><div class="control-heading"><label for="label-stroke-width">描边宽度</label><output id="label-stroke-width-value" for="label-stroke-width">4.0</output></div><input id="label-stroke-width" type="range" min="0" max="16" step="0.5" value="4"></div>
-        <label class="check"><input id="label-match-fill" type="checkbox" checked>描边底色自动匹配</label>
-        <div class="color-control"><label for="label-stroke-color">描边颜色</label><input id="label-stroke-color" type="color" value="#ffffff"></div>
-      </fieldset>
-      <p id="label-help" style="font-size:12px;color:#656d73;line-height:1.7">字号、描边为 SVG 图版单位；描边设为 0 可关闭。默认描边自动匹配底色：wash 匹配原子底色，ink 白底匹配白色；关闭元素上色时也匹配白色。字体须在本机安装，未安装会回退；导出不嵌入字体。</p>
+      <div class="settings-body">
+        <div class="control"><label class="control-heading" for="model">模型</label><select id="model" aria-label="示例模型"></select></div>
+        <details class="settings-group" name="settings" open>
+          <summary>大小与视角</summary>
+          <div class="control"><div class="control-heading"><label for="scale" title="SVG 单位/Å；只缩放几何，不缩放纹理">整图比例</label><output id="scale-value" for="scale">60</output></div><input id="scale" type="range" min="20" max="200" step="1" value="60"></div>
+          <div class="control"><div class="control-heading"><label for="atom-radius-scale">原子半径倍率</label><output id="atom-radius-scale-value" for="atom-radius-scale">1.00×</output></div><input id="atom-radius-scale" type="range" min="0.2" max="2" step="0.05" value="1"></div>
+          <div class="control"><div class="control-heading"><label for="yaw">水平旋转</label><output id="yaw-value" for="yaw">25°</output></div><input id="yaw" type="range" min="-180" max="180" step="1" value="25"></div>
+          <div class="control"><div class="control-heading"><label for="pitch">俯仰角度</label><output id="pitch-value" for="pitch">−15°</output></div><input id="pitch" type="range" min="-90" max="90" step="1" value="-15"></div>
+        </details>
+        <details class="settings-group" name="settings">
+          <summary>纹理与线条</summary>
+          <div class="control"><label class="control-heading" for="shading-mode">明暗模式</label><select id="shading-mode"><option value="hatch" selected>排线</option><option value="stipple">点刻</option><option value="halftone">规则网点</option></select></div>
+          <div class="control"><div class="control-heading"><label for="texture-scale" title="向左更细密，向右更粗疏，平均黑度尽量不变">纹理粗细</label><output id="texture-scale-value" for="texture-scale">1.00×</output></div><input id="texture-scale" type="range" min="20" max="250" step="5" value="100"></div>
+          <div class="control"><div class="control-heading"><label for="shading-brightness">亮度</label><output id="shading-brightness-value" for="shading-brightness">0</output></div><input id="shading-brightness" type="range" min="-100" max="100" step="5" value="0"></div>
+          <div class="control"><div class="control-heading"><label for="shading-contrast">对比度</label><output id="shading-contrast-value" for="shading-contrast">1.2</output></div><input id="shading-contrast" type="range" min="0.5" max="2.5" step="0.1" value="1.2"></div>
+          <div class="control"><div class="control-heading"><label for="outline-width">轮廓线宽</label><output id="outline-width-value" for="outline-width">0.80</output></div><input id="outline-width" type="range" min="0" max="4" step="0.05" value="0.8"></div>
+          <label class="check"><input id="variable-width" type="checkbox" checked>渐变线宽</label>
+          <label class="check"><input id="cross-hatch" type="checkbox" checked>交叉排线</label>
+        </details>
+        <details class="settings-group" name="settings">
+          <summary>光照与阴影</summary>
+          <div class="control"><div class="control-heading"><label for="light-azimuth">光源方位</label><output id="light-azimuth-value" for="light-azimuth">−29°</output></div><input id="light-azimuth" type="range" min="-180" max="180" step="1" value="-29"></div>
+          <div class="control"><div class="control-heading"><label for="light-elevation">光源仰角</label><output id="light-elevation-value" for="light-elevation">32°</output></div><input id="light-elevation" type="range" min="-90" max="90" step="1" value="32"></div>
+          <label class="check"><input id="point-light" type="checkbox">点光源</label>
+          <div class="control"><div class="control-heading"><label for="light-distance">光源距离</label><output id="light-distance-value" for="light-distance">∞</output></div><input id="light-distance" type="range" min="1.2" max="12" step="0.1" value="3" disabled></div>
+          <div class="control"><div class="control-heading"><label for="light-attenuation" title="0 表示不衰减">衰减强度</label><output id="light-attenuation-value" for="light-attenuation">0.000</output></div><input id="light-attenuation" type="range" min="0" max="0.2" step="0.005" value="0" disabled></div>
+          <label class="check"><input id="cast-shadows" type="checkbox" checked>投射阴影</label>
+          <div class="control"><div class="control-heading"><label for="shadow-strength">阴影强度</label><output id="shadow-strength-value" for="shadow-strength">80%</output></div><input id="shadow-strength" type="range" min="0" max="100" step="5" value="80"></div>
+        </details>
+        <details class="settings-group" name="settings">
+          <summary>配色</summary>
+          <div class="control"><label class="control-heading" for="color-scheme">色表</label><select id="color-scheme"><option value="jmol" selected>Jmol / ChimeraX</option><option value="rasmol">RasMol (CPK)</option><option value="pymol">PyMOL 元素色</option><option value="greenCarbon">3Dmol · 绿碳</option><option value="cyanCarbon">3Dmol · 青碳</option><option value="magentaCarbon">3Dmol · 品红碳</option></select></div>
+          <label class="check"><input id="color-wash" type="checkbox" checked>元素底色</label>
+          <div class="control"><div class="control-heading"><label for="wash-strength">浓度</label><output id="wash-strength-value" for="wash-strength">100%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="100"></div>
+          <div class="control"><div class="control-heading"><label for="color-saturation">饱和度</label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="100" step="5" value="100"></div>
+        </details>
+        <details class="settings-group" name="settings">
+          <summary>元素标签</summary>
+          <label class="check"><input id="labels" type="checkbox">显示标签</label>
+          <fieldset id="label-settings" class="label-settings" disabled aria-label="元素标签样式">
+            <div class="control"><div class="control-heading"><label for="label-size">字号</label><output id="label-size-value" for="label-size">17</output></div><input id="label-size" type="range" min="6" max="96" step="1" value="17"></div>
+            <div class="control"><label class="control-heading" for="label-font">字体</label><input id="label-font" type="text" list="label-font-options" maxlength="200" value="Georgia, 'Times New Roman', serif">
+              <datalist id="label-font-options">
+                <option value="Georgia, 'Times New Roman', serif"></option>
+                <option value="'Times New Roman', serif"></option>
+                <option value="'EB Garamond', Garamond, serif"></option>
+                <option value="Baskerville, 'Baskerville Old Face', serif"></option>
+                <option value="Arial, sans-serif"></option>
+                <option value="'Courier New', monospace"></option>
+              </datalist>
+            </div>
+            <div class="check-row"><label class="check"><input id="label-bold" type="checkbox">粗体</label><label class="check"><input id="label-italic" type="checkbox" checked>斜体</label></div>
+            <div class="color-control"><label for="label-color">文字颜色</label><input id="label-color" type="color" value="#161616"></div>
+            <div class="control"><div class="control-heading"><label for="label-stroke-width">描边宽度</label><output id="label-stroke-width-value" for="label-stroke-width">4.0</output></div><input id="label-stroke-width" type="range" min="0" max="16" step="0.5" value="4"></div>
+            <label class="check"><input id="label-match-fill" type="checkbox" checked>描边匹配底色</label>
+            <div class="color-control"><label for="label-stroke-color">描边颜色</label><input id="label-stroke-color" type="color" value="#ffffff"></div>
+          </fieldset>
+        </details>
+      </div>
       <div class="actions"><button id="reset" type="button">重置</button><button id="download" type="button" disabled>下载 SVG</button></div>
       <p id="error" role="alert" hidden></p>
-      <p class="note">示例使用示意坐标，非优化构象。<br>本工具不是 SMILES 引擎。<br>本地运行，无需上传或联网。</p>
     </aside>
   </main>
   <noscript>请启用 JavaScript 以生成分子图版。</noscript>

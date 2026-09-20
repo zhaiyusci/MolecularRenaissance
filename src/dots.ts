@@ -1,31 +1,22 @@
 /* Deterministic, depth-aware SVG stipple and 45-degree halftone screens. */
-import type { Scene, Primitive, Vector, DepthAt, Project, Illumination, ElementColor, DotRegions, DotOptions } from './types';
+import type { Scene, Primitive, Vector, DepthAt, Project, Illumination, DotRegions, DotOptions, SurfaceToneContext } from './types';
+import { buildSurfacePatterns, sampledTonePaths, projectedSilhouette, type SurfacePatternLayer } from './halftone.js';
+import { directionalTonePath } from './surface-tones.js';
 interface Hit { id: number; s: Primitive; p: Vector; clearance?: number; }
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 function hash(x:number,y:number,salt:number){
   let h=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^Math.imul(salt,1274126177);
   h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296;
 }
-function candidate(i:number,j:number,g:number){return [(i+.5+.8*(hash(i,j,1)-.5))*g,(j+.5+.8*(hash(i,j,2)-.5))*g];}
-function separated(i:number,j:number,p:Vector,g:number){
-  // Independent local thinning of a jittered lattice: stable across frames,
-  // no random clumps or order-dependent placement. Not a strict blue-noise solver.
-  const rank=hash(i,j,3),limit=(.5*g)**2;
-  for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){
-    if(!di&&!dj)continue;
-    const q=candidate(i+di,j+dj,g),other=hash(i+di,j+dj,3);
-    if((q[0]-p[0])**2+(q[1]-p[1])**2<limit&&(other<rank||(other===rank&&(dj<0||(dj===0&&di<0)))))return false;
-  }
-  return true;
-}
-export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:number,illumination:Illumination,options?:DotOptions,colorForElement:ElementColor|null=null,regions:DotRegions|null=null):string{
-  if(colorForElement!==null&&typeof colorForElement!=='function')throw new Error('Invalid dot color callback');
-  const o={shadingMode:'stipple',dotSpacing:5,dotSize:1,dotContrast:1.2,...options};
+export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:number,illumination:Illumination,options?:DotOptions,regions:DotRegions|null=null,referenceCoverage?: (s:Primitive,n:Vector,lit:number)=>number,surfaces?:SurfaceToneContext):string{
+  const o={shadingMode:'stipple',dotSpacing:2.5,dotSize:.5,dotContrast:1.2,...options};
   if(!['stipple','halftone'].includes(o.shadingMode))throw new Error('Invalid dot mode');
-  if(!Number.isFinite(o.dotSpacing)||o.dotSpacing<2||o.dotSpacing>14||!Number.isFinite(o.dotSize)||o.dotSize<0||o.dotSize>1.5||!Number.isFinite(o.dotContrast)||o.dotContrast<.5||o.dotContrast>2.5)throw new Error('Invalid dot settings');
+  if(!Number.isFinite(o.dotSpacing)||o.dotSpacing<.3||o.dotSpacing>19||!Number.isFinite(o.dotSize)||o.dotSize<0||o.dotSize>4||!Number.isFinite(o.dotContrast)||o.dotContrast<.5||o.dotContrast>2.5)throw new Error('Invalid dot settings');
   if(!(scale>0)||!Number.isFinite(scale))throw new Error('Invalid scale');
   if(o.dotSize===0||scene.length===0)return '';
   const origin=project([0,0,0]),g=o.dotSpacing;
+  const maxRadius=o.dotSize;
+  const fineScale=Math.min(1,o.dotSize),minRadius=.03*fineScale;
   const shapes=scene.map((s,id)=>{
     const a=project(s.kind==='sphere'?s.c:s.a);
     const b=s.kind==='sphere'?a:project(s.a.map((v,i)=>v+s.u[i]*s.length));
@@ -36,10 +27,10 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
   const maxX=Math.max(...shapes.map(s=>s.b[2])),maxY=Math.max(...shapes.map(s=>s.b[3]));
   function hit(x:number,y:number):Hit|null{
     const wx=(x-origin[0])/scale,wy=(origin[1]-y)/scale;
-    if(regions){
+    if(regions&&o.shadingMode!=='halftone'){
       // Visibility/occlusion is already solved. The one surface intersection
       // below only reconstructs this known owner's position for its normal.
-      const region=regions.query(x,y,g*.48);if(!region)return null;
+      const region=regions.query(x,y,maxRadius*1.03);if(!region)return null;
       const s=scene[region.id],z=depthAt(s,wx,wy);
       return Number.isFinite(z)?{id:region.id,s,p:[wx,wy,z],clearance:region.clearance}:null;
     }
@@ -77,59 +68,122 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
     for(let i=0;i<9;i++){const mid=(lo+hi)/2;if(fits(mid))lo=mid;else hi=mid;}
     return lo;
   }
+  // Normalize the MEAN, never the spatial pattern of the reference hatches.
+  // Local tone depends only on smooth illumination, not line direction,
+  // projected crowding, or the thresholds that turn hatch families on/off.
+  const exponent=referenceCoverage?o.dotContrast/1.2:o.dotContrast;
+  const smoothTone=(lit:number)=>Math.pow(clamp((1-lit)/2,0,1),exponent);
+  let toneGain=1;
+  if(referenceCoverage){
+    const left=o.width===undefined?minX:Math.max(0,minX),right=o.width===undefined?maxX:Math.min(o.width,maxX);
+    const top=o.height===undefined?minY:Math.max(0,minY),bottom=o.height===undefined?maxY:Math.min(o.height,maxY);
+    const step=Math.max(2,(right-left)/128,(bottom-top)/128),tones:number[]=[];
+    let target=0;
+    for(let y=top+.61*step;y<bottom;y+=step)for(let x=left+.37*step;x<right;x+=step){
+      const h=hit(x,y);if(!h)continue;
+      const n=normal(h),lit=clamp(illumination(n,h.p),-1,1);
+      tones.push(smoothTone(lit));target+=clamp(referenceCoverage(h.s,n,lit),0,1);
+    }
+    const total=(gain:number)=>tones.reduce((sum,t)=>sum+Math.min(1,gain*t),0);
+    if(target===0)toneGain=0;
+    else if(tones.length){
+      let lo=0,hi=1;
+      while(hi<1048576&&total(hi)<target)hi*=2;
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;if(total(mid)<target)lo=mid;else hi=mid;
+      }
+      toneGain=(lo+hi)/2;
+    }
+  }
+  function coverage(h:Hit):number{
+    const lit=clamp(illumination(normal(h),h.p),-1,1);
+    return clamp(toneGain*smoothTone(lit),0,1);
+  }
+  if(o.shadingMode==='halftone'){
+    if(toneGain===0)return '';
+    const bounds:[number,number,number,number]=[
+      o.width===undefined?minX:Math.max(0,minX),o.height===undefined?minY:Math.max(0,minY),
+      o.width===undefined?maxX:Math.min(o.width,maxX),o.height===undefined?maxY:Math.min(o.height,maxY)
+    ];
+    const layers:SurfacePatternLayer[]=[];
+    const thresholds=Array.from({length:16},(_,i)=>(i+.5)/16),brightness=o.shadingBrightness??0;
+    const step=o.quality==='preview'?2:1;
+    for(const {s,id,b} of shapes){
+      if(surfaces?.paths&&!surfaces.paths[id])continue;
+      const visiblePath=surfaces?.paths?.[id]||'';
+      const box:[number,number,number,number]=[Math.max(bounds[0],b[0]),Math.max(bounds[1],b[1]),Math.min(bounds[2],b[2]),Math.min(bounds[3],b[3])];
+      // Exact visible paths' Bezier control hulls conservatively bound the
+      // local work. Hidden surfaces and hidden parts need no tone sampling.
+      if(visiblePath){
+        const coords=(visiblePath.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi)||[]).map(Number);
+        let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+        for(let i=0;i<coords.length;i+=2){x0=Math.min(x0,coords[i]);x1=Math.max(x1,coords[i]);y0=Math.min(y0,coords[i+1]);y1=Math.max(y1,coords[i+1]);}
+        box[0]=Math.max(box[0],x0);box[1]=Math.max(box[1],y0);box[2]=Math.min(box[2],x1);box[3]=Math.min(box[3],y1);
+      }
+      if(!(box[2]>box[0]&&box[3]>box[1]))continue;
+      const onSurface=(x:number,y:number):Hit|null=>{
+        if(!visiblePath){const h=hit(x,y);return h?.id===id?h:null;}
+        const wx=(x-origin[0])/scale,wy=(origin[1]-y)/scale,z=depthAt(s,wx,wy);
+        return Number.isFinite(z)?{id,s,p:[wx,wy,z]}:null;
+      };
+      if(surfaces?.light&&visiblePath){
+        const light=surfaces.light;
+        const threshold=(ink:number)=>1-2*Math.pow(ink/toneGain,1/exponent)-2*brightness;
+        const layer:SurfacePatternLayer={clip:visiblePath,bounds:box,tones:thresholds.map(t=>t>toneGain?'':directionalTonePath(s,project,light,threshold(t)))};
+        // Only one binary shadow contour is sampled locally. Its shaded tone
+        // boundaries remain analytic, with the shadow attenuation inverted.
+        if(surfaces.shadowed&&surfaces.mayShadow?.[id]){
+          const shadowed=surfaces.shadowed;
+          const mask=sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h&&shadowed(id,normal(h),h.p)?1:0;},step,[.5],true)[0];
+          if(mask){
+            const strength=o.shadowStrength??.8;
+            const constant=clamp(toneGain*smoothTone(clamp(-1+2*brightness,-1,1)),0,1);
+            layer.shadow={clip:mask,bounds:box,tones:thresholds.map(t=>{
+              if(strength>=1)return constant>=t?visiblePath:'';
+              return t>toneGain?'':directionalTonePath(s,project,light,(threshold(t)+1)/(1-strength)-1);
+            })};
+          }
+        }
+        layers.push(layer);
+      }else{
+        // Point-light attenuation, unsupported visibility arrangements, and
+        // custom low-level light callbacks stay local to each primitive.
+        layers.push({clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step)});
+      }
+    }
+    return buildSurfacePatterns({bounds,pitch:g*Math.SQRT2/5,silhouette:projectedSilhouette(scene,project,scale),layers,
+      method:surfaces?.paths?(surfaces.light?(surfaces.shadowed?'analytic-local-shadows':'analytic'):'surface-sampled'):'local-fallback'});
+  }
   const circles:string[]=[];
-  function emit(x:number,y:number,i:number,j:number){
+  function emit(x:number,y:number){
     if(x<minX||y<minY||x>maxX||y>maxY)return;
     const h=hit(x,y);if(!h)return;
-    const n=normal(h),lit=clamp(illumination(n,h.p),-1,1);
-    let radius;
-    if(o.shadingMode==='stipple'){
-      // Form tone, not dust density: signed diffuse shading plus a modest
-      // grazing-angle term. Strong light still leaves a clean highlight.
-      const rim=(1-clamp(n[2],0,1))**2;
-      const tone=Math.pow(clamp((.94-lit)/1.5+.08*rim,0,1),o.dotContrast);
-      if(tone<.006)return;
-      const probability=Math.min(1,1.7*Math.sqrt(tone));
-      if(hash(i,j,4)>=probability)return;
-      // Approximate target ink AREA. Jitter/min-distance thinning retains
-      // ~83% of sites. Both number and diameter contribute to the tone;
-      // dark marks may touch, as in dense engraved stippling.
-      const coverage=.58*tone;
-      radius=Math.min(g*Math.sqrt(coverage/(Math.PI*.83*probability))*o.dotSize,g*.48);
-    }else{
-      const shade=Math.pow(clamp((.92-lit)/1.92,0,1),o.dotContrast);
-      if(shade<.008)return;
-      radius=Math.min(g*.48*o.dotSize*Math.sqrt(shade),g*.48);
-    }
-    if(radius<.12)return;
-    // The regions branch of hit always supplies clearance.
-    radius=regions?Math.min(radius,h.clearance!):safeRadius(x,y,radius,h.id);
-    // Keep the existing size/tonal calibration for interior dots. The legacy
-    // branch needs this footprint margin; region clearance is already a
-    // conservative geometric bound and receives the same extra contraction.
-    radius=Math.floor(Math.max(0,radius*Math.cos(Math.PI/16)-.003)*1000)/1000;
-    if(radius<.12)return;
-    let color='';
-    if(colorForElement){
-      const value=colorForElement(h.s.kind==='sphere'?h.s.element:null);
-      if(typeof value!=='string'||!/^#[0-9a-f]{6}$/i.test(value))throw new Error('Invalid dot ink color');
-      color=` fill="${value}"`;
-    }
-    circles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"${color}/>`);
+    let radius=o.dotSize;
+    if(radius<minRadius)return;
+    // Contract only near actual boundaries, not every interior mark: a global
+    // radius contraction would silently reduce the calibrated coverage.
+    const clearance=regions?h.clearance!:safeRadius(x,y,radius*1.03,h.id);
+    radius=Math.floor(Math.min(radius,Math.max(0,clearance*Math.cos(Math.PI/16)-.003*fineScale))*1000)/1000;
+    if(radius<minRadius)return;
+    circles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"/>`);
   }
   if(o.shadingMode==='stipple'){
     const i0=Math.floor(minX/g)-1,i1=Math.ceil(maxX/g)+1,j0=Math.floor(minY/g)-1,j1=Math.ceil(maxY/g)+1;
     if((i1-i0+1)*(j1-j0+1)>1000000)throw new Error('Dot screen too large; increase spacing or reduce output size');
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
-      const p=candidate(i,j,g);if(separated(i,j,p,g))emit(p[0],p[1],i,j);
+      const h=hit((i+.5)*g,(j+.5)*g);if(!h)continue;
+      // Equal-radius Poisson marks. Account for overlap using
+      // coverage = 1-exp(-numberDensity * diskArea), rather than adding areas.
+      const ink=Math.min(.995,coverage(h));if(ink<=0)continue;
+      const mean=-Math.log1p(-ink)*g*g/(Math.PI*o.dotSize*o.dotSize);
+      if(mean>1000)throw new Error('Stipple density too high; increase dot size');
+      const stop=Math.exp(-mean);let product=1,count=0;
+      while((product*=1-hash(i,j,100+count))>stop)count++;
+      for(let k=0;k<count;k++){
+        emit((i+hash(i,j,10000+2*k))*g,(j+hash(i,j,10001+2*k))*g);
+        if(circles.length>1000000)throw new Error('Too many stipple marks; use a coarser texture');
+      }
     }
-  }else{
-    const c=Math.SQRT1_2;
-    const corners=[[minX,minY],[minX,maxY],[maxX,minY],[maxX,maxY]];
-    const us=corners.map(p=>(p[0]+p[1])*c/g),vs=corners.map(p=>(-p[0]+p[1])*c/g);
-    const i0=Math.floor(Math.min(...us))-1,i1=Math.ceil(Math.max(...us))+1,j0=Math.floor(Math.min(...vs))-1,j1=Math.ceil(Math.max(...vs))+1;
-    if((i1-i0+1)*(j1-j0+1)>1000000)throw new Error('Dot screen too large; increase spacing or reduce output size');
-    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)emit(((i+.5)-(j+.5))*g*c,((i+.5)+(j+.5))*g*c,i,j);
   }
   return `<g data-role="dots" data-mode="${o.shadingMode}" fill="#161616" stroke="none">${circles.join('')}</g>`;
 }

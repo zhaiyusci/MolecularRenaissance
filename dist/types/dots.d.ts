@@ -1,2 +1,2 @@
-import type { Scene, DepthAt, Project, Illumination, ElementColor, DotRegions, DotOptions } from './types';
-export declare function buildDots(scene: Scene, depthAt: DepthAt, project: Project, scale: number, illumination: Illumination, options?: DotOptions, colorForElement?: ElementColor | null, regions?: DotRegions | null): string;
+import type { Scene, Primitive, Vector, DepthAt, Project, Illumination, DotRegions, DotOptions, SurfaceToneContext } from './types';
+export declare function buildDots(scene: Scene, depthAt: DepthAt, project: Project, scale: number, illumination: Illumination, options?: DotOptions, regions?: DotRegions | null, referenceCoverage?: (s: Primitive, n: Vector, lit: number) => number, surfaces?: SurfaceToneContext): string;

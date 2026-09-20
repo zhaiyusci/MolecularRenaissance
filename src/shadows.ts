@@ -1,4 +1,21 @@
-import type { Primitive, Vector } from './types.js';
+import type { Primitive, Vector, Scene } from './types.js';
+
+/** Conservative directional-light broad phase, once per visible surface.
+ * A convex primitive cannot shadow its own outward-facing surface. */
+export function directionalShadowContext(scene:Scene,light:Vector,bias:number){
+  const bounds=scene.map(s=>s.kind==='sphere'?{c:s.c,r:s.r}:{c:s.a.map((v,i)=>v+s.u[i]*s.length/2),r:Math.hypot(s.length/2,s.r)});
+  const lists=scene.map((receiver,i)=>scene.filter((caster,j)=>{
+    if(i===j)return false;
+    const a=bounds[i],b=bounds[j],d=b.c.map((v,k)=>v-a.c[k]),ahead=d.reduce((sum,v,k)=>sum+v*light[k],0),r=a.r+b.r;
+    if(ahead+r<=0||d.reduce((sum,v)=>sum+v*v,0)-ahead*ahead>r*r)return false;
+    if(receiver.kind==='sphere'&&Math.hypot(...d)+b.r<receiver.r-bias)return false;
+    return true;
+  }));
+  return {
+    mayShadow:lists.map(list=>list.length>0),
+    shadowed:(id:number,n:Vector,p:Vector)=>n.reduce((sum,v,k)=>sum+v*light[k],0)>0&&shadowBlocked(lists[id],p,n,light,Infinity,bias)
+  };
+}
 
 /** Any solid intersecting the ray toward the light (finite for a point source).
  * Normal bias avoids self-shadow acne; closed cylinders include both end caps.
