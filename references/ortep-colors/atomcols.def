@@ -1,0 +1,125 @@
+#  ATOMCOLS.DEF
+#  System file for :
+#  Ortep-3 for Windows Version 2.0 (April 2008)
+#
+#
+# File ATOMCOLS.DEF modifies the default colours for each element
+#
+# The default colour scheme in ORTEP is the  well known CPK scheme
+# C = LightGrey O = Red H = White N = LightBlue S = Yellow
+# P = Orange Cl = Green Br = Brown Na = Purple Zn = Brown
+# metals = Gray75 unknown = Pink
+#
+# Users are free to modify any colour, but please ensure that the colour
+# name corresponds either to an internally defined colour (see table in
+# ORTEP3 manual) or one defined in RGBCOLS.DEF
+#
+#Atom  Colour                 At rad  vdWaals
+H      White                   0.37   1.20
+He     Aquamarine              0.00   1.40
+Li     Gray75                  1.57   2.05
+Be     Gray75                  1.12   1.15
+B      Pink                    0.88   1.63
+C      SlateBlue               0.77   1.70
+N      Orchid                  0.74   1.55
+O      Red                     0.66   1.52
+F      YellowGreen             0.64   1.47
+Ne     Aquamarine              0.00   1.54
+Na     Yellow                  1.91   1.77
+Mg     Gray75                  1.60   1.90
+Al     Gray75                  1.43   2.15
+Si     Pink                    1.18   2.10
+P      Orange                  1.10   1.80
+S      Yellow                  1.04   1.80
+Cl     Aquamarine              0.99   1.75
+Ar     Aquamarine              0.00   1.88
+K      DarkOrchid              2.35   2.13
+Ca     Gray75                  1.97   1.79
+Sc     Gray75                  1.64   2.24
+Ti     Silver                  1.47   2.27
+V      LightBlue               1.35   2.13
+Cr     Green                   1.29   2.15
+Mn     Orchid                  1.37   2.15
+Fe     Orange                  1.36   2.14
+Co     Aquamarine              1.35   2.03
+Ni     MediumAquamarine        1.35   2.30
+Cu     CoolCopper              1.38   2.32
+Zn     Brown                   1.37   2.25
+Ga     Pink                    1.53   2.02
+Ge     Pink                    1.22   1.97
+As     Pink                    1.21   1.85
+Se     Feldspar                1.04   1.90
+Br     Brown                   1.14   1.85
+Kr     Pink                    0.00   2.02
+Rb     Gray75                  2.50   2.27
+Sr     Gray75                  2.15   1.92
+Y      Gray75                  1.80   2.58
+Zr     Gray75                  1.60   2.36
+Nb     Gray75                  1.47   2.28
+Mo     Gray75                  1.40   2.27
+Tc     Gray75                  1.35   2.15
+Ru     Orchid                  1.45   2.30
+Rh     Pink                    1.45   2.25
+Pd     Gray75                  1.50   2.30
+Ag     Gray75                  1.44   2.39
+Cd     Gray75                  1.52   2.49
+In     Pink                    1.67   2.43
+Sn     Silver                  1.58   2.26
+Sb     Plum                    1.41   2.26
+Te     OldGold                 1.37   2.06
+I      Aquamarine              1.33   1.98
+Xe     Pink                    1.50   2.16
+Cs     Gray75                  2.72   2.47
+Ba     Gray75                  2.24   2.14
+La     Gray75                  1.88   2.67
+Ce     Gray75                  1.85   2.63
+Pr     Gray75                  1.82   2.62
+Nd     Gray75                  1.81   2.61
+Pm     Gray75                  1.81   2.60
+Sm     Gray75                  1.80   2.60
+Eu     Gray75                  2.00   2.79
+Gd     SkyBlue                 1.79   2.59
+Tb     Gray75                  1.76   2.56
+Dy     Gray75                  1.75   2.55
+Ho     Gray75                  1.74   2.54
+Er     Gray75                  1.73   2.53
+Tm     Gray75                  1.72   2.52
+Yb     Gray75                  1.94   2.74
+Lu     Gray75                  1.71   2.52
+Hf     Gray75                  1.57   2.37
+Ta     Gray75                  1.47   2.23
+W      Gray75                  1.41   2.17
+Re     Gray75                  1.37   2.15
+Os     Yellow                  1.47   2.17
+Ir     Flesh                   1.42   2.12
+Pt     Plum                    1.50   2.30
+Au     OldGold                 1.44   2.30
+Hg     Coral                   1.55   2.50
+Tl     MediumAquamarine        1.71   2.35
+Pb     Gray75                  1.75   2.34
+Bi     Gray75                  1.82   2.34
+Po     Pink                    1.60   2.48
+At     Pink                    1.60   2.55
+Rn     Pink                    0.00   2.70
+Fr     Gray75                  2.70   2.70
+Ra     Gray75                  2.20   2.70
+Ac     Gray75                  1.80   2.68
+Th     Gray75                  1.85   2.59
+Pa     Gray75                  1.80   2.41
+U      Yellow                  1.80   2.38
+Np     Gray75                  1.80   2.35
+Pu     Gray75                  1.80   2.33
+Am     Gray75                  1.80   2.33
+Cm     Gray75                  1.80   2.33
+Bk     Gray75                  1.80   2.33
+Cf     Gray75                  1.80   2.33
+Es     Gray75                  1.80   2.33
+Fm     Gray75                  1.80   2.33
+Md     Gray75                  1.80   2.33
+No     Gray75                  1.80   2.33
+Lr     Gray75                  1.80   2.33
+Rf     Gray75                  1.80   2.33
+Ha     Gray75                  1.80   2.33
+Ct     White                   0.77   1.70
+D      White                   0.40   1.20
+Q      NeonPink                0.0    0.0

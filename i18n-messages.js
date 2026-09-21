@@ -28,7 +28,7 @@
     'status.precise': ['Precise rendering', '精确渲染'],
     'status.fast': ['Fast overlay · on', '快速覆盖 · 已启用'],
     'status.renderTime': ['Rendered in {ms} ms', '渲染耗时 {ms} 毫秒'],
-    'status.dragTime': ['Drag preview (no texture) · {ms} ms', '拖动预览（无纹理）· {ms} 毫秒'],
+    'status.dragTime': ['Drag preview (no shading) · {ms} ms', '拖动预览（无光影）· {ms} 毫秒'],
     'status.modelInfo': ['{atoms} atoms · {bonds} bonds · 900 × 700', '{atoms} 个原子 · {bonds} 条化学键 · 900 × 700'],
     'status.previewAria': ['{name} molecular illustration', '{name}分子插图'],
     'status.xyzCancelled': ['XYZ import cancelled', '已取消 XYZ 导入'],
@@ -135,7 +135,16 @@
     ['zeroOrientation', 'Invalid orientation: quaternion must be nonzero', '姿态无效：四元数不能全部为零'],
     ['orientationAxis', 'Invalid orientation axis: expected x, y, or z', '旋转轴无效：请选择 X、Y 或 Z'],
     ['orientationAngle', 'Invalid orientation angle: expected finite radians', '旋转角度无效：必须为有限弧度值'],
-    ['euler', 'Invalid Euler angles: expected three finite radians', '欧拉角无效：必须包含三个有限弧度值']
+    ['euler', 'Invalid Euler angles: expected three finite radians', '欧拉角无效：必须包含三个有限弧度值'],
+    ['elementTextures', 'Invalid elementTextures: expected a boolean', '元素纹理开关必须为布尔值'],
+    ['elementTextureScale', 'Invalid elementTextureScale: expected a finite number between 0.5 and 3', '元素纹理大小必须为 0.5–3 之间的有限数值'],
+    ['elementTextureSymbol', 'Invalid element texture symbol: expected ASCII letters', '元素纹理符号必须由英文字母组成'],
+    ['elementTextureId', 'Invalid element texture pattern id', '元素纹理图案标识无效'],
+    ['elementTextureProjection', 'Element texture projection exceeds finite SVG coordinates', '元素纹理投影超出有限 SVG 坐标范围'],
+    ['elementTextureSample', 'Element texture fallback sample budget exceeded; reduce scale/output size or enable analytic boundaries', '元素纹理回退采样超出上限；请缩小比例或输出尺寸，或启用解析边界'],
+    ['elementTextureGrid', 'Element texture fallback grid budget exceeded; reduce scale/output size or enable analytic boundaries', '元素纹理回退网格超出上限；请缩小比例或输出尺寸，或启用解析边界'],
+    ['elementTextureTile', 'Element texture fallback tile budget exceeded; reduce scale/output size or enable analytic boundaries', '元素纹理回退分块超出上限；请缩小比例或输出尺寸，或启用解析边界'],
+    ['elementTextureDepth', 'Element texture fallback depth budget exceeded; reduce molecule size or enable analytic boundaries', '元素纹理回退深度查询超出上限；请减少原子数量，或启用解析边界']
   ];
   engine.forEach(function (row) { known('error.engine.' + row[0], row[1], row[2]); });
   add('error.engine.option', 'Invalid option: {option}', '选项无效：{option}');

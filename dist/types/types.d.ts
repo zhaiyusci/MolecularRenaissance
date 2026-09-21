@@ -18,7 +18,7 @@ export interface Molecule {
 }
 export type ShadingMode = 'hatch' | 'stipple' | 'halftone';
 export type RenderQuality = 'preview' | 'export';
-export type ColorScheme = 'jmol' | 'rasmol' | 'pymol' | 'greenCarbon' | 'cyanCarbon' | 'magentaCarbon';
+export type ColorScheme = 'jmol' | 'rasmol' | 'pymol' | 'ortep' | 'greenCarbon' | 'cyanCarbon' | 'magentaCarbon';
 export type LightType = 'directional' | 'point';
 export type RenderMode = 'precise' | 'fast';
 /** Angles are radians; stroke/label sizes are SVG units, not angstrom or print mm. */
@@ -50,6 +50,10 @@ export interface RenderOptions {
     shadingMode?: ShadingMode;
     /** Joint spacing and mark-size scale, 0.2–2.5; larger means coarser at similar mean coverage. */
     textureScale?: number;
+    /** Independent categorical sphere patterns, default false; unaffected by lighting/shading. */
+    elementTextures?: boolean;
+    /** Categorical tile spacing and mark dimensions in SVG units, 0.5–3; default 1. */
+    elementTextureScale?: number;
     /** Texture brightness offset, -1–1; positive is brighter, default 0. Does not recolor fills. */
     shadingBrightness?: number;
     /** Legacy independent controls; textureScale overrides them except shadingSize=0 for no-texture previews. */

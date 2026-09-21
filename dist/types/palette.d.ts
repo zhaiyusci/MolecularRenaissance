@@ -5,6 +5,7 @@ export declare const colorSchemes: Readonly<{
     jmol: Readonly<Record<string, string>>;
     rasmol: Readonly<Record<string, string>>;
     pymol: Readonly<Record<string, string>>;
+    ortep: Readonly<Record<string, string>>;
     greenCarbon: Readonly<{
         C: "#00ff00";
     }>;

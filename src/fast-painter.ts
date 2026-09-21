@@ -9,6 +9,7 @@ import type { NormalizedOptions } from './options.js';
 import { prepareScene, depthAt } from './scene.js';
 import { add, mul, cross, norm, dot, escapeXml as esc } from './math.js';
 import { elementColor } from './palette.js';
+import { createElementTextures } from './element-textures.js';
 import { createCurveRenderer } from './strokes.js';
 import { projectedCircle, projectedLine, trigSpans, intersectSpans } from './hatch-curves.js';
 import { sampledTonePaths } from './halftone.js';
@@ -31,6 +32,8 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
   }
   const prefix = 'fast-painter-' + (hash1 >>> 0).toString(16) + '-' + (hash2 >>> 0).toString(16);
   const definitions: string[] = [], layers: string[] = [], paths: string[] = [];
+  const elements = o.elementTextures ? createElementTextures(spheres.map(s => s.element!), o.elementTextureScale) : null;
+  if (elements) definitions.push(elements.definitions);
   const counts = { templates: 0, hatchCurves: 0, hatchPaths: 0, labels: 0, masks: 0, maskTiles: 0,
     visibleBonds: 0, emptyBonds: 0, containedBonds: 0, maskSamples: 0, atomDepthTests: 0, candidatePairs: 0 };
   const localProject: Project = p => [p[0] * scale, -p[1] * scale];
@@ -108,7 +111,8 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
     const showLabel = o.labels && (o.labelHydrogens || s.element !== 'H');
     const label = showLabel ? `<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${esc(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fill : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${esc(s.element)}</text>` : '';
     if (showLabel) counts.labels++;
-    layers.push(`<g data-role="surface-layer" data-surface-id="${id}" data-atom-id="${id}"><circle data-role="surface-fill" ${circle} fill="${fill}" stroke="none"/>${texture}${outline}${label}</g>`);
+    const categorical = elements ? `<circle ${elements.fill(s.element!)} data-surface-id="${id}" ${circle}/>` : '';
+    layers.push(`<g data-role="surface-layer" data-surface-id="${id}" data-atom-id="${id}"><circle data-role="surface-fill" ${circle} fill="${fill}" stroke="none"/>${categorical}${texture}${outline}${label}</g>`);
   }
 
   const origin = project([0, 0, 0]), step = o.quality === 'preview' ? .5 : .25;

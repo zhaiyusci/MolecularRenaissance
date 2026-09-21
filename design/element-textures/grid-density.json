@@ -1,0 +1,102 @@
+{
+  "targetCellArea": 81,
+  "method": "Equal geometric face area, not equal ink coverage. Different shapes may still differ perceptually; coverage is diagnostic only.",
+  "grids": [
+    {
+      "id": "carbon",
+      "name": "C 深色斜交叉网",
+      "lineWidth": 1.5,
+      "tileWidth": 9,
+      "tileHeight": 9,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 1.5,
+      "afterCoverage": 0.30555555555555547,
+      "sampledCoverage": 0.30552001953125
+    },
+    {
+      "id": "square",
+      "name": "正方网",
+      "lineWidth": 0.9,
+      "tileWidth": 9,
+      "tileHeight": 9,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 1,
+      "afterCoverage": 0.18999999999999995,
+      "sampledCoverage": 0.19
+    },
+    {
+      "id": "rect-h",
+      "name": "横长方网",
+      "lineWidth": 0.9,
+      "tileWidth": 15.588457268119894,
+      "tileHeight": 5.196152422706632,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 0.8660254037844386,
+      "afterCoverage": 0.22094010767585026,
+      "sampledCoverage": 0.2209228515625
+    },
+    {
+      "id": "rect-v",
+      "name": "竖长方网",
+      "lineWidth": 0.9,
+      "tileWidth": 5.196152422706632,
+      "tileHeight": 15.588457268119894,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 0.8660254037844386,
+      "afterCoverage": 0.22094010767585026,
+      "sampledCoverage": 0.2208203125
+    },
+    {
+      "id": "rhombus",
+      "name": "扁菱形网",
+      "lineWidth": 0.9,
+      "tileWidth": 22.045407685048602,
+      "tileHeight": 7.3484692283495345,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 0.9185586535436918,
+      "afterCoverage": 0.24153222308049438,
+      "sampledCoverage": 0.2416015625
+    },
+    {
+      "id": "triangle",
+      "name": "等边三角形网",
+      "lineWidth": 0.9,
+      "tileWidth": 13.677042341728669,
+      "tileHeight": 23.689332233144867,
+      "cellArea": 81.00000000000003,
+      "cellsPer64pxCircle": 39.71593675649317,
+      "spacingScale": 0.7598356856515927,
+      "afterCoverage": 0.21496032463871118,
+      "sampledCoverage": 0.2148828125
+    },
+    {
+      "id": "brick-h",
+      "name": "横向砖纹",
+      "lineWidth": 0.9,
+      "tileWidth": 15.588457268119894,
+      "tileHeight": 10.392304845413264,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 0.8660254037844386,
+      "afterCoverage": 0.22094010767585026,
+      "sampledCoverage": 0.2209228515625
+    },
+    {
+      "id": "brick-v",
+      "name": "竖向砖纹",
+      "lineWidth": 0.9,
+      "tileWidth": 15.588457268119894,
+      "tileHeight": 10.392304845413264,
+      "cellArea": 81,
+      "cellsPer64pxCircle": 39.715936756493186,
+      "spacingScale": 0.8660254037844386,
+      "afterCoverage": 0.22094010767585026,
+      "sampledCoverage": 0.2209228515625
+    }
+  ]
+}

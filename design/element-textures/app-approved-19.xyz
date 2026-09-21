@@ -1,0 +1,21 @@
+19
+Independent atom texture chart, not a bonded molecule
+H 0 0 0
+C 5 0 0
+O 10 0 0
+N 15 0 0
+S 20 0 0
+P 0 -5 0
+F 5 -5 0
+Cl 10 -5 0
+Br 15 -5 0
+I 20 -5 0
+B 0 -10 0
+Si 5 -10 0
+Se 10 -10 0
+Li 15 -10 0
+Na 20 -10 0
+K 0 -15 0
+Mg 5 -15 0
+Ca 10 -15 0
+Al 15 -15 0

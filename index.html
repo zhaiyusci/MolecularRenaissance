@@ -58,6 +58,9 @@
     .label-settings input[type="text"] { width: 100%; padding: 7px 8px; border: 1px solid #bfc5c9; border-radius: 4px; font: inherit; font-size: 13px; }
     .color-control { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 12px; }
     .color-control input { width: 48px; height: 27px; padding: 2px; border: 1px solid #bfc5c9; background: white; }
+    .element-texture-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+    .element-texture-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+    .element-texture-swatch svg { display: block; width: 24px; height: 24px; }
     .check-row { display: flex; gap: 20px; }
     .actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #cbd1d5; flex-shrink: 0; }
     button { padding: 10px 6px; border: 1px solid #b8c0c6; border-radius: 4px; background: #f7f8f9; color: #303b44; font-size: 13px; cursor: pointer; }
@@ -147,9 +150,14 @@
         </details>
         <details class="settings-group" name="settings">
           <summary><span data-i18n="static.colors">Colors</span><span id="color-title-controls" class="summary-controls"><input id="color-wash" type="checkbox" checked aria-label="Enable element colors" data-i18n-aria-label="static.colorEnabled"></span></summary>
-          <div class="control"><label class="control-heading" for="color-scheme"><span data-i18n="static.colorScheme">Palette</span></label><select id="color-scheme"><option value="jmol" selected>Jmol / ChimeraX</option><option value="rasmol">RasMol (CPK)</option><option value="pymol" data-i18n="static.pymol">PyMOL element colors</option><option value="greenCarbon" data-i18n="static.greenCarbon">3Dmol · Green carbon</option><option value="cyanCarbon" data-i18n="static.cyanCarbon">3Dmol · Cyan carbon</option><option value="magentaCarbon" data-i18n="static.magentaCarbon">3Dmol · Magenta carbon</option></select></div>
+          <div class="control"><label class="control-heading" for="color-scheme"><span data-i18n="static.colorScheme">Palette</span></label><select id="color-scheme"><option value="jmol" selected>Jmol / ChimeraX</option><option value="rasmol">RasMol (CPK)</option><option value="pymol" data-i18n="static.pymol">PyMOL element colors</option><option value="ortep" data-i18n="static.ortep">ORTEP · Shipped configuration</option><option value="greenCarbon" data-i18n="static.greenCarbon">3Dmol · Green carbon</option><option value="cyanCarbon" data-i18n="static.cyanCarbon">3Dmol · Cyan carbon</option><option value="magentaCarbon" data-i18n="static.magentaCarbon">3Dmol · Magenta carbon</option></select></div>
           <div class="control"><div class="control-heading"><label for="wash-strength"><span data-i18n="static.washStrength">Intensity</span></label><output id="wash-strength-value" for="wash-strength">100%</output></div><input id="wash-strength" type="range" min="0" max="100" step="5" value="100"></div>
           <div class="control"><div class="control-heading"><label for="color-saturation"><span data-i18n="static.saturation">Saturation</span></label><output id="color-saturation-value" for="color-saturation">100%</output></div><input id="color-saturation" type="range" min="0" max="100" step="5" value="100"></div>
+        </details>
+        <details class="settings-group" name="settings">
+          <summary><span data-i18n="static.elementTextures">Element textures</span><span id="element-texture-title-controls" class="summary-controls"><input id="element-textures" type="checkbox" aria-label="Element textures" data-i18n-aria-label="static.elementTextures"></span></summary>
+          <div class="control"><div class="control-heading"><label for="element-texture-scale"><span data-i18n="static.elementTextureScale">Pattern size</span></label><output id="element-texture-scale-value" for="element-texture-scale">1.00×</output></div><input id="element-texture-scale" type="range" min="50" max="300" step="5" value="100" disabled></div>
+          <div id="element-texture-legend" class="element-texture-legend" role="group" aria-label="Element texture legend" data-i18n-aria-label="static.elementTextureLegend" hidden></div>
         </details>
         <details class="settings-group" name="settings">
           <summary><span data-i18n="static.labels">Element labels</span><span id="labels-title-controls" class="summary-controls"><input id="labels" type="checkbox" aria-label="Show element labels" data-i18n-aria-label="static.labelsEnabled"></span></summary>

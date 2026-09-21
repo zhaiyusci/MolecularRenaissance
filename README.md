@@ -89,9 +89,22 @@ Median SVG generation times in this measurement round for the actual C60 model (
 
 Checks: `node test-fast-renderer.mjs`, `node test-fast-ui.cjs`. Reproduce performance measurements: `node scripts/bench-fast.mjs`. The earlier certified prototype in `PAINTER-EXPERIMENT.md` no longer represents the capabilities of the main page's fast toggle.
 
+## Element Textures (Independent of Lighting)
+
+Enable **Element textures** to distinguish elements with fixed black vector patterns. This switch is independent of shading and colors; disable both **Shading** and **Colors** for a purely categorical black-and-white illustration. The current molecule's legend uses the actual recipes: H is blank, C uses crosshatch (`crosshatch`, pitch 9 px, rotation 45°, stroke 0.55 px at scale 1), O diagonal lines, N horizontal lines, S solid dots, and P vertical lines. F/Cl/Br use horizontal/vertical/diagonal waves. Nineteen common elements now have reviewed recipes including double lines, rectangular/rhombic/triangular grids and brickwork: see the [fixed mapping](ELEMENT-TEXTURES.md). All grid faces, including carbon's, retain the 9×9 px (81 px²) area scale. Carbon's crosshatch is a categorical texture, not a solid-black fill or a palette/base-color change: disabling `elementTextures` preserves the original palette and shading. Like other elements, carbon receives its categorical texture before shading and labels, with no special carbon paint-after-lighting layer. Lighting and label settings are unchanged. Pattern strokes are 0.55 screen px at scale 1, including carbon and legacy fallback strokes; other spacing, grid geometry, dots, outlines, and shading parameters are unchanged. These are custom designs, not an industry standard. Other supported H–Cm elements retain deterministic fallback combinations. Unknown ASCII-letter labels with explicit radii use a limited fallback set and may share patterns. Use labels for small or occluded atoms. H adds no categorical ink but still receives any separately enabled colors/shading.
+
+Patterns have uniform screen-space spacing: light direction, point lights, shadows, shading brightness/contrast and shading texture scale do not change their recipes. Pattern size is controlled separately (0.5–3×). Only atoms receive patterns; bonds retain white bases. Colors and lighting textures may be combined with element patterns. They remain vector `pattern` definitions in exported SVG and are retained during lightweight interaction previews.
+
+```js
+render(molecule, {elementTextures: true, elementTextureScale: 1,
+  shadingSize: 0, castShadows: false, colorWash: false});
+```
+
+Precise rendering clips patterns to certified visible surface paths. If those are unavailable, a depth-owned vector-mask fallback uses 0.5-unit preview / 0.25-unit export discovery and bounded sampling; sub-grid islands can be missed. Its caps are 16 million samples/grid cells, 64 million candidate depth tests and 4096 tiles; exceeding a cap reports an error rather than dropping atoms. Fast mode retains its existing painter-order approximation. Helpers `elementTexturePattern`, `elementTextureDefinition`, and `elementTextureSwatch` expose the same recipes used by rendering and the legend. Checks: `node test-element-textures.cjs`, `node test-element-textures-ui.cjs`.
+
 ## Low-Anchor Vector Paths
 
-**Textures are omitted while dragging and restored immediately on release, with no delay timer.** During mouse/touch dragging of a parameter slider or rotation ring (not the illustration), `shadingSize: 0` temporarily displays the current outlines, fills, and labels without changing control values. Release, cancellation, or loss of capture restores full hatching/dots on the next normal drawing frame. Losing window focus also ends the interaction. Downloads are disabled during the lightweight preview to prevent accidental export of a temporary untextured frame; after restoration, exports still use the original parameters. Ordinary keyboard input continues to update the normal preview.
+**Lighting textures are omitted while dragging and restored immediately on release, with no delay timer; element patterns remain visible.** During mouse/touch dragging of a parameter slider or rotation ring (not the illustration), `shadingSize: 0` temporarily displays the current outlines, fills, and labels without changing control values. Release, cancellation, or loss of capture restores full hatching/dots on the next normal drawing frame. Losing window focus also ends the interaction. Downloads are disabled during the lightweight preview to prevent accidental export of a temporary untextured frame; after restoration, exports still use the original parameters. Ordinary keyboard input continues to update the normal preview.
 
 Analytic formulas are preferred for calculating edges, hatching, and dots.
 
@@ -127,7 +140,7 @@ Across the six test cases, the maximum sampled bidirectional boundary deviation 
 
 ## Element Colors
 
-“Element fill” is enabled by default on the page, using the Jmol palette with strength and saturation both at 100%. Disabling it restores black textures on white. Available palettes include Jmol/ChimeraX, RasMol, PyMOL, and 3Dmol carbon-color variants; sources and values are in [PALETTES.md](PALETTES.md).
+“Element fill” is enabled by default on the page, using the Jmol palette with strength and saturation both at 100%. Disabling it restores black textures on white. Available palettes include Jmol/ChimeraX, RasMol, PyMOL, **ORTEP · Shipped configuration**, and 3Dmol carbon-color variants; sources and values are in [PALETTES.md](PALETTES.md). API `colorScheme: 'ortep'` uses all 108 original entries plus an explicit Db→Ha color alias: C is blue (`#007FFF`), N orchid (`#DB70DB`). Unlisted symbols fall back to the source-declared Pink (`#BC8F8F`); existing palettes retain their carbon fallback. This reproduces the supplied configuration, not its header's generic CPK description. Default palette, radii and white bonds are unchanged.
 
 **Color is used only for fills; regular halftone dots, stippling, hatching, and outlines are all black.** Colored texture modes are no longer provided. Fills do not change with lighting; lighting and shadows are expressed through texture, not gradients or shifted color layers.
 
@@ -180,7 +193,7 @@ Note: front and rear atoms and bonds really do overlap in projection when viewed
 | 45° / 0° | 709.67 ms | 142.50 ms |
 | 90° / 0° | 606.18 ms | 66.38 ms |
 
-These measure CPU SVG generation, excluding browser painting, and do not imply high frame rates at every C₆₀ view. Parameter sliders and rotation rings omit textures while dragging and restore them immediately on release; keyboard rotation retains the normal shaded preview.
+These measure CPU SVG generation, excluding browser painting, and do not imply high frame rates at every C₆₀ view. Parameter sliders and rotation rings omit lighting textures while dragging and restore them immediately on release; keyboard rotation retains the normal shaded preview.
 
 ### Fill Performance
 

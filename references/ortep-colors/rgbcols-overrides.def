@@ -1,0 +1,21 @@
+#  RGBCOLS.DEF
+#  System file for :
+#  Ortep-3 for Windows Version 2.0 (April 2008)
+#
+# This file provides the RGB-triplet colour definitions and is only used
+# to MODIFY or ADD colours. 126 colours are defined internally.
+#
+# If a colour name in this file corresponds to an internally defined colour
+# (see Table 2 of documentation) then the RGB colour table will be modified.
+#
+# If a colour name does not correspond to an internally defined colour, that
+# colour will be added to the end of the colour list.
+#
+# NOTE a maximum of 20 characters are allowed for extra colour names, and
+#      white spaces must separate each field on a line
+#
+# Colour name            RED      GREEN     BLUE
+Purple                0.627451  0.125490  0.941176
+DeepPink              1.000000  0.078341  0.576471
+Lightblue             0.560784  0.560784  1.000000
+PowderBlue            0.690196  0.878431  0.901961

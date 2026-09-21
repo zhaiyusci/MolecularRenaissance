@@ -6,15 +6,19 @@ const defaults: NormalizedOptions = {
   renderMode:'precise',
   width:900,height:700,scale:60,atomRadiusScale:1,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
   lightType:'directional',lightDistance:3,lightAttenuation:0,castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
-  variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',textureScale:1,shadingBrightness:0,shadingContrast:1.2,
+  variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',textureScale:1,elementTextures:false,elementTextureScale:1,shadingBrightness:0,shadingContrast:1.2,
   dotSpacing:2.5,dotSize:.5,dotContrast:1.2,crossHatch:true,colorWash:false,colorScheme:'jmol',washStrength:1,
   colorSaturation:1,labelMatchFill:false,labels:false,labelHydrogens:true,labelSize:17,labelStrokeWidth:4,labelStrokeColor:'#ffffff',
   labelColor:'#161616',labelFont:"Georgia, 'Times New Roman', serif",labelBold:false,labelItalic:true
 };
 export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   const o={...defaults,...options};
+  if(options.elementTextures===undefined)o.elementTextures=defaults.elementTextures;
+  if(options.elementTextureScale===undefined)o.elementTextureScale=defaults.elementTextureScale;
   if(options.orientation!==undefined)o.orientation=normalizeOrientation(options.orientation);
   if(typeof o.labelHydrogens!=='boolean')throw new Error('Invalid labelHydrogens');
+  if(typeof o.elementTextures!=='boolean')throw new Error('Invalid elementTextures: expected a boolean');
+  if(!Number.isFinite(o.elementTextureScale)||o.elementTextureScale<.5||o.elementTextureScale>3)throw new Error('Invalid elementTextureScale: expected a finite number between 0.5 and 3');
   if(!['preview','export'].includes(o.quality))throw new Error('Invalid quality');
   if(o.quality==='preview')o.optimizePaths=false;
   o.outlineWidth=options.outlineWidth===undefined?o.lineWidth:options.outlineWidth;

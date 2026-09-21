@@ -9,4 +9,5 @@ export { covalentRadii, covalentRadiusSource } from './radii.js';
 export { depthAt } from './scene.js';
 export { engravingWidth } from './strokes.js';
 export { elementColor, elementPalette } from './palette.js';
+export { elementTexturePattern, elementTextureDefinition, elementTextureSwatch } from './element-textures.js';
 export declare function render(molecule: Molecule, options?: RenderOptions): string;

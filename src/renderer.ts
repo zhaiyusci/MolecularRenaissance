@@ -8,6 +8,7 @@ import { createCurveRenderer } from './strokes.js';
 import { trigSpans, intersectSpans, unionSpans, complementSpans, projectedCircle, projectedLine, type ProjectedCurve } from './hatch-curves.js';
 import { createSurfaceAtlas } from './surface-atlas.js';
 import { renderFastPainter } from './fast-painter.js';
+import { createElementTextures, sampledElementTextures } from './element-textures.js';
 import { hatchCoverage } from './coverage.js';
 import { getBoundaries, getDots, getWash } from './runtime.js';
 export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, ColorScheme, LightType, RenderMode } from './types.js';
@@ -19,6 +20,7 @@ export { covalentRadii, covalentRadiusSource } from './radii.js';
 export { depthAt } from './scene.js';
 export { engravingWidth } from './strokes.js';
 export { elementColor, elementPalette } from './palette.js';
+export { elementTexturePattern, elementTextureDefinition, elementTextureSwatch } from './element-textures.js';
 
 export function render(molecule: Molecule,options: RenderOptions={}): string {
   const o=normalizeOptions(options);
@@ -49,7 +51,11 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   const boundaries=built&&built.validate(elementColor)?built:null;
   // Labels are part of their owner's paint layer, never a final overlay and
   // never clipped text. Certified visible fills preserve intersecting geometry.
-  const layerPaths=o.labels&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
+  const layerPaths=(o.labels||o.elementTextures)&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
+  const elements=o.elementTextures?createElementTextures(spheres.map(s=>s.element!),o.elementTextureScale):null;
+  // Without certified paths, texture ownership has its own bounded numerical
+  // fallback. Do not promote sampled paths to certified whole-label layers.
+  const fallbackElements=elements&&!layerPaths?sampledElementTextures(scene,depthAt,project,scale,o.width,o.height,o.quality,elements):'';
   const ownerEngraving=new Map<Primitive,string>(),ownerDots=new Map<number,string>();
   const regions=o.shadingMode!=='halftone'&&o.shadingSize!==0&&boundaries?.dotRegions?boundaries.dotRegions():null;
   if(regions?.surface)atlas=createSurfaceAtlas(prepared,regions,o);
@@ -157,7 +163,7 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     ownerLabels.set(s,`<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y+o.labelSize*.3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${esc(o.labelFont)}" font-style="${o.labelItalic?'italic':'normal'}" font-weight="${o.labelBold?'700':'400'}" stroke="${o.labelStrokeWidth===0?'none':(o.labelMatchFill?fillFor(s.element):o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${esc(s.element)}</text>`);
   }
   const engraving=(body:string)=>`<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
-  let artwork=`${wash}${dots}${engraving(paths.join(''))}<g font-family="Georgia, 'Times New Roman', serif"></g>`;
+  let artwork=`${wash}${fallbackElements}${dots}${engraving(paths.join(''))}<g font-family="Georgia, 'Times New Roman', serif"></g>`;
   if(layerPaths){
     const depth=(s:Primitive)=>s.kind==='sphere'?s.c[2]:s.a[2]+s.u[2]*s.length/2;
     const order=scene.map((s,id)=>({s,id,z:depth(s)})).sort((a,b)=>a.z-b.z||a.id-b.id);
@@ -166,8 +172,9 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
       // Opaque paint is essential even with color wash disabled: white atoms
       // and white bonds must naturally cover labels in the rear layers.
       const fill=`<path data-role="surface-fill" fill="${s.kind==='sphere'?fillFor(s.element):'#ffffff'}" stroke="none" fill-rule="evenodd" d="${outline}"/>`;
-      return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${ownerDots.get(id)||''}${engraving(ownerEngraving.get(s)||'')}${ownerLabels.get(s)||''}</g>`;
+      const categorical=elements&&s.kind==='sphere'?`<path ${elements.fill(s.element!)} data-surface-id="${id}" fill-rule="evenodd" d="${outline}"/>`:'';
+      return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${categorical}${ownerDots.get(id)||''}${engraving(ownerEngraving.get(s)||'')}${ownerLabels.get(s)||''}</g>`;
     }).join('');
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title><rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title>${elements?`<defs>${elements.definitions}</defs>`:''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }

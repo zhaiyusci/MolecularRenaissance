@@ -53,8 +53,8 @@ const shadingGroup=shadingTitle.parent;
 for(const id of ['fast-overlay','shading-mode','light-azimuth','cast-shadows'])assert(shadingGroup.querySelector('#'+id));
 assert(!shadingGroup.querySelector('#outline-width'));
 assert(html.indexOf('id="outline-width"')<html.indexOf('<details'),'outline is outside all option tabs');
-assert.equal((html.match(/<details\b/g)||[]).length,4);
-for(const id of ['shading-title-controls','color-title-controls','labels-title-controls']){
+assert.equal((html.match(/<details\b/g)||[]).length,5);
+for(const id of ['shading-title-controls','color-title-controls','element-texture-title-controls','labels-title-controls']){
   let stopped=false;elements[id].listeners.click({stopPropagation(){stopped=true;}});assert(stopped);
 }
 assert(ui.document.querySelector('[data-i18n="static.colors"]').parent.querySelector('#color-wash'));

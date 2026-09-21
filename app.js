@@ -34,7 +34,11 @@
   var variableWidth = byId('variable-width');
   var shadingMode = byId('shading-mode');
   var shadingEnabled = byId('shading-enabled');
-  ['shading-title-controls', 'color-title-controls', 'labels-title-controls'].forEach(function (id) {
+  var elementTextures = byId('element-textures');
+  var elementTextureScale = byId('element-texture-scale');
+  var elementTextureLegend = byId('element-texture-legend');
+  var textureLegendKey = null;
+  ['shading-title-controls', 'color-title-controls', 'element-texture-title-controls', 'labels-title-controls'].forEach(function (id) {
     byId(id).addEventListener('click', function (event) {
       event.stopPropagation(); // Controls in summary must not toggle the accordion.
     });
@@ -127,7 +131,8 @@
   }
 
   if (!engine || typeof engine.render !== 'function' || !engine.examples ||
-      typeof engine.rotateOrientation !== 'function' || typeof engine.orientationToEulerXYZ !== 'function') {
+      typeof engine.rotateOrientation !== 'function' || typeof engine.orientationToEulerXYZ !== 'function' ||
+      typeof engine.elementTextureSwatch !== 'function') {
     message(preview, 'status.engineMissing');
     showError(uiError('error.engineMissing'));
     return;
@@ -241,7 +246,34 @@
     scheduleRender();
   });
 
+  function syncTextureLegend() {
+    elementTextureScale.disabled = !elementTextures.checked;
+    elementTextureLegend.hidden = !elementTextures.checked;
+    byId('element-texture-scale-value').textContent = (Number(elementTextureScale.value) / 100).toFixed(2) + '×';
+    if (!elementTextures.checked) return;
+    var molecule = model.value === importedKey && imported ? imported.model : engine.examples[model.value];
+    var elements = molecule ? Array.from(new Set(molecule.atoms.map(function (atom) { return atom.element; }))).sort() : [];
+    var key = JSON.stringify(elements);
+    if (key === textureLegendKey) return;
+    textureLegendKey = key;
+    elementTextureLegend.textContent = '';
+    elements.forEach(function (element) {
+      var chip = document.createElement('span');
+      chip.className = 'element-texture-chip';
+      var swatch = document.createElement('span');
+      swatch.className = 'element-texture-swatch';
+      swatch.setAttribute('aria-hidden', 'true');
+      swatch.innerHTML = engine.elementTextureSwatch(element);
+      var symbol = document.createElement('span');
+      symbol.textContent = element;
+      chip.appendChild(swatch);
+      chip.appendChild(symbol);
+      elementTextureLegend.appendChild(chip);
+    });
+  }
+
   function syncOutputs() {
+    syncTextureLegend();
     // Remember precise-mode preferences only on entry; restore them on exit.
     if (fastOverlay.checked) {
       if (preciseLightSettings === null) {
@@ -305,6 +337,8 @@
       var options = {
         quality: 'preview',
         renderMode: fastOverlay.checked ? 'fast' : 'precise',
+        elementTextures: elementTextures.checked,
+        elementTextureScale: Number(elementTextureScale.value) / 100,
         width: 900,
         height: 700,
         scale: Number(scale.value),
@@ -379,16 +413,16 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [scale, atomRadiusScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [fastOverlay, shadingEnabled, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
+  [fastOverlay, shadingEnabled, elementTextures, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
   // Native range inputs keep their own drag/capture behavior. Window release
   // handlers also cover releasing outside the slider. No idle timer/debounce.
-  [scale, atomRadiusScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
+  [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
     input.addEventListener('pointerdown', function (event) {
       if (event.button !== 0 || input.disabled || controlPointer) return;
       controlPointer = { id: event.pointerId, input: input };
@@ -425,6 +459,8 @@
     lightDistance.value = '3';
     lightAttenuation.value = '0';
     shadingEnabled.checked = true;
+    elementTextures.checked = false;
+    elementTextureScale.value = '100';
     shadingMode.value = 'hatch';
     textureScale.value = '100';
     shadingBrightness.value = '0';

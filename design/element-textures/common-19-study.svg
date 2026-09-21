@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1350" viewBox="0 0 1100 1350" role="img" aria-labelledby="title desc">
+<title id="title">19 种常用元素：独立纹理候选样张</title><desc id="desc">自定义设计，不是行业标准。六种核心简纹、三种重点卤素波线和十种辅助候选；无虚线；展示64、32、16像素直径、48像素遮挡及24像素图例。应用映射尚未修改。</desc>
+<defs><pattern id="study-H" data-element="H" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"></g></pattern>
+<pattern id="study-C" data-element="C" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H6M3 0V6" stroke-width="1.2"/></g></pattern>
+<pattern id="study-O" data-element="O" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3.5H7"/></g></pattern>
+<pattern id="study-N" data-element="N" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3.5H7"/></g></pattern>
+<pattern id="study-S" data-element="S" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><circle cx="3" cy="3" r="1.15" fill="#161616" stroke="none"/></g></pattern>
+<pattern id="study-P" data-element="P" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(90)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3.5H7"/></g></pattern>
+<pattern id="study-F" data-element="F" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 6Q3 0 6 6T12 6"/></g></pattern>
+<pattern id="study-Cl" data-element="Cl" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(90)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 6Q3 0 6 6T12 6"/></g></pattern>
+<pattern id="study-Br" data-element="Br" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 6Q3 0 6 6T12 6"/></g></pattern>
+<pattern id="study-I" data-element="I" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H10M0 6H10"/></g></pattern>
+<pattern id="study-B" data-element="B" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(135)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3.5H7"/></g></pattern>
+<pattern id="study-Si" data-element="Si" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 4.5H9M4.5 0V9"/></g></pattern>
+<pattern id="study-Se" data-element="Se" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H10M0 6H10"/></g></pattern>
+<pattern id="study-Li" data-element="Li" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(135)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H10M0 6H10"/></g></pattern>
+<pattern id="study-Na" data-element="Na" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(90)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H10M0 6H10"/></g></pattern>
+<pattern id="study-K" data-element="K" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 0V2.5H17.5V17.5H2.5V7.5H12.5V12.5H7.5V10H5V15H15V5H0V20"/></g></pattern>
+<pattern id="study-Mg" data-element="Mg" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H12" stroke-width="2"/><path d="M0 9H12"/></g></pattern>
+<pattern id="study-Ca" data-element="Ca" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(90)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H12M0 9H12M3 3V9M9 0V3M9 9V12"/></g></pattern>
+<pattern id="study-Al" data-element="Al" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(0)"><g fill="none" stroke="#161616" stroke-width="0.9" stroke-linecap="butt" stroke-linejoin="round"><path d="M0 3H12M0 9H12M3 3V9M9 0V3M9 9V12"/></g></pattern></defs><rect width="1100" height="1350" fill="white"/>
+<g font-family="Arial, Microsoft YaHei, sans-serif" fill="#161616">
+<text x="24" y="42" font-size="27" font-weight="700">19 种常用元素 · 独立纹理候选样张</text>
+<text x="24" y="74" font-size="16" >自定义方案 v3｜F / Cl / Br 用横 / 竖 / 斜波线；无虚线，保留双线、砖纹，加入回纹。</text>
+<text x="24" y="102" font-size="14" >数字表示圆直径 / 图例边长（SVG px）；仅测试纹理辨识，不代表原子半径或 Å 尺度。</text>
+<text x="24" y="128" font-size="14" >无颜色、无光影；白圆模拟前景遮挡。请按 100% 查看，小尺寸仍需元素标签。</text>
+<text x="24" y="152" font-size="14" >优先比较 H / C / O / N / S / P / F / Cl / Br；其余为辅助候选。尚未接入应用。</text>
+<g transform="translate(24 174)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">H</text><text x="12" y="48" font-size="14" >留白</text><text x="12" y="76" font-size="12" fill="#666">核心简纹</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="H" cx="180" cy="47" r="32" fill="url(#study-H)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="H" cx="257" cy="47" r="16" fill="url(#study-H)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="H" cx="315" cy="47" r="8" fill="url(#study-H)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="H" cx="388" cy="47" r="24" fill="url(#study-H)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-H)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 174)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">C</text><text x="12" y="48" font-size="14" >深色斜交叉网</text><text x="12" y="76" font-size="12" fill="#666">核心简纹</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="C" cx="180" cy="47" r="32" fill="url(#study-C)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="C" cx="257" cy="47" r="16" fill="url(#study-C)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="C" cx="315" cy="47" r="8" fill="url(#study-C)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="C" cx="388" cy="47" r="24" fill="url(#study-C)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-C)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 286)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">O</text><text x="12" y="48" font-size="14" >斜线</text><text x="12" y="76" font-size="12" fill="#666">核心简纹</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="O" cx="180" cy="47" r="32" fill="url(#study-O)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="O" cx="257" cy="47" r="16" fill="url(#study-O)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="O" cx="315" cy="47" r="8" fill="url(#study-O)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="O" cx="388" cy="47" r="24" fill="url(#study-O)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-O)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 286)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">N</text><text x="12" y="48" font-size="14" >横线</text><text x="12" y="76" font-size="12" fill="#666">核心简纹</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="N" cx="180" cy="47" r="32" fill="url(#study-N)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="N" cx="257" cy="47" r="16" fill="url(#study-N)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="N" cx="315" cy="47" r="8" fill="url(#study-N)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="N" cx="388" cy="47" r="24" fill="url(#study-N)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-N)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 398)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">S</text><text x="12" y="48" font-size="14" >实心点</text><text x="12" y="76" font-size="12" fill="#666">核心简纹</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="S" cx="180" cy="47" r="32" fill="url(#study-S)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="S" cx="257" cy="47" r="16" fill="url(#study-S)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="S" cx="315" cy="47" r="8" fill="url(#study-S)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="S" cx="388" cy="47" r="24" fill="url(#study-S)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-S)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 398)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">P</text><text x="12" y="48" font-size="14" >竖线</text><text x="12" y="76" font-size="12" fill="#666">核心简纹</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="P" cx="180" cy="47" r="32" fill="url(#study-P)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="P" cx="257" cy="47" r="16" fill="url(#study-P)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="P" cx="315" cy="47" r="8" fill="url(#study-P)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="P" cx="388" cy="47" r="24" fill="url(#study-P)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-P)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 510)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">F</text><text x="12" y="48" font-size="14" >横向波线</text><text x="12" y="76" font-size="12" fill="#666">重点卤素</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="F" cx="180" cy="47" r="32" fill="url(#study-F)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="F" cx="257" cy="47" r="16" fill="url(#study-F)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="F" cx="315" cy="47" r="8" fill="url(#study-F)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="F" cx="388" cy="47" r="24" fill="url(#study-F)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-F)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 510)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Cl</text><text x="12" y="48" font-size="14" >竖向波线</text><text x="12" y="76" font-size="12" fill="#666">重点卤素</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Cl" cx="180" cy="47" r="32" fill="url(#study-Cl)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Cl" cx="257" cy="47" r="16" fill="url(#study-Cl)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Cl" cx="315" cy="47" r="8" fill="url(#study-Cl)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Cl" cx="388" cy="47" r="24" fill="url(#study-Cl)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Cl)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 622)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Br</text><text x="12" y="48" font-size="14" >斜向波线</text><text x="12" y="76" font-size="12" fill="#666">重点卤素</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Br" cx="180" cy="47" r="32" fill="url(#study-Br)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Br" cx="257" cy="47" r="16" fill="url(#study-Br)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Br" cx="315" cy="47" r="8" fill="url(#study-Br)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Br" cx="388" cy="47" r="24" fill="url(#study-Br)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Br)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 622)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">I</text><text x="12" y="48" font-size="14" >成对横线</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="I" cx="180" cy="47" r="32" fill="url(#study-I)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="I" cx="257" cy="47" r="16" fill="url(#study-I)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="I" cx="315" cy="47" r="8" fill="url(#study-I)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="I" cx="388" cy="47" r="24" fill="url(#study-I)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-I)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 734)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">B</text><text x="12" y="48" font-size="14" >反向斜线</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="B" cx="180" cy="47" r="32" fill="url(#study-B)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="B" cx="257" cy="47" r="16" fill="url(#study-B)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="B" cx="315" cy="47" r="8" fill="url(#study-B)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="B" cx="388" cy="47" r="24" fill="url(#study-B)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-B)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 734)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Si</text><text x="12" y="48" font-size="14" >正交网格</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Si" cx="180" cy="47" r="32" fill="url(#study-Si)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Si" cx="257" cy="47" r="16" fill="url(#study-Si)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Si" cx="315" cy="47" r="8" fill="url(#study-Si)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Si" cx="388" cy="47" r="24" fill="url(#study-Si)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Si)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 846)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Se</text><text x="12" y="48" font-size="14" >成对斜线</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Se" cx="180" cy="47" r="32" fill="url(#study-Se)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Se" cx="257" cy="47" r="16" fill="url(#study-Se)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Se" cx="315" cy="47" r="8" fill="url(#study-Se)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Se" cx="388" cy="47" r="24" fill="url(#study-Se)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Se)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 846)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Li</text><text x="12" y="48" font-size="14" >反斜双线</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Li" cx="180" cy="47" r="32" fill="url(#study-Li)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Li" cx="257" cy="47" r="16" fill="url(#study-Li)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Li" cx="315" cy="47" r="8" fill="url(#study-Li)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Li" cx="388" cy="47" r="24" fill="url(#study-Li)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Li)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 958)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Na</text><text x="12" y="48" font-size="14" >成对竖线</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Na" cx="180" cy="47" r="32" fill="url(#study-Na)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Na" cx="257" cy="47" r="16" fill="url(#study-Na)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Na" cx="315" cy="47" r="8" fill="url(#study-Na)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Na" cx="388" cy="47" r="24" fill="url(#study-Na)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Na)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 958)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">K</text><text x="12" y="48" font-size="14" >连续回纹</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="K" cx="180" cy="47" r="32" fill="url(#study-K)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="K" cx="257" cy="47" r="16" fill="url(#study-K)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="K" cx="315" cy="47" r="8" fill="url(#study-K)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="K" cx="388" cy="47" r="24" fill="url(#study-K)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-K)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 1070)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Mg</text><text x="12" y="48" font-size="14" >粗细交替横线</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Mg" cx="180" cy="47" r="32" fill="url(#study-Mg)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Mg" cx="257" cy="47" r="16" fill="url(#study-Mg)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Mg" cx="315" cy="47" r="8" fill="url(#study-Mg)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Mg" cx="388" cy="47" r="24" fill="url(#study-Mg)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Mg)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(560 1070)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Ca</text><text x="12" y="48" font-size="14" >竖向砖纹</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Ca" cx="180" cy="47" r="32" fill="url(#study-Ca)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Ca" cx="257" cy="47" r="16" fill="url(#study-Ca)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Ca" cx="315" cy="47" r="8" fill="url(#study-Ca)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Ca" cx="388" cy="47" r="24" fill="url(#study-Ca)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Ca)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<g transform="translate(24 1182)"><rect width="520" height="104" rx="5" fill="white" stroke="#ddd"/>
+<text x="12" y="25" font-size="23" font-weight="700">Al</text><text x="12" y="48" font-size="14" >横向砖纹</text><text x="12" y="76" font-size="12" fill="#666">辅助候选</text>
+<circle cx="180" cy="47" r="32" fill="white"/><circle data-sample="Al" cx="180" cy="47" r="32" fill="url(#study-Al)" stroke="#161616" stroke-width="1"/><circle cx="257" cy="47" r="16" fill="white"/><circle data-sample="Al" cx="257" cy="47" r="16" fill="url(#study-Al)" stroke="#161616" stroke-width="1"/><circle cx="315" cy="47" r="8" fill="white"/><circle data-sample="Al" cx="315" cy="47" r="8" fill="url(#study-Al)" stroke="#161616" stroke-width="1"/>
+<circle cx="388" cy="47" r="24" fill="white"/><circle data-sample="Al" cx="388" cy="47" r="24" fill="url(#study-Al)" stroke="#161616" stroke-width="1"/><circle cx="408" cy="47" r="24" fill="white" stroke="#161616" stroke-width="1"/>
+<rect x="463" y="35" width="24" height="24" fill="url(#study-Al)" stroke="#aaa" stroke-width="0.5"/>
+<text x="168" y="96" font-size="14" >64</text><text x="246" y="96" font-size="14" >32</text><text x="304" y="96" font-size="14" >16</text><text x="363" y="96" font-size="14" >遮挡 48</text><text x="455" y="96" font-size="14" >图例 24</text>
+</g>
+<text x="24" y="1322" font-size="14" >建议：先评审样张，再固定映射。图案不同不等于缩小、打印或遮挡后仍可可靠识别。</text>
+</g></svg>

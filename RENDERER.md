@@ -63,6 +63,12 @@ const svg = render(examples.c60, { colorWash: true });
 
 GUI 使用独立 SVG 旋转 Gizmo：红/绿/蓝圆环绕局部 X/Y/Z 轴旋转（`q * q_delta`），灰色外圈绕相机 Z 轴旋转（`q_delta * q`），不支持分子画布拖动。圆环可用左右方向键旋转 5°（Shift：15°）；欧拉角为只读计算结果。`node test-orientation.cjs` 和 `node test-orientation-ui.cjs` 覆盖数学及交互回归。
 
+## 元素纹理
+
+`elementTextures?: boolean` 默认 `false`；`elementTextureScale?: number` 默认 `1`、范围 `0.5–3`。图案按元素确定，独立于光源、阴影、明暗亮度/对比度与 `textureScale`，`shadingSize: 0` 不关闭元素纹理。仅原子表面填充图案，不改变半径、中心、键底色。精确模式使用表面归属路径，必要时采用有预算上限的采样矢量遮罩；快速模式仍按画家排序近似。
+
+导出 `elementTexturePattern(element)` 配方标识、`elementTextureDefinition(element, id, scale?)` SVG 图案定义、`elementTextureSwatch(element)` 24×24 矢量图例。19种常用元素的评审配方集中在 `src/element-texture-recipes.ts`，预览、图例与导出共用：H无元素纹理墨迹，C为 `crosshatch`（斜交叉网，1倍时节距9 px、旋转45°、线宽0.55 px，与其他纹理笔画一致），F/Cl/Br三方向波线；所有网纹（含C）保持每小格面积81 px²（1倍），不再硬凑覆盖率。C 的交叉网只在 `elementTextures: true` 时作为分类纹理生效，不使用实心黑，不改色表或底色；关闭元素纹理保留原有配色与光影。C 与其他元素一样，分类纹理在光影和标签之前正常绘制，不再有C专用的光影后覆盖层；光影与标签设置不变。1倍时元素纹理线宽为0.55屏幕px（含旧回退纹样），其余间距、网格几何、圆点、轮廓及光影参数均不变。正式分配见 [ELEMENT-TEXTURES.md](ELEMENT-TEXTURES.md)。H–Cm 的配方定义不同，但不保证任意小尺寸下肉眼可辨；未知英文字母标签使用有限回退集合，可能重复，仍须提供合法半径。图案ID与符号会验证，不能输入任意HTML。回归为 `test-approved-textures.cjs`、`test-element-textures.cjs` 与 `test-element-textures-ui.cjs`。
+
 ## XYZ 文本解析
 
 `parseXYZ` 与渲染器一起导出，无 DOM、文件系统或网络依赖；调用方负责取得文本。返回的坐标原样保留（约定 Å），不修改渲染比例。
