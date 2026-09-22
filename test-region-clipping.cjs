@@ -150,4 +150,17 @@ test('family disjoint islands, long crossing edges and chart fallback',()=>{
   assert.equal(r.sphereFamily([0,0],1,[0,0,1],[1,0,0],[1,0,0])(.2),null);
   assert.equal(r.sphereFamily([0,0],0,[0,0,1],[1,0,0],[0,1,0])(.2),null);
 });
+test('private edge coefficients remain snapshots after input mutation, including lazy surfaces',()=>{
+  const loops=[rect(-4,-4,4,4),rect(-1,-1,1,1)],input=edges(loops),bounds=[-4,-4,4,4];
+  const region=createRegion(input,bounds),nodes=[],segments=[];
+  for(const loop of loops){const base=nodes.length;nodes.push(...loop);loop.forEach((p,i)=>{const q=loop[(i+1)%loop.length];segments.push({c:{line:true,at:t=>[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t]},a:0,b:1,start:base+i,end:base+(i+1)%loop.length,left:0,right:-1});});}
+  const dots=create([{kind:'sphere',c:[0,0,0],r:4}],segments,nodes,p=>p,1);assert(dots);
+  const sample=r=>({line:r.clipLine([-5,.3],[5,.3]),ellipse:r.clipEllipse([0,0],[3,0],[0,.5]),inside:[r.contains(0,0),r.contains(2,0),r.contains(5,0)]});
+  const before=sample(region),queries=[];for(let x=-5;x<=5;x+=.125)queries.push(dots.query(x,.3,.2));
+  for(const loop of loops)for(const p of loop){p[0]+=1000;p[1]*=-3;}
+  bounds.fill(9000);input.length=0;segments.length=0;nodes.length=0;
+  assert.deepEqual(sample(region),before);
+  assert.deepEqual(sample(dots.surface(0)),before,'lazy surface uses copied geometry, not caller arrays');
+  const after=[];for(let x=-5;x<=5;x+=.125)after.push(dots.query(x,.3,.2));assert.deepEqual(after,queries);
+});
 console.log(`${passed} region clipping tests passed (source-only; no artifacts written).`);

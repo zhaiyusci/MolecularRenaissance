@@ -191,7 +191,7 @@ test('analytic fill never invokes grid fallback',()=>{
   helper.buildWash=()=>{throw new Error('analytic example invoked grid fallback');};
   try {for(const molecule of Object.values(renderer.examples)){
     const svg=renderer.render(molecule,{colorWash:true,hatchWidth:0,outlineWidth:0});
-    assert.match(svg,/data-boundaries="analytic"/);
+    assert.match(svg,/data-hatch-mode="layered"/);assert.match(svg,/data-role="surface-fill"/);
   }} finally {helper.buildWash=original;}
 });
 for(const stage of ['build','wash'])test('renderer fallback wiring '+stage,()=>{
@@ -210,7 +210,7 @@ test('classic browser script loading',()=>{
   const original=browser.MolWash.buildWash;browser.MolWash.buildWash=()=>{throw new Error('browser example invoked grid fallback');};
   try {for(const molecule of Object.values(browser.MolEngraver.examples)){
     const svg=browser.MolEngraver.render(molecule,{colorWash:true,hatchWidth:0,outlineWidth:0});
-    assert.match(svg,/data-boundaries="analytic"/);assert.ok(!/NaN|Infinity/.test(svg));
+    assert.match(svg,/data-hatch-mode="layered"/);assert.match(svg,/data-role="surface-fill"/);assert.ok(!/NaN|Infinity/.test(svg));
   }}finally {browser.MolWash.buildWash=original;}
 });
 // Additional failures found by the 1,325-view stress corpus. Require analytic

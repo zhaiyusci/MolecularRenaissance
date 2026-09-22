@@ -5,7 +5,7 @@ export declare function halftoneRadiusRatio(coverage: number): number;
 /** Exact projected union silhouette, including closed-cylinder caps. All parts
  * in this clipPath are unioned; tone sampling handles front-surface ownership. */
 export declare function projectedSilhouette(scene: Scene, project: Project, scale: number): string;
-/** Local numerical fallback for point lights or a BINARY shadow boundary.
+/** Local numerical sampling for custom scalar fields or a BINARY shadow boundary.
  * It never allocates a full-frame ownership/lighting raster. Optional bisection
  * refines hard shadow edges independently of the coarse discovery grid. */
 export declare function sampledTonePaths(bounds: Bounds, sample: (x: number, y: number) => number | null, step: number, thresholds?: number[], refine?: boolean): string[];

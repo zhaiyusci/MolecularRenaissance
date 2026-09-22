@@ -1,6 +1,6 @@
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {render,examples} from '../dist/molplotter.mjs';
-const rows=[],options={quality:'preview',labels:true,labelSize:24,colorWash:true,lightType:'directional',castShadows:false};
+const rows=[],options={quality:'preview',labels:true,labelSize:24,colorWash:true,castShadows:false};
 for(const shadingMode of ['hatch','stipple','halftone'])for(const atomRadiusScale of [1,.65]){
   const o={...options,shadingMode,atomRadiusScale};
   for(let k=0;k<2;k++){render(examples.c60,{...o,renderMode:'precise'});render(examples.c60,{...o,renderMode:'fast'});}

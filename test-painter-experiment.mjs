@@ -47,7 +47,7 @@ for(const m of result.svg.matchAll(/<\/?(?:g|text)\b[^>]*>/g)){
   const tag=m[0];if(tag.startsWith('</g'))groups.pop();else if(tag.startsWith('<g'))groups.push(tag);
   else if(tag.includes('data-role="element-label"'))assert(!/clip-path=|mask=/.test(tag)&&groups.every(g=>!/clip-path=|mask=/.test(g)),'whole label is not clipped');
 }
-for(const [model,options] of [[examples.c60,{labels:true}],[examples.sphere,{castShadows:true}],[examples.sphere,{shadingMode:'stipple'}],[examples.sphere,{lightType:'point'}]]){
+for(const [model,options] of [[examples.c60,{labels:true}],[examples.sphere,{castShadows:true}],[examples.sphere,{shadingMode:'stipple'}]]){
   const trial=renderPainter(model,options);assert.equal(trial.route,'fallback');assert.equal(trial.svg,render(model,options),'fallback preserves original scene and options');
 }
 console.log(JSON.stringify({accepted,rejected,probes,hiddenAnchorLabels:result.wholeLabels,boundaryBuilds:result.boundaryBuilds},null,2));

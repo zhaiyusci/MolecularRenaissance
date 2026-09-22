@@ -19,16 +19,15 @@ export function directionalShadowContext(scene:Scene,light:Vector,bias:number){
     /** Same conservative lists for physical surface illumination; scene order is retained. */
     candidates:lists as readonly (readonly Primitive[])[],
     mayShadow:lists.map(list=>list.length>0),
-    shadowed:(id:number,n:Vector,p:Vector)=>n.reduce((sum,v,k)=>sum+v*light[k],0)>0&&shadowBlocked(lists[id],p,n,light,Infinity,bias)
+    shadowed:(id:number,n:Vector,p:Vector)=>n.reduce((sum,v,k)=>sum+v*light[k],0)>0&&shadowBlocked(lists[id],p,n,light,bias)
   };
 }
 
-/** Any solid intersecting the ray toward the light (finite for a point source).
+/** Any solid intersecting the infinite ray toward the directional light.
  * Normal bias avoids self-shadow acne; closed cylinders include both end caps.
  */
-export function shadowBlocked(scene: readonly Primitive[], p: Vector, n: Vector, d: Vector, maxDistance: number, bias: number): boolean {
+export function shadowBlocked(scene: readonly Primitive[], p: Vector, n: Vector, d: Vector, bias: number): boolean {
   const x=p[0]+n[0]*bias,y=p[1]+n[1]*bias,z=p[2]+n[2]*bias;
-  const limit=maxDistance-bias;
   for(const s of scene){
     if(s.kind==='sphere'){
       const ox=x-s.c[0],oy=y-s.c[1],oz=z-s.c[2];
@@ -36,12 +35,12 @@ export function shadowBlocked(scene: readonly Primitive[], p: Vector, n: Vector,
       const c=ox*ox+oy*oy+oz*oz-s.r*s.r,disc=b*b-c;
       if(disc<=0)continue;
       const root=Math.sqrt(disc),near=-b-root,far=-b+root;
-      if(Math.min(far,limit)>Math.max(near,bias))return true;
+      if(far>Math.max(near,bias))return true;
     }else{
       const ox=x-s.a[0],oy=y-s.a[1],oz=z-s.a[2];
       const along=ox*s.u[0]+oy*s.u[1]+oz*s.u[2];
       const slope=d[0]*s.u[0]+d[1]*s.u[1]+d[2]*s.u[2];
-      let near=bias,far=limit;
+      let near=bias,far=Infinity;
       if(Math.abs(slope)<1e-12){
         if(along<=0||along>=s.length)continue;
       }else{

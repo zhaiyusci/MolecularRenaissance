@@ -48,23 +48,15 @@ function samples(s){
     {element:'H',position:[-2,-1,-2],radius:.4}
   ],bonds:[[0,2],[2,3],[3,4],[0,5]]};
   let checks=0,shadowHits=0,litHits=0;
-  for(const lightType of ['directional','point'])for(const castShadows of [false,true])
-  for(const lightAttenuation of [0,.3])for(const shadowStrength of [0,.8,1])
+  for(const castShadows of [false,true])
+  for(const shadowStrength of [0,.8,1])
   for(const angles of [[0,0],[-.6,.7],[2,-.4]]){
-    const o=normalizeOptions({lightType,castShadows,lightAttenuation,shadowStrength,lightAzimuth:angles[0],lightElevation:angles[1],shadingBrightness:.4});
+    const o=normalizeOptions({castShadows,shadowStrength,lightAzimuth:angles[0],lightElevation:angles[1],shadingBrightness:.4});
     const prepared=prepareScene(molecule,o),{scene,lightDirection:light,shadowBias:bias}=prepared;
-    const radius=Math.max(...prepared.spheres.map(s=>Math.hypot(...s.c)+s.r)),position=mul(light,o.lightDistance*radius);
-    // Independent preservation of the pre-specialization physical evaluator.
+    // Preserve the original directional formula, independently of surface specialization.
     const oracle=(n,p)=>{
-      const point=o.lightType==='point',delta=point?position.map((v,i)=>v-p[i]):light;
-      const direction=point?norm(delta):light,distance=point?Math.hypot(...delta):Infinity;
-      const facing=dot(n,direction);let lit=facing;
-      if(point&&o.lightAttenuation>0){
-        const relativeDistance=distance/radius;
-        const attenuation=1/(1+o.lightAttenuation*relativeDistance*relativeDistance);
-        lit=(Math.max(-1,Math.min(1,lit))+1)*attenuation-1;
-      }
-      if(o.castShadows&&o.shadowStrength>0&&o.shadingSize!==0&&facing>0&&shadowBlocked(scene,p,n,direction,distance,bias)){
+      const facing=dot(n,light);let lit=facing;
+      if(o.castShadows&&o.shadowStrength>0&&o.shadingSize!==0&&facing>0&&shadowBlocked(scene,p,n,light,bias)){
         lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;shadowHits++;
       }else litHits++;
       return lit;
@@ -75,16 +67,16 @@ function samples(s){
       for(const {n,p} of samples(s)){
         const expected=oracle(n,p);
         assert.equal(prepared.illumination(n,p),expected,'generic physical arithmetic remains unchanged');
-        assert.equal(lighting(n,p),expected,`${lightType} ${s.kind} surface lighting must agree exactly`);checks++;
+        assert.equal(lighting(n,p),expected,`directional ${s.kind} surface lighting must agree exactly`);checks++;
       }
     }
     assert.equal(prepared.lightingFor({kind:'sphere',c:[100,0,0],r:1}),prepared.illumination,'unknown receiver uses generic fallback');
   }
   assert(shadowHits>0&&litHits>0,'exercise both blocked and unblocked light');
   const single={atoms:[{element:'C',position:[0,0,0]}],bonds:[]};
-  for(const lightType of ['directional','point'])for(const castShadows of [false,true]){
-    const p=prepareScene(single,normalizeOptions({lightType,castShadows}));
-    assert.equal(p.mayShadow(p.scene[0]),castShadows&&lightType==='point','isolated directional surface has no candidates; point fallback is conservative');
+  for(const castShadows of [false,true]){
+    const p=prepareScene(single,normalizeOptions({castShadows}));
+    assert.equal(p.mayShadow(p.scene[0]),false,'isolated directional surface has no candidates');
   }
   for(const disabled of [{castShadows:false},{castShadows:true,shadowStrength:0},{castShadows:true,shadingSize:0}]){
     const p=prepareScene(molecule,normalizeOptions(disabled));
@@ -94,8 +86,8 @@ function samples(s){
   // bounding-sphere corridor. Candidate culling must include this fringe.
   const fringe=[{kind:'sphere',c:[0,0,0],r:1},{kind:'sphere',c:[1.5000001,0,3],r:.5}];
   assert(directionalShadowContext(fringe,[0,0,1],1e-6).candidates[0].includes(fringe[1]));
-  for(const lightType of ['directional','point'])for(const withReference of [false,true]){
-    const o=normalizeOptions({shadingMode:'stipple',lightType,castShadows:true,lightAttenuation:.2,scale:8,dotSize:.6,dotSpacing:2.5,width:200,height:200});
+  for(const lightAzimuth of [-.6,1.4])for(const withReference of [false,true]){
+    const o=normalizeOptions({shadingMode:'stipple',lightAzimuth,castShadows:true,scale:8,dotSize:.6,dotSpacing:2.5,width:200,height:200});
     const p=prepareScene(molecule,o),shift=.24;
     const reference=withReference?((s,n,lit)=>.15+.25*(1-lit)/2):undefined;
     const expected=buildDots(p.scene,depthAt,p.project,p.scale,(n,q)=>p.illumination(n,q)+shift,o,null,reference);

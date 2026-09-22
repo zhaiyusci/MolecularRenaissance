@@ -97,21 +97,23 @@
     ['quality', 'Invalid quality', '渲染质量设置无效'],
     ['scale', 'Invalid scale: expected positive finite SVG units per angstrom', '缩放比例无效：每埃对应的 SVG 单位数必须为有限正数'],
     ['radiusScale', 'Invalid atomRadiusScale: expected a positive finite multiplier', '原子半径倍率无效：必须为有限正数'],
-    ['attenuation', 'Invalid lightAttenuation: expected a nonnegative finite strength', '光照衰减强度无效：必须为有限非负数'],
     ['castShadows', 'Invalid castShadows', '投影开关设置无效'],
     ['shadowStrength', 'Invalid shadowStrength: expected 0–1', '投影强度无效：必须在 0–1 之间'],
     ['colorScheme', 'Invalid colorScheme', '配色方案无效'],
     ['shadingMode', 'Invalid shadingMode', '明暗纹理模式无效'],
+    ['quantizeShading', 'Invalid quantizeShading', '16级明暗开关设置无效'],
+    ['quantizedPrecise', '16-level shading switch requires precise rendering', '16级明暗开关需要精确渲染'],
+    ['quantizedConflict', 'Conflicting quantizeShading and hatchMode', '16级明暗开关与排线模式冲突'],
+    ['hatchMode', 'Invalid hatchMode', '排线模式无效'],
+    ['layeredPrecise', 'Layered hatching requires precise rendering', '分级排线需要精确渲染'],
     ['dots', 'Invalid dot settings', '网点设置无效'],
     ['dimensions', 'Invalid output dimensions or line width', '输出尺寸或线宽无效'],
     ['saturation', 'colorSaturation must be between 0 and 4', '色彩饱和度必须在 0–4 之间'],
     ['wash', 'washStrength must be between 0 and 1', '淡彩强度必须在 0–1 之间'],
     ['labelSize', 'Invalid label size or stroke width', '标签字号或描边宽度无效'],
     ['labelFont', 'Invalid label font', '标签字体无效'],
-    ['lightType', 'Invalid lightType', '光源类型无效'],
-    ['lightDistance', 'lightDistance must be at least 1.2 scene radii', '光源距离必须至少为场景半径的 1.2 倍'],
     ['renderMode', 'Invalid renderMode', '渲染模式无效'],
-    ['fastLight', 'Fast rendering requires directional light and castShadows=false', '快速渲染需要平行光，并关闭投影'],
+    ['fastLight', 'Fast rendering requires castShadows=false', '快速渲染需要关闭投影'],
     ['molecule', 'Expected atoms and bonds', '模型必须包含非空原子数组和化学键数组'],
     ['position', 'Invalid atom position', '原子位置无效'],
     ['bond', 'Invalid bond', '化学键无效'],
@@ -147,6 +149,7 @@
     ['elementTextureDepth', 'Element texture fallback depth budget exceeded; reduce molecule size or enable analytic boundaries', '元素纹理回退深度查询超出上限；请减少原子数量，或启用解析边界']
   ];
   engine.forEach(function (row) { known('error.engine.' + row[0], row[1], row[2]); });
+  add('error.engine.removedLighting', 'Removed lighting option: {option}; only directional lighting is supported', '已移除光照选项：{option}；仅支持平行光');
   add('error.engine.option', 'Invalid option: {option}', '选项无效：{option}');
   add('error.engine.labelColor', 'Invalid label color: {option}', '标签颜色无效：{option}');
   add('error.engine.noRadius', 'No covalent radius for element {element}; provide atom.radius in angstrom', '元素 {element} 没有共价半径；请提供以埃为单位的原子半径');
@@ -156,7 +159,7 @@
     dotSize: '网点尺寸', dotContrast: '网点对比度', outlineWidth: '轮廓线宽',
     hatchWidth: '排线宽度', colorSaturation: '色彩饱和度', width: '宽度', height: '高度',
     yaw: '水平旋转角', pitch: '俯仰角', lightAzimuth: '光源方位角', lightElevation: '光源仰角',
-    lightDistance: '光源距离', density: '密度', lineWidth: '线宽', labelSize: '标签字号',
+    density: '密度', lineWidth: '线宽', labelSize: '标签字号',
     labelStrokeWidth: '标签描边宽度', washStrength: '淡彩强度',
     labelColor: '标签颜色', labelStrokeColor: '标签描边颜色'
   };
@@ -165,6 +168,9 @@
   function translateKnown(message) {
     if (Object.prototype.hasOwnProperty.call(exact, message)) return i18n.t(exact[message]);
     var match;
+    if ((match = /^Removed lighting option: (lightType|lightDistance|lightAttenuation); only directional lighting is supported$/.exec(message))) {
+      return i18n.t('error.engine.removedLighting', { option: match[1] });
+    }
     if ((match = /^unknown chemical element ([A-Z][a-z]?)$/.exec(message))) {
       return i18n.t('error.xyz.unknownElement', { element: match[1] });
     }

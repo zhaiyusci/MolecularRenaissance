@@ -1,0 +1,358 @@
+{
+  "runtime": {
+    "node-jit": {
+      "node": "v26.8.2",
+      "v8": "14.6.202.34-node.28"
+    },
+    "node-jitless": {
+      "node": "v26.8.2",
+      "v8": "14.6.202.34-node.28"
+    },
+    "quickjs-ng": {
+      "implementation": "QuickJS-ng",
+      "version": "0.16.2",
+      "versionNote": "Host qjs --help verified; recheck when using another binary"
+    }
+  },
+  "loadMs": {
+    "node-jit": 11.269099999999995,
+    "node-jitless": 10.50879999999998,
+    "quickjs-ng": 34.97870001196861
+  },
+  "note": "Native engine, same classic bundle, 1 initial render + 3 warmups + 5 measured renders per case. Sequential cases in a single process. First-case timings include any remaining engine initialization. Timed section is render() only, excluding file IO, hashing and browser paint.",
+  "rows": [
+    {
+      "id": "phenol-precise-hatch",
+      "options": {
+        "width": 800,
+        "height": 700,
+        "scale": 50,
+        "quality": "preview",
+        "renderMode": "precise",
+        "shadingMode": "hatch",
+        "lightType": "directional",
+        "castShadows": false,
+        "colorWash": false,
+        "labels": false,
+        "elementTextures": false
+      },
+      "timings": {
+        "node-jit": {
+          "firstMs": 169.83630000000002,
+          "samplesMs": [
+            101.30189999999993,
+            86.88799999999992,
+            95.50250000000005,
+            83.53870000000006,
+            84.49739999999997
+          ],
+          "medianMs": 86.88799999999992,
+          "minMs": 83.53870000000006,
+          "maxMs": 101.30189999999993,
+          "ratioToV8": 1
+        },
+        "node-jitless": {
+          "firstMs": 409.15459999999996,
+          "samplesMs": [
+            363.16909999999984,
+            367.029,
+            368.3430000000003,
+            367.5286000000001,
+            371.5486999999998
+          ],
+          "medianMs": 367.5286000000001,
+          "minMs": 363.16909999999984,
+          "maxMs": 371.5486999999998,
+          "ratioToV8": 4.229912070711726
+        },
+        "quickjs-ng": {
+          "firstMs": 1105.9591999948025,
+          "samplesMs": [
+            1085.3821000158787,
+            1063.5476000010967,
+            1081.4546999931335,
+            1097.8000999987125,
+            1083.1782999932766
+          ],
+          "medianMs": 1083.1782999932766,
+          "minMs": 1063.5476000010967,
+          "maxMs": 1097.8000999987125,
+          "ratioToV8": 12.466373952597339
+        }
+      },
+      "outputs": {
+        "node-jit": {
+          "bytes": 856871,
+          "sha256": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "node-jitless": {
+          "bytes": 856871,
+          "sha256": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "quickjs-ng": {
+          "bytes": 856871,
+          "sha256": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        }
+      }
+    },
+    {
+      "id": "c60-precise-hatch",
+      "options": {
+        "width": 800,
+        "height": 700,
+        "scale": 50,
+        "quality": "preview",
+        "renderMode": "precise",
+        "shadingMode": "hatch",
+        "lightType": "directional",
+        "castShadows": false,
+        "colorWash": false,
+        "labels": false,
+        "elementTextures": false
+      },
+      "timings": {
+        "node-jit": {
+          "firstMs": 431.1414,
+          "samplesMs": [
+            329.31960000000026,
+            321.5346999999997,
+            321.9838,
+            345.39519999999993,
+            314.80600000000004
+          ],
+          "medianMs": 321.9838,
+          "minMs": 314.80600000000004,
+          "maxMs": 345.39519999999993,
+          "ratioToV8": 1
+        },
+        "node-jitless": {
+          "firstMs": 1855.3035,
+          "samplesMs": [
+            1827.0100999999995,
+            1815.2705999999998,
+            1833.5275000000001,
+            1876.4899999999998,
+            1842.1254999999983
+          ],
+          "medianMs": 1833.5275000000001,
+          "minMs": 1815.2705999999998,
+          "maxMs": 1876.4899999999998,
+          "ratioToV8": 5.694471274641769
+        },
+        "quickjs-ng": {
+          "firstMs": 5685.399399995804,
+          "samplesMs": [
+            5940.821600019932,
+            3769.4500000178814,
+            2937.5916000008583,
+            2855.064099997282,
+            2933.9709999859333
+          ],
+          "medianMs": 2937.5916000008583,
+          "minMs": 2855.064099997282,
+          "maxMs": 5940.821600019932,
+          "ratioToV8": 9.123414283578423
+        }
+      },
+      "outputs": {
+        "node-jit": {
+          "bytes": 3147311,
+          "sha256": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "node-jitless": {
+          "bytes": 3147311,
+          "sha256": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "quickjs-ng": {
+          "bytes": 3147311,
+          "sha256": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        }
+      }
+    },
+    {
+      "id": "c60-fast-hatch",
+      "options": {
+        "width": 800,
+        "height": 700,
+        "scale": 50,
+        "quality": "preview",
+        "renderMode": "fast",
+        "shadingMode": "hatch",
+        "lightType": "directional",
+        "castShadows": false,
+        "colorWash": false,
+        "labels": false,
+        "elementTextures": false
+      },
+      "timings": {
+        "node-jit": {
+          "firstMs": 15.226999999999862,
+          "samplesMs": [
+            9.78859999999986,
+            7.2979999999997744,
+            7.185800000000199,
+            7.063500000000204,
+            7.252400000000307
+          ],
+          "medianMs": 7.252400000000307,
+          "minMs": 7.063500000000204,
+          "maxMs": 9.78859999999986,
+          "ratioToV8": 1
+        },
+        "node-jitless": {
+          "firstMs": 27.321799999997893,
+          "samplesMs": [
+            23.015599999998813,
+            22.885699999998906,
+            25.039499999998952,
+            24.329600000000937,
+            24.437799999999697
+          ],
+          "medianMs": 24.329600000000937,
+          "minMs": 22.885699999998906,
+          "maxMs": 25.039499999998952,
+          "ratioToV8": 3.3546963763719466
+        },
+        "quickjs-ng": {
+          "firstMs": 47.29060000181198,
+          "samplesMs": [
+            47.224900007247925,
+            47.291999995708466,
+            46.58439999818802,
+            48.046499997377396,
+            47.528300017118454
+          ],
+          "medianMs": 47.291999995708466,
+          "minMs": 46.58439999818802,
+          "maxMs": 48.046499997377396,
+          "ratioToV8": 6.52087584740313
+        }
+      },
+      "outputs": {
+        "node-jit": {
+          "bytes": 138153,
+          "sha256": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "node-jitless": {
+          "bytes": 138153,
+          "sha256": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "quickjs-ng": {
+          "bytes": 138153,
+          "sha256": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        }
+      }
+    },
+    {
+      "id": "c60-precise-elements",
+      "options": {
+        "width": 800,
+        "height": 700,
+        "scale": 50,
+        "quality": "preview",
+        "renderMode": "precise",
+        "shadingMode": "hatch",
+        "lightType": "directional",
+        "castShadows": false,
+        "colorWash": false,
+        "labels": false,
+        "elementTextures": true,
+        "shadingSize": 0
+      },
+      "timings": {
+        "node-jit": {
+          "firstMs": 141.22080000000005,
+          "samplesMs": [
+            105.60180000000037,
+            109.19980000000032,
+            103.28459999999995,
+            99.74159999999938,
+            99.8126000000002
+          ],
+          "medianMs": 103.28459999999995,
+          "minMs": 99.74159999999938,
+          "maxMs": 109.19980000000032,
+          "ratioToV8": 1
+        },
+        "node-jitless": {
+          "firstMs": 659.6140999999989,
+          "samplesMs": [
+            664.9210999999996,
+            663.8217000000004,
+            655.7809000000016,
+            632.696899999999,
+            654.0623999999989
+          ],
+          "medianMs": 655.7809000000016,
+          "minMs": 632.696899999999,
+          "maxMs": 664.9210999999996,
+          "ratioToV8": 6.349261167686198
+        },
+        "quickjs-ng": {
+          "firstMs": 1144.2435000240803,
+          "samplesMs": [
+            1125.8172000050545,
+            1108.5750000178814,
+            1127.3092999756336,
+            1140.8388000130653,
+            1153.2091999948025
+          ],
+          "medianMs": 1127.3092999756336,
+          "minMs": 1108.5750000178814,
+          "maxMs": 1153.2091999948025,
+          "ratioToV8": 10.914592301036496
+        }
+      },
+      "outputs": {
+        "node-jit": {
+          "bytes": 262798,
+          "sha256": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "node-jitless": {
+          "bytes": 262798,
+          "sha256": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        },
+        "quickjs-ng": {
+          "bytes": 262798,
+          "sha256": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47",
+          "byteIdenticalToV8": true,
+          "tagSequenceMatchesV8": true,
+          "sameAfterRoundingNumbersTo6Decimals": true
+        }
+      }
+    }
+  ]
+}

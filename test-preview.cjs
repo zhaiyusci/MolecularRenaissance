@@ -2,25 +2,49 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const wash=require('./wash.js');
 const {render,examples,depthAt}=require('./renderer.js');
+const {disks}=require('./test-shared-regions.cjs');
 const commands=svg=>[...svg.matchAll(/\sd="([^"]*)"/g)].map(m=>m[1]);
-const circles=svg=>svg.match(/<circle\b[^>]*\/>/g)||[];
 const texts=svg=>svg.match(/<text\b[^>]*>[\s\S]*?<\/text>/g)||[];
+function engraving(svg){
+ const groups=[],stack=[];
+ for(const m of svg.matchAll(/<g\b[^>]*>|<\/g>/g)){
+  if(m[0]==='</g>'){const start=stack.pop();assert(start);if(start.engraving)groups.push(svg.slice(start.index,m.index+m[0].length));}
+  else if(!m[0].endsWith('/>'))stack.push({index:m.index,engraving:/\bdata-role="engraving"/.test(m[0])});
+ }
+ assert.equal(stack.length,0);assert(groups.length>1,'fixture exercises every owner engraving layer');return groups;
+}
 const originalFit=wash.fitContour;
-for(const shadingMode of ['hatch','stipple','halftone'])for(const colorMode of ['wash','ink']){
- const options={shadingMode,colorMode,colorWash:true,labels:true,labelMatchFill:true};
+for(const shadingMode of ['hatch','stipple','halftone'])for(const colorWash of [false,true]){
+ const options={shadingMode,colorWash,labels:true,labelMatchFill:true};
  const exported=render(examples.ethanol,options);
  assert.equal(render(examples.ethanol,{...options,quality:'export'}),exported,'default remains export quality');
  let preview;
  wash.fitContour=()=>{throw new Error('preview invoked line fitting');};
  try{preview=render(examples.ethanol,{...options,quality:'preview',optimizePaths:true});}finally{wash.fitContour=originalFit;}
- assert.ok(commands(preview).every(d=>!/[CAQ]/.test(d)),'preview contains only sampled polygons/polylines');
- assert.ok(commands(exported).some(d=>d.includes('C')),'export retains fitted cubics');
- assert.equal(commands(preview).length,commands(exported).length,'visibility runs/paths unchanged');
- assert.deepEqual(circles(preview),circles(exported),'dot geometry and colors unchanged');
+ const before=engraving(preview),after=engraving(exported);
+ assert.equal(before.length,after.length,'same owner layers');
+ for(let i=0;i<before.length;i++){
+  assert.ok(commands(before[i]).every(d=>!/[CAQ]/.test(d)),'preview engraving skips fitting, independently of certified surface contours');
+  assert.equal(commands(before[i]).length,commands(after[i]).length,'every owner retains its visibility runs/paths');
+ }
+ assert.ok(after.some(g=>commands(g).some(d=>d.includes('C'))),'export engraving retains fitted cubics');
+ const surfaces=svg=>svg.match(/<path\b[^>]*data-role="surface-fill"[^>]*\/>/g)||[];
+ assert(surfaces(preview).length>1);
+ assert.deepEqual(surfaces(preview),surfaces(exported),'certified visible owner boundaries remain exact at either quality');
+ assert(surfaces(preview).some(p=>commands(p).some(d=>d.includes('C'))),'analytic surface cubics are retained, not mislabeled as preview fitting');
+ if(colorWash)assert(surfaces(preview).some(p=>!/\bfill="#ffffff"/.test(p)),'enabled wash paints element colors');
+ else assert(surfaces(preview).every(p=>/\bfill="#ffffff"/.test(p)),'disabled wash still paints white owner occluders');
+ assert.equal(commands(preview).length,commands(exported).length,'complete artwork visibility paths unchanged');
+ assert.deepEqual(disks(preview),disks(exported),'all-owner stipple geometry/radii unchanged');
+ if(shadingMode==='stipple')assert(disks(preview).length>1000,'comparison contains actual disks, not an empty circle-tag match');
+ if(shadingMode==='halftone'){
+  const paints=svg=>svg.match(/<rect\b[^>]*data-tone-level="[^"]+"[^>]*>/g)||[];
+  assert(paints(preview).length>0,'actual halftone pattern paint, not definition circles');
+  assert.deepEqual(paints(preview),paints(exported),'tone paint and clip references unchanged');
+ }
  assert.deepEqual(texts(preview),texts(exported),'labels and typography unchanged');
  assert.ok(!/NaN|Infinity|undefined/.test(preview));
- assert.equal(preview.includes('mol-wash'),colorMode==='wash');
- console.log(`PASS ${shadingMode}/${colorMode}: no preview fitting, compact export, same dots/labels/runs`);
+ console.log(`PASS ${shadingMode}/wash=${colorWash}: no engraving fitting, exact analytic owners, same dots/labels/runs`);
 }
 // Trap the private fill fitter, not just the publicly exported line fitter.
 const source=fs.readFileSync(require.resolve('./wash.js'),'utf8');

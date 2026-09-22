@@ -11,5 +11,7 @@ export interface ProjectedCurve {
     path(a: number, b: number): string;
 }
 /** A projected circle stays an ellipse; do not sample and refit its centerline. */
-export declare function projectedCircle(project: Project, center: Vector, u: Vector, v: Vector): ProjectedCurve;
+export declare function projectedCircle(project: Project, center: Vector, u: Vector, v: Vector): ProjectedCurve & {
+    pointFromTrig(cos: number, sin: number): Vector;
+};
 export declare function projectedLine(project: Project, a: Vector, b: Vector): ProjectedCurve;

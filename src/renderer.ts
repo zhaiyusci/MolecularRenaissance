@@ -11,7 +11,8 @@ import { renderFastPainter } from './fast-painter.js';
 import { createElementTextures, sampledElementTextures } from './element-textures.js';
 import { hatchCoverage } from './coverage.js';
 import { getBoundaries, getDots, getWash } from './runtime.js';
-export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, ColorScheme, LightType, RenderMode } from './types.js';
+import { buildLayeredHatching } from './layered-hatching.js';
+export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, HatchMode, ColorScheme, RenderMode } from './types.js';
 export { normalizeOrientation, rotateOrientation, orientationFromEulerXYZ, orientationToEulerXYZ } from './orientation.js';
 export { examples } from './examples.js';
 export { parseXYZ } from './xyz.js';
@@ -51,17 +52,19 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   const boundaries=built&&built.validate(elementColor)?built:null;
   // Labels are part of their owner's paint layer, never a final overlay and
   // never clipped text. Certified visible fills preserve intersecting geometry.
-  const layerPaths=(o.labels||o.elementTextures)&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
+  const wantsLayered=o.shadingMode==='hatch'&&o.hatchMode==='layered';
+  const layerPaths=(o.labels||o.elementTextures||wantsLayered)&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
+  // Never substitute approximate ownership for the layered full-stroke clips.
+  const layered=wantsLayered&&layerPaths?buildLayeredHatching(prepared,o,layerPaths):null;
   const elements=o.elementTextures?createElementTextures(spheres.map(s=>s.element!),o.elementTextureScale):null;
   // Without certified paths, texture ownership has its own bounded numerical
   // fallback. Do not promote sampled paths to certified whole-label layers.
   const fallbackElements=elements&&!layerPaths?sampledElementTextures(scene,depthAt,project,scale,o.width,o.height,o.quality,elements):'';
   const ownerEngraving=new Map<Primitive,string>(),ownerDots=new Map<number,string>();
-  const regions=o.shadingMode!=='halftone'&&o.shadingSize!==0&&boundaries?.dotRegions?boundaries.dotRegions():null;
+  const regions=!layered&&(o.shadingMode!=='halftone'||!o.quantizeShading)&&o.shadingSize!==0&&boundaries?.dotRegions?boundaries.dotRegions():null;
   if(regions?.surface)atlas=createSurfaceAtlas(prepared,regions,o);
   // Shadow boundaries are solved per surface, not rediscovered along each line.
   function tonalSpans(s:Primitive,g:ProjectedCurve,tone:(limit:number)=>Intervals,limit:number,sharedShadow?:Intervals|null){
-    if(o.lightType!=='directional')return {spans:undefined,breaks:undefined};
     const shadow=sharedShadow!==undefined?sharedShadow:mayShadow(s)?(atlas?g.clip(atlas.shadow(s)):null):[];
     if(shadow===null)return {spans:undefined,breaks:undefined};
     const threshold=physicalThreshold(limit);
@@ -88,16 +91,17 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     function hatch(axis: Vector,count: number,secondary: boolean): void {
       axis=norm(axis);
       const e=norm(cross(axis,[1,0,0])),f=cross(axis,e),light=lightFor(s);
+      const axisLight=dot(axis,lightDirection),eLight=dot(e,lightDirection),fLight=dot(f,lightDirection);
       const face=atlas?.visible(s);if(atlas&&!face)return;
       const screen=(a:Vector)=>[a[0],-a[1],a[2]],c=project(s.c),radius=s.r*scale;
       const visibleFamily=face?.sphereFamily?.(c,radius,screen(axis),screen(e),screen(f));
-      const shadowFamily=o.lightType==='directional'&&atlas&&mayShadow(s)?atlas.shadow(s).sphereFamily?.(c,radius,screen(axis),screen(e),screen(f)):undefined;
+      const shadowFamily=atlas&&mayShadow(s)?atlas.shadow(s).sphereFamily?.(c,radius,screen(axis),screen(e),screen(f)):undefined;
       for(let j=1;j<count;j++){
         const h=-1+2*j/count,r=Math.sqrt(1-h*h),limit=secondary?.12:(j%2===0?.88:.58);
         const center=add(s.c,mul(axis,h*s.r)),u=mul(e,r*s.r),v=mul(f,r*s.r);
         const geometry=projectedCircle(project,center,u,v);
         const front=trigSpans(-axis[2]*h,-r*e[2],-r*f[2],1e-12);
-        const tonal=tonalSpans(s,geometry,t=>trigSpans(h*dot(axis,lightDirection),r*dot(e,lightDirection),r*dot(f,lightDirection),t),limit,shadowFamily?.(h));
+        const tonal=tonalSpans(s,geometry,t=>trigSpans(h*axisLight,r*eLight,r*fLight,t),limit,shadowFamily?.(h));
         const spans=tonal.spans?intersectSpans(tonal.spans,front):undefined;
         const clip=()=>{
           let result=visibleFamily?.(h)??(face?geometry.clip(face):null);
@@ -107,16 +111,19 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
         curve(t=>{
           const a=t*Math.PI*2,cos=Math.cos(a),sin=Math.sin(a);
           const n=[axis[0]*h+(e[0]*cos+f[0]*sin)*r,axis[1]*h+(e[1]*cos+f[1]*sin)*r,axis[2]*h+(e[2]*cos+f[2]*sin)*r];
-          return {p:[s.c[0]+n[0]*s.r,s.c[1]+n[1]*s.r,s.c[2]+n[2]*s.r],n};
+          // Reuse trig, retaining the old projected expression and its angle
+          // rounding even for exceptional very small parameter values.
+          const xy=a===t*(2*Math.PI)?geometry.pointFromTrig(cos,sin):geometry.point(t);
+          return {p:[s.c[0]+n[0]*s.r,s.c[1]+n[1]*s.r,s.c[2]+n[2]*s.r],n,xy};
         },Math.max(120,Math.ceil(2*Math.PI*s.r*scale*r/.7)),o.hatchWidth*(secondary?.63:.8),(n,p,lit)=>n[2]>=-1e-12&&lit<limit,true,true,
           clip,{geometry,spans,breaks:tonal.breaks,illumination:light});
       }
     }
-    if(o.shadingMode==='hatch'&&o.hatchWidth>0){
+    if(!layered&&o.shadingMode==='hatch'&&o.hatchWidth>0){
       hatch([.12,1,.40],Math.max(2,Math.round(hatchDensity*s.r/.48)),false);
       if(o.crossHatch)hatch([1,.22,-.32],Math.max(2,Math.round(hatchDensity*.8*s.r/.48)),true);
     }
-    if(layerPaths)ownerEngraving.set(s,paths.slice(start).join(''));
+    if(layerPaths)ownerEngraving.set(s,(layered?.bySurface.get(s)||'')+paths.slice(start).join(''));
   }
   for(const s of cylinders){
     const start=paths.length;
@@ -132,11 +139,11 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     };
     if(Math.hypot(s.u[0],s.u[1])>1e-8){const edge=norm([-s.u[1],s.u[0],0]);line(edge,o.outlineWidth*1.1);line(mul(edge,-1),o.outlineWidth*1.1);}
     const count=Math.max(3,Math.round(hatchDensity*.8*s.r/.115));
-    for(let j=0;o.shadingMode==='hatch'&&o.hatchWidth>0&&j<count;j++){
+    for(let j=0;!layered&&o.shadingMode==='hatch'&&o.hatchWidth>0&&j<count;j++){
       const a=j/count*2*Math.PI,n=add(mul(e,Math.cos(a)),mul(f,Math.sin(a)));
       if(n[2]>0)line(n,o.hatchWidth*.68,true);
     }
-    if(layerPaths)ownerEngraving.set(s,paths.slice(start).join(''));
+    if(layerPaths)ownerEngraving.set(s,(layered?.bySurface.get(s)||'')+paths.slice(start).join(''));
   }
   let dots='';
   if(o.shadingMode!=='hatch'&&o.dotSize>0){
@@ -146,9 +153,9 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
       compactStipple:true,
       emitSurface:layerPaths?(id:number,svg:string)=>{ownerDots.set(id,(ownerDots.get(id)||'')+svg);}:undefined,
       paths:o.shadingMode==='halftone'&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null,
-      light:o.lightType==='directional'?lightDirection:undefined,
+      light:lightDirection,
       illumination:(source:Primitive,n:Vector,p:Vector)=>lightFor(source)(n,p),
-      ...(o.shadingMode==='halftone'&&o.lightType==='directional'&&o.castShadows&&o.shadowStrength>0?directionalShadows():{})
+      ...(o.shadingMode==='halftone'&&o.castShadows&&o.shadowStrength>0?directionalShadows():{})
     };
     dots=dotter.buildDots(scene,depthAt,project,scale,illumination,o,regions,hatchCoverage(scale,o),surfaces);
   }
@@ -176,5 +183,6 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
       return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${categorical}${ownerDots.get(id)||''}${engraving(ownerEngraving.get(s)||'')}${ownerLabels.get(s)||''}</g>`;
     }).join('');
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title>${elements?`<defs>${elements.definitions}</defs>`:''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
+  const hatchInfo=wantsLayered?` data-hatch-mode="${layered?'layered':'continuous-fallback'}"${layered?'':' data-hatch-fallback="uncertified-visible-regions"'}`:'';
+  return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title>${layered?.defs||''}${elements?`<defs>${elements.definitions}</defs>`:''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }

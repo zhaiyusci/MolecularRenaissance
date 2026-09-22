@@ -1,7 +1,12 @@
 'use strict';
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const {render,examples,depthAt,engravingWidth}=require('./renderer.js');
+const {render:rawRender,examples,depthAt,engravingWidth}=require('./renderer.js');
+// IDs encode the full scene/options; compare drawing content, not that namespace.
+const canonical=s=>{const ids=[...new Set(s.match(/\blh-[a-z0-9]+-[a-z0-9]+(?=-)/g)||[])];assert(ids.length<=1);return ids.length?s.split(ids[0]).join('lh-NAMESPACE'):s;};
+const render=(...args)=>canonical(rawRender(...args));
+function inkGroups(svg){const stack=[],out=[];for(const m of svg.matchAll(/<g\b[^>]*>|<\/g>/g)){if(m[0]==='</g>'){const s=stack.pop();assert(s);if(s.ink)out.push(svg.slice(s.index,m.index+m[0].length));}else if(!m[0].endsWith('/>'))stack.push({index:m.index,ink:m[0].includes('data-role="engraving"')});}assert.equal(stack.length,0);return out.join('');}
+const plates=s=>(s.match(/<path\b[^>]*data-role="surface-fill"[^>]*\/>/g)||[]).join('')||(s.match(/<g class="mol-wash"[\s\S]*?<\/g>/)||[''])[0];
 let checks=0;
 function check(name,fn){fn();checks++;console.log('PASS '+name);}
 check('sphere front depth and miss',()=>{
@@ -46,8 +51,8 @@ check('light azimuth and elevation change shading but not silhouette',()=>{
  const b=render(examples.sphere,{lightAzimuth:1,lightElevation:.5});
  const c=render(examples.sphere,{lightAzimuth:-1,lightElevation:-.5});
  assert.notEqual(a,b);assert.notEqual(a,c);
- assert.equal(a.match(/<path[^>]+/)[0],b.match(/<path[^>]+/)[0]);
- assert.equal(a.match(/<path[^>]+/)[0],c.match(/<path[^>]+/)[0]);
+ assert(plates(a).includes('data-role="surface-fill"'));
+ assert.equal(plates(a),plates(b));assert.equal(plates(a),plates(c));
 });
 check('extreme light directions remain finite',()=>{
  for(const lightAzimuth of [-Math.PI,0,Math.PI])for(const lightElevation of [-Math.PI/2,0,Math.PI/2]){
@@ -57,21 +62,13 @@ check('extreme light directions remain finite',()=>{
  assert.throws(()=>render(examples.sphere,{lightAzimuth:NaN}));
  assert.throws(()=>render(examples.sphere,{lightElevation:Infinity}));
 });
-check('point light distance changes local shading only in point mode',()=>{
- const close=render(examples.ethanol,{lightType:'point',lightDistance:1.2});
- const far=render(examples.ethanol,{lightType:'point',lightDistance:12});
- assert.notEqual(close,far);
- assert.equal(close.match(/<path[^>]+/)[0],far.match(/<path[^>]+/)[0]);
- assert.equal(render(examples.sphere,{lightDistance:1.2}),render(examples.sphere,{lightDistance:12}));
- assert.throws(()=>render(examples.sphere,{lightType:'invalid'}));
- for(const lightDistance of [0,1,NaN,Infinity])assert.throws(()=>render(examples.sphere,{lightType:'point',lightDistance}));
-});
-check('point illumination converges to directional light at long distance',()=>{
- const opts={variableWidth:false,optimizePaths:false,lightAzimuth:.6,lightElevation:.4};
- const count=s=>(s.match(/L/g)||[]).length;
- const a=count(render(examples.sphere,opts));
- const b=count(render(examples.sphere,{...opts,lightType:'point',lightDistance:1e8}));
- assert.ok(Math.abs(a-b)<=2);
+check('removed lighting options are rejected, never silently ignored',()=>{
+ for(const key of ['lightType','lightDistance','lightAttenuation']){
+  for(const renderMode of ['precise','fast'])for(const value of [undefined,null,false,0,1,NaN,Infinity,'directional','point']){
+   assert.throws(()=>render(examples.sphere,{renderMode,castShadows:false,[key]:value}),
+    {message:`Removed lighting option: ${key}; only directional lighting is supported`});
+  }
+ }
 });
 check('engraving width is smoothly darker thicker and scales with base',()=>{
  let previous=Infinity;
@@ -84,7 +81,7 @@ check('engraving width is smoothly darker thicker and scales with base',()=>{
 check('baseline variable line geometry forms finite closed tapered ribbons',()=>{
  // Inspect the original sampled geometry here; test-optimize checks the fitted
  // export against it, including both ribbon sides and every tapered endpoint.
- const svg=render(examples.sphere,{optimizePaths:false}),flat=render(examples.sphere,{variableWidth:false,optimizePaths:false});
+ const svg=render(examples.sphere,{hatchMode:'continuous',optimizePaths:false}),flat=render(examples.sphere,{hatchMode:'continuous',variableWidth:false,optimizePaths:false});
  const ribbons=[...svg.matchAll(/<path fill="#161616" stroke="none" d="([^"]+)"/g)];
  assert.ok(ribbons.length>10);assert.ok(!flat.includes('stroke="none"'));
  // Opposite ribbon boundaries coincide at the tips but enclose nonzero width.
@@ -98,9 +95,9 @@ check('baseline variable line geometry forms finite closed tapered ribbons',()=>
  }
  assert.equal(svg.match(/<path[^>]+/)[0],flat.match(/<path[^>]+/)[0]);
 });
-check('point light extremes and both line modes are finite',()=>{
+check('directional light extremes and both line modes are finite',()=>{
  for(const lightAzimuth of [-Math.PI,0,Math.PI])for(const lightElevation of [-Math.PI/2,0,Math.PI/2])for(const variableWidth of [false,true]){
-  const s=render(examples.pair,{lightType:'point',lightDistance:1.2,lightAzimuth,lightElevation,variableWidth});
+  const s=render(examples.pair,{lightAzimuth,lightElevation,variableWidth});
   assert.ok(s.includes('<path'));assert.ok(!/NaN|Infinity|undefined/.test(s));
  }
 });
@@ -133,12 +130,13 @@ check('UI light controls convert angles, update and reset',()=>{
  elements['light-azimuth'].listeners.input();queued();
  assert.equal(opts.lightAzimuth,Math.PI/2);assert.equal(opts.lightElevation,-Math.PI/4);
  assert.equal(elements['light-azimuth-value'].textContent,'90°');
- assert.equal(opts.lightType,'directional');assert.equal(opts.variableWidth,true);
- assert.equal(elements['light-distance'].disabled,true);assert.equal(elements['light-distance-value'].textContent,'∞');
- elements['point-light'].checked=true;elements['point-light'].listeners.change();queued();
- assert.equal(opts.lightType,'point');assert.equal(elements['light-distance'].disabled,false);
- elements['light-distance'].value='1.5';elements['light-distance'].listeners.input();queued();
- assert.equal(opts.lightDistance,1.5);assert.equal(elements['light-distance-value'].textContent,'1.5 R');
+ assert.equal(opts.variableWidth,true);
+ for(const id of ['point-light','light-distance','light-distance-value','light-attenuation','light-attenuation-value'])assert.equal(elements[id],undefined);
+ for(const key of ['lightType','lightDistance','lightAttenuation'])assert.equal(Object.hasOwn(opts,key),false);
+ assert.equal(elements['cast-shadows'].disabled,false);
+ elements['cast-shadows'].checked=false;elements['cast-shadows'].listeners.change();queued();assert.equal(opts.castShadows,false);
+ elements['cast-shadows'].checked=true;elements['cast-shadows'].listeners.change();queued();assert.equal(opts.castShadows,true);
+ elements['shadow-strength'].value='65';elements['shadow-strength'].listeners.input();queued();assert.equal(opts.shadowStrength,.65);
  elements['variable-width'].checked=false;elements['variable-width'].listeners.change();queued();
  assert.equal(opts.variableWidth,false);
  assert.equal(elements['label-settings'].disabled,true);
@@ -214,7 +212,7 @@ check('UI light controls convert angles, update and reset',()=>{
   assert.equal(elements['outline-width'].disabled,false);assert.equal(opts.outlineWidth,0);
   elements['shading-enabled'].checked=false;elements['shading-enabled'].listeners.change();queued();
   assert.equal(opts.shadingSize,0);assert.equal(opts.castShadows,false);
-  for(const id of [...sharedIds,'shading-mode','point-light','cast-shadows','light-distance','light-attenuation','shadow-strength'])assert.equal(elements[id].disabled,true);
+  for(const id of [...sharedIds,'shading-mode','cast-shadows','shadow-strength'])assert.equal(elements[id].disabled,true);
   assert.equal(elements['outline-width'].disabled,false);
   elements['shading-enabled'].checked=true;elements['shading-enabled'].listeners.change();queued();
   assert.ok(!Object.hasOwn(opts,'shadingSize'));assert.equal(opts.castShadows,true);assert.equal(opts.textureScale,1.75);
@@ -232,17 +230,23 @@ check('UI light controls convert angles, update and reset',()=>{
  assert.equal(opts.labelColor,'#161616');assert.equal(opts.labelStrokeColor,'#ffffff');
  assert.equal(opts.labelBold,false);assert.equal(opts.labelItalic,true);
  assert.equal(elements['label-settings'].disabled,true);
- assert.equal(opts.lightType,'directional');assert.equal(opts.lightDistance,3);assert.equal(opts.variableWidth,true);
- assert.equal(elements['light-distance'].disabled,true);
+ assert.equal(opts.variableWidth,true);assert.equal(opts.castShadows,true);
+ for(const key of ['lightType','lightDistance','lightAttenuation'])assert.equal(Object.hasOwn(opts,key),false);
+ assert.equal(elements['cast-shadows'].disabled,false);assert.equal(elements['shadow-strength'].disabled,false);
+ assert.ok(Math.abs(opts.lightAzimuth-(-29*Math.PI/180))<1e-12);assert.ok(Math.abs(opts.lightElevation-32*Math.PI/180)<1e-12);
  assert.equal(elements['light-azimuth'].value,'-29');assert.equal(elements['light-elevation'].value,'32');
  nearOrientation(initialOrientation);assert.equal(elements['rotation-step'],undefined);
 });
-check('element label styles export without affecting plate titles',()=>{
+check('element label styles export while captions remain in the GUI',()=>{
  const svg=render(examples.water,{labels:true,labelSize:32,labelStrokeWidth:7,labelStrokeColor:'#ffcc00',labelColor:'#112233',labelFont:'Arial, sans-serif',labelBold:true,labelItalic:false});
  const tags=[...svg.matchAll(/<text data-role="element-label"[^>]*>/g)].map(m=>m[0]);
  assert.equal(tags.length,3);
  for(const tag of tags)for(const attr of ['font-size="32"','stroke-width="7"','stroke="#ffcc00"','fill="#112233"','font-family="Arial, sans-serif"','font-weight="700"','font-style="normal"','paint-order="stroke fill"'])assert.ok(tag.includes(attr),attr);
- assert.ok(svg.includes('font-size="19"'));
+ assert.equal((svg.match(/<text\b/g)||[]).length,tags.length,'SVG text contains only element labels, not a plate caption');
+ assert.match(svg,/<title id="title">[^<]+<\/title>/,'accessible SVG title metadata is retained');
+ const ui=require('./scripts/ui-harness.cjs').makeUI({browserLanguage:'en'});ui.flush();
+ assert.equal(ui.elements['molecule-caption'].textContent,ui.calls.at(-1).model.name,'GUI caption follows the displayed molecule');
+ assert.ok(ui.elements['molecule-caption'].textContent,'molecule caption is displayed outside the SVG in the GUI');
  const plain=render(examples.sphere,{labels:true,labelStrokeWidth:0});
  assert.ok(plain.match(/<text data-role="element-label"[^>]*>/)[0].includes('stroke="none"'));
  assert.ok(!render(examples.water,{labels:false}).includes('data-role="element-label"'));
@@ -255,9 +259,9 @@ check('label style validation and attribute escaping',()=>{
 check('color wash preserves all engraving and matches label halos',()=>{
  const {elementColor}=require('./renderer.js');
  const mono=render(examples.ethanol),color=render(examples.ethanol,{colorWash:true});
- const lines=s=>s.match(/<g data-role="engraving"[\s\S]*?<\/g>/)[0];
- assert.equal(lines(mono),lines(color));assert.ok(color.includes('class="mol-wash"'));
- assert.ok(!mono.includes('class="mol-wash"'));assert.ok(!color.includes('<image'));
+ const lines=s=>(s.match(/<defs data-hatch-renderer="layered"[\s\S]*?<\/defs>/)||[''])[0]+inkGroups(s);
+ assert.equal(lines(mono),lines(color));assert.ok(plates(color).includes(elementColor('C')));
+ assert.ok(!plates(mono).includes(elementColor('C')));assert.ok(!color.includes('<image'));
  assert.equal(render(examples.ethanol,{colorWash:true,washStrength:0}),mono);
  const svg=render(examples.sphere,{colorWash:true,labels:true,labelMatchFill:true});
  assert.ok(svg.match(/<text data-role="element-label"[^>]*>/)[0].includes('stroke="'+elementColor('C')+'"'));
@@ -265,17 +269,17 @@ check('color wash preserves all engraving and matches label halos',()=>{
  for(const washStrength of [-1,2,NaN])assert.throws(()=>render(examples.sphere,{washStrength}));
 });
 check('outline and hatch widths are independent and zero removes paths',()=>{
- const ink=s=>s.match(/<g data-role="engraving"[\s\S]*?<\/g>/)[0];
+ const ink=inkGroups;
  for(const variableWidth of [true,false]){
   const outline=ink(render(examples.sphere,{hatchWidth:0,variableWidth}));
   assert.equal((outline.match(/<path /g)||[]).length,1);
   const hatches=ink(render(examples.sphere,{outlineWidth:0,variableWidth}));
-  assert.ok((hatches.match(/<path /g)||[]).length>10);
+  assert.ok((hatches.match(/<(?:path|use) /g)||[]).length>10);
   const none=ink(render(examples.ethanol,{outlineWidth:0,hatchWidth:0,variableWidth,colorWash:true}));
   assert.ok(!none.includes('<path'));
  }
  const fillOnly=render(examples.ethanol,{outlineWidth:0,hatchWidth:0,colorWash:true});
- assert.ok(fillOnly.includes('class="mol-wash"'));
+ assert.ok(plates(fillOnly).includes('fill='));
  assert.equal(render(examples.sphere,{lineWidth:1}),render(examples.sphere,{outlineWidth:1,hatchWidth:1}));
  assert.equal(ink(render(examples.sphere,{lineWidth:0})).includes('<path'),false);
  assert.equal(ink(render(examples.sphere,{hatchWidth:0,outlineWidth:1})),ink(render(examples.sphere,{lineWidth:3,hatchWidth:0,outlineWidth:1})));
@@ -288,7 +292,9 @@ check('saturation changes chroma independently of concentration',()=>{
   assert.equal(elementColor(e,1,1),elementPalette[e]);
   const gray=rgb(elementColor(e,1,0));assert.equal(gray[0],gray[1]);assert.equal(gray[1],gray[2]);
   const basic=rgb(elementColor(e,1,1)),vivid=rgb(elementColor(e,1,4));
-  assert.ok(Math.max(...vivid)-Math.min(...vivid)>Math.max(...basic)-Math.min(...basic));
+  const chroma=Math.max(...basic)-Math.min(...basic),capacity=255-Math.abs(Math.max(...basic)+Math.min(...basic)-255);
+  if(chroma>0&&chroma<capacity)assert.ok(Math.max(...vivid)-Math.min(...vivid)>chroma,'available chroma increases');
+  else assert.deepEqual(vivid,basic,'achromatic carbon and already saturated source colors stay unchanged');
   assert.ok(Math.abs(Math.max(...vivid)+Math.min(...vivid)-Math.max(...basic)-Math.min(...basic))<=1);
  }
  assert.equal(elementColor('H',1,4),'#ffffff');assert.equal(elementColor('O',0,4),'#ffffff');
@@ -297,7 +303,7 @@ check('saturation changes chroma independently of concentration',()=>{
 check('fill-only exports retain the same smooth cubic color boundaries',()=>{
  const opts={colorWash:true,outlineWidth:0,hatchWidth:0};
  const plain=render(examples.ethanol,opts),outlined=render(examples.ethanol,{colorWash:true});
- const plate=s=>s.match(/<g class="mol-wash"[\s\S]*?<\/g>/)[0];
+ const plate=plates;
  assert.match(plate(plain),/C[-\d]/);
  assert.equal(plate(plain),plate(outlined));
  assert.ok(!/<image|<filter|feGaussianBlur/.test(plain));
@@ -306,7 +312,7 @@ check('fill-only exports retain the same smooth cubic color boundaries',()=>{
 const writeSamples=!process.argv.includes('--no-samples');
 if(writeSamples)fs.mkdirSync('samples',{recursive:true});
 for(const [key,m] of Object.entries(examples)){
- const svg=render(m);
+ const svg=rawRender(m);
  if(writeSamples)fs.writeFileSync(`samples/${key}.svg`,svg);
 }
 console.log(`${checks} tests passed${writeSamples?'; SVG samples written to samples/':''}`);

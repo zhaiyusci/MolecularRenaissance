@@ -1,8 +1,8 @@
 import type { Scene, Project } from './types.js';
+import { TONE_LEVELS as LEVELS } from './tone-levels.js';
 
 type Point = [number,number];
 type Bounds = [number,number,number,number];
-const LEVELS=16;
 const fmt=(n:number)=>String(Number(n.toFixed(4)));
 
 /** Disk radius / lattice pitch for a desired UNION area (not summed disk area). */
@@ -101,7 +101,7 @@ function contour(values:Float32Array,nx:number,ny:number,x0:number,y0:number,ste
   return paths.join('');
 }
 
-/** Local numerical fallback for point lights or a BINARY shadow boundary.
+/** Local numerical sampling for custom scalar fields or a BINARY shadow boundary.
  * It never allocates a full-frame ownership/lighting raster. Optional bisection
  * refines hard shadow edges independently of the coarse discovery grid. */
 export function sampledTonePaths(bounds:Bounds,sample:(x:number,y:number)=>number|null,step:number,thresholds=Array.from({length:LEVELS},(_,i)=>(i+.5)/LEVELS),refine=false):string[]{

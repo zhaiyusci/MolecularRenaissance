@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict');
-const {readFileSync,existsSync}=require('node:fs');
+const {readFileSync}=require('node:fs');
+const {historicalRenderer}=require('./test-fixtures/historical-renderer.cjs');
 const {coverage}=require('./test-style-coverage.cjs');
 (async()=>{
   const curves=await import('data:text/javascript;base64,'+readFileSync('build/ts/hatch-curves.js').toString('base64'));
@@ -32,19 +33,22 @@ const {coverage}=require('./test-style-coverage.cjs');
     }
   }
   const current=await import('./dist/molplotter.mjs');
-  const plain={quality:'preview',textureScale:1};
+  // This is the legacy curve/ribbon optimization contract; the marks oracle
+  // does not expand layered <use> instances or clipping definitions.
+  const plain={quality:'preview',textureScale:1,hatchMode:'continuous'};
   const uniform=current.render(current.examples.sphere,{...plain,variableWidth:false});
   assert(/stroke-width="0.640" d="M[^"]*C/.test(uniform),'equal-width hatches emit ellipse curves, not sampled polylines');
-  for(const options of [{lightType:'point',castShadows:true},{shadingBrightness:.6},{shadingBrightness:-.6,shadingContrast:2.5},{castShadows:true,variableWidth:false}]){
+  for(const options of [{lightAzimuth:1.4,lightElevation:-.3,castShadows:true},{shadingBrightness:.6},{shadingBrightness:-.6,shadingContrast:2.5},{castShadows:true,variableWidth:false}]){
     const svg=current.render(current.examples.ethanol,{...plain,...options});
     assert(!/NaN|Infinity/.test(svg)&&svg.includes('data-role="engraving"'),'finite hatch output under alternate illumination');
   }
-  if(existsSync('build/baselines/pre-shading.mjs')){
-    const before=await import('./build/baselines/pre-shading.mjs');
+  {
+    const before=await historicalRenderer();
     const reports=[];
     for(const castShadows of [false,true]){
       const options={...plain,castShadows},a=before.render(before.examples.sphere,options),b=current.render(current.examples.sphere,options);
-      const box=[400,288,500,388],mask=(x,y)=>(x-450)**2+(y-338)**2<45.4**2;
+      // Both renderers explicitly use the current canvas-centered projection.
+      const box=[400,300,500,400],mask=(x,y)=>(x-450)**2+(y-350)**2<45.4**2;
       const oldInk=coverage(a,box,mask),newInk=coverage(b,box,mask);
       assert(Math.abs(oldInk-newInk)<.02,'preserve mean hatch ink including tips');
       assert(b.length<a.length,'fewer serialized coordinates on a smooth sphere');
@@ -59,5 +63,5 @@ const {coverage}=require('./test-style-coverage.cjs');
     }
     console.log('Hatch baseline comparison:',reports);
   }
-  console.log(`Hatch geometry checks passed: ${checks} light classifications, cubic arcs, finite lighting, and optional baseline comparisons`);
+  console.log(`Hatch geometry checks passed: ${checks} light classifications, cubic arcs, finite lighting, and pinned historical baseline comparisons`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

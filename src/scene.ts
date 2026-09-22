@@ -1,6 +1,6 @@
 import type { Molecule, Sphere, Cylinder, Primitive, Project, Illumination, Vector } from './types.js';
 import type { NormalizedOptions } from './options.js';
-import { add, sub, mul, dot, norm, rotate } from './math.js';
+import { add, sub, mul, dot, rotate } from './math.js';
 import { atomRadius } from './radii.js';
 import { rotateByOrientation } from './orientation.js';
 import { shadowBlocked, directionalShadowContext } from './shadows.js';
@@ -65,24 +65,14 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
   const project: Project=p=>[p[0]*scale+o.width/2,o.height/2-p[1]*scale];
   const light=[Math.sin(o.lightAzimuth)*Math.cos(o.lightElevation),Math.sin(o.lightElevation),Math.cos(o.lightAzimuth)*Math.cos(o.lightElevation)];
   const sceneRadius=Math.max(...spheres.map(s=>Math.hypot(...s.c)+s.r));
-  const lightPosition=mul(light,o.lightDistance*sceneRadius);
   const shadowBias=Math.max(1e-9,Math.min(sceneRadius*1e-6,...scene.map(s=>s.r*1e-4)));
   const traceShadows=o.castShadows&&o.shadowStrength>0&&o.shadingSize!==0;
   // Share the evaluator so broad-phase specialization cannot drift from the
   // generic callback's physical formulas or arithmetic order.
   const lighting=(casters:readonly Primitive[]):Illumination=>(n,p)=>{
-    const point=o.lightType==='point',delta=point?sub(lightPosition,p):light;
-    const direction=point?norm(delta):light;
-    const distance=point?Math.hypot(...delta):Infinity;
-    const facing=dot(n,direction);
+    const facing=dot(n,light);
     let lit=facing;
-    if(point&&o.lightAttenuation>0){
-      // Soft inverse-square falloff in model units, independent of screen zoom.
-      const relativeDistance=distance/sceneRadius;
-      const attenuation=1/(1+o.lightAttenuation*relativeDistance*relativeDistance);
-      lit=(Math.max(-1,Math.min(1,lit))+1)*attenuation-1;
-    }
-    if(casters.length&&traceShadows&&facing>0&&shadowBlocked(casters,p,n,direction,distance,shadowBias)){
+    if(casters.length&&traceShadows&&facing>0&&shadowBlocked(casters,p,n,light,shadowBias)){
       // Signed engraving brightness maps to [0,1] before shadow attenuation.
       // At strength .8, keep 20% of the local brightness instead of solid black.
       lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;
@@ -97,18 +87,16 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
     const cached=cache.get(source);if(cached)return cached;
     const id=ids.get(source);
     let result=illumination;
-    if(traceShadows&&o.lightType==='directional'&&id!==undefined){
+    if(traceShadows&&id!==undefined){
       result=lighting(directionalShadows().candidates[id]);
     }
-    // Point rays vary across a receiver: retain the complete caster list,
-    // including self, rather than apply an unsafe directional broad phase.
-    // Unknown primitives also keep the fully generic behavior.
+    // Unknown primitives retain the full caster list.
     cache.set(source,result);return result;
   };
   const mayShadow=(source:Primitive):boolean=>{
     if(!traceShadows)return false;
     const id=ids.get(source);
-    if(o.lightType!=='directional'||id===undefined)return scene.length>0;
+    if(id===undefined)return scene.length>0;
     return directionalShadows().mayShadow[id];
   };
   return {spheres,cylinders,scene,scale,project,illumination,unshadowedIllumination,lightingFor,mayShadow,directionalShadows,lightDirection:light,shadowBias};

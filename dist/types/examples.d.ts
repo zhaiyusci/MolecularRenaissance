@@ -1,11 +1,5 @@
 import type { Atom, Molecule } from './types.js';
 export declare const examples: {
-    glucose: Molecule;
-    phospholipid: Molecule;
-    phenol: Molecule;
-    isopropanol: Molecule;
-    sulfuricAcid: Molecule;
-    glycine: Molecule;
     sphere: {
         name: string;
         atoms: Atom[];
@@ -37,4 +31,10 @@ export declare const examples: {
     methanol: Molecule;
     benzene: Molecule;
     hydrogenPeroxide: Molecule;
+    phenol: Molecule;
+    isopropanol: Molecule;
+    sulfuricAcid: Molecule;
+    glycine: Molecule;
+    glucose: Molecule;
+    phospholipid: Molecule;
 };

@@ -43,14 +43,15 @@ function capture(molecule, options={}) {
     }
     return built;
   };
-  dots.buildDots=function(...args) { assert.equal(args.length,8,'renderer must pass optional regions'); result=args;return ''; };
+  dots.buildDots=function(...args) { assert.equal(args.length,9,'buildDots ABI: regions, referenceCoverage, surfaces'); result=args;return ''; };
   try {
     renderer.render(molecule,{shadingMode:'stipple',outlineWidth:0,...options});
     assert(result,'renderer failed to call buildDots');
     assert.equal(constructionDepth,0,'dot-region construction called shared depth callback');
     assert(creates<=1,'dot regions constructed more than once');
-    const [scene,,project,scale,illumination,o,color,regions]=result;
-    return {scene,project,scale,illumination,options:o,color,regions,built};
+    const [scene,,project,scale,illumination,o,regions,referenceCoverage,surfaces]=result;
+    assert.equal(typeof referenceCoverage,'function');
+    return {scene,project,scale,illumination,options:o,regions,referenceCoverage,surfaces,built};
   } finally {dots.buildDots=oldDots;boundaries.build=oldBuild;regionModule.create=oldCreate;}
 }
 function oracle(ctx) {
@@ -117,80 +118,103 @@ function inspect(ctx,label,nx=72,ny=60) {
   return seen;
 }
 function marks(svg) {
-  return [...svg.matchAll(/<circle cx="([^"]+)" cy="([^"]+)" r="([^"]+)"(?: fill="([^"]+)")?\/>/g)].map(m=>({x:+m[1],y:+m[2],r:+m[3],color:m[4]||'',key:m[1]+','+m[2]}));
+  const out=[...svg.matchAll(/<circle cx="([^"]+)" cy="([^"]+)" r="([^"]+)"(?: fill="([^"]+)")?\/>/g)].map(m=>({x:+m[1],y:+m[2],r:+m[3],color:m[4]||'',key:m[1]+','+m[2]}));
+  for(const m of svg.matchAll(/<path data-stipple-radius="([^"]+)"[^>]*d="([^"]+)"\/>/g)){
+    for(const p of m[2].matchAll(/M([-\d.]+) ([-\d.]+)h0/g))out.push({x:+p[1],y:+p[2],r:+m[1],color:'',key:p[1]+','+p[2]});
+  }
+  return out;
 }
 function compareDots(ctx,label) {
   const own=oracle(ctx),origin=ctx.project([0,0,0]);
-  for(const mode of ['stipple','halftone']) {
-    const o={...ctx.options,shadingMode:mode};
-    const color=e=>renderer.elementInkColor(e,.85,1.3);
-    const args=[ctx.scene,renderer.depthAt,ctx.project,ctx.scale,ctx.illumination,o,color];
-    let oldAccepted=0;
-    const old=dots.buildDots(ctx.scene,renderer.depthAt,ctx.project,ctx.scale,(n,p)=>{oldAccepted++;return ctx.illumination(n,p);},o,color);
-    const oldMarks=marks(old);
-    if(!ctx.regions) {
-      assert.equal(dots.buildDots(...args,null),old,`${label}/${mode}: null fallback differs`);
-      assert(oldMarks.length>0);
-      // Fallback must respect raw ownership at centers AND across entire dots.
-      for(const c of oldMarks) {
-        const id=own(c.x,c.y);assert(id>=0,`${label}: fallback dot outside solid`);
-        assert.equal(c.color,color(ctx.scene[id].kind==='sphere'?ctx.scene[id].element:null),'fallback ink belongs to wrong surface');
-        for(const ring of [.25,.625,1])for(const [dx,dy,angle] of directions) {
-          const radius=Math.max(0,c.r-.003)*ring;
-          assert.equal(own(c.x+dx*radius,c.y+dy*radius),id,`${label}/${mode}: fallback footprint leak at ${c.key}, r=${c.r}, ring=${ring}, angle=${angle}`);
-        }
+  const o={...ctx.options,shadingMode:'stipple'},g=o.dotSpacing;
+  const args=[ctx.scene,renderer.depthAt,ctx.project,ctx.scale,ctx.illumination,o];
+  let fallbackDepth=0;
+  const old=dots.buildDots(ctx.scene,(...a)=>{fallbackDepth++;return renderer.depthAt(...a);},ctx.project,ctx.scale,ctx.illumination,o);
+  const oldMarks=marks(old);
+  assert(oldMarks.length>0,`${label}: nonempty fallback stipple`);
+  assert(old.includes('fill="#161616"'),'all stipple uses black ink');
+  assert.equal(dots.buildDots(...args,null),old,`${label}: null fallback differs`);
+  function footprints(cs) {
+    for(const c of cs) {
+      const id=own(c.x,c.y);assert(id>=0,`${label}: dot outside solid`);
+      assert.equal(c.color,'','disk inherits black ink, never element color');
+      for(const ring of [.25,.625,1])for(const [dx,dy,angle] of directions) {
+        const radius=Math.max(0,c.r-.003)*ring;
+        assert.equal(own(c.x+dx*radius,c.y+dy*radius),id,`${label}: footprint leak at ${c.key}, r=${c.r}, ring=${ring}, angle=${angle}`);
       }
-      continue;
     }
-    let queries=0,accepted=0,depthCalls=0,pending=null;
-    const candidateHits=new Map(),queryPositions=new Set();
-    function hash(x,y,salt) {
-      let h=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^Math.imul(salt,1274126177);
-      h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296;
-    }
-    const wrapped={query(x,y,r) {
-      assert.equal(pending,null,'previous accepted candidate did not reconstruct depth');
-      const key=`${x},${y}`,g=o.dotSpacing;
-      assert(!queryPositions.has(key),'duplicate query: candidate/footprint replay');queryPositions.add(key);
-      // Every query must be an original screen candidate, never a circle ring.
-      if(mode==='stipple') {
-        const i=Math.floor(x/g),j=Math.floor(y/g);
-        assert.equal(x,(i+.5+.8*(hash(i,j,1)-.5))*g,'off-lattice footprint x query');
-        assert.equal(y,(j+.5+.8*(hash(i,j,2)-.5))*g,'off-lattice footprint y query');
-      } else {
-        const u=(x+y)*Math.SQRT1_2/g-.5,v=(-x+y)*Math.SQRT1_2/g-.5;
-        assert(Math.abs(u-Math.round(u))<1e-10&&Math.abs(v-Math.round(v))<1e-10,'off-lattice footprint query');
-      }
-      queries++;const q=ctx.regions.query(x,y,r);
-      if(q){accepted++;pending={x,y,id:q.id};candidateHits.set(`${x.toFixed(3)},${y.toFixed(3)}`,q);}
-      return q;
-    }};
-    function depth(s,x,y) {
-      depthCalls++;assert(pending,`${label}: depth without accepted candidate (footprint ray)`);
-      assert.strictEqual(s,ctx.scene[pending.id],`${label}: queried nonowner primitive`);
-      assert(Math.abs(x-(pending.x-origin[0])/ctx.scale)<1e-12 && Math.abs(y-(origin[1]-pending.y)/ctx.scale)<1e-12,'depth reconstructed away from candidate center');
-      pending=null;return renderer.depthAt(s,x,y);
-    }
-    const fast=dots.buildDots(ctx.scene,depth,ctx.project,ctx.scale,ctx.illumination,o,color,wrapped);
-    assert.equal(pending,null);assert.equal(depthCalls,accepted);assert(depthCalls<=queries);
-    assert(depthCalls<=oldAccepted,`${label}: depth calls exceed original accepted candidate count`);
-    assert.equal(fast,dots.buildDots(...args,ctx.regions),'accelerated output not exactly deterministic');
-    const fastMarks=marks(fast),a=new Map(oldMarks.map(c=>[c.key,c])),b=new Map(fastMarks.map(c=>[c.key,c]));
-    let interior=0,edge=0;
-    for(const c of oldMarks) {
-      const q=candidateHits.get(c.key);
-      if(q&&q.clearance>=o.dotSpacing*.48-.000000001) {
-        assert.deepEqual(b.get(c.key),c,`${label}/${mode}: interior phase/radius/color changed at ${c.key}`);interior++;
-      } else edge++;
-    }
-    for(const c of fastMarks) {
-      const previous=a.get(c.key),q=candidateHits.get(c.key);
-      if(previous)assert.equal(c.color,previous.color,'raw-owner ink color changed');
-      else assert(q&&q.clearance<o.dotSpacing*.48,`${label}: added interior position ${c.key}`);
-    }
-    assert(interior>10,`${label}: vacuous interior equivalence`);
-    stats.push({case:`${label}/${mode}`,queries,accepted,depthCalls,dots:fastMarks.length,interior,edge});
   }
+  // Halftone is a clipped surface pattern, not a jittered-dot screen. Its
+  // visibility path must not accidentally consume the stipple region oracle.
+  const halfArgs=[...args.slice(0,5),{...o,shadingMode:'halftone'}];
+  const half=dots.buildDots(...halfArgs,{query(){throw Error('halftone queried stipple regions');}});
+  assert.equal(half,dots.buildDots(...halfArgs,null));
+  assert(/<pattern\b/.test(half)&&/url\(#/.test(half)&&!/NaN|Infinity/.test(half),'halftone emits referenced finite patterns');
+  if(!ctx.regions){footprints(oldMarks);return;}
+  let queries=0,accepted=0,depthCalls=0,pending=null,cellQueries=0,markQueries=0;
+  const cells=new Map(),queryPositions=new Set(),cellRadius=Math.SQRT1_2*g+o.dotSize*1.03;
+  function hash(x,y,salt) {
+    let h=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^Math.imul(salt,1274126177);
+    h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296;
+  }
+  const wrapped={query(x,y,r) {
+    assert.equal(pending,null,'previous accepted query did not reconstruct depth');
+    const key=`${x},${y}`,i=Math.floor(x/g),j=Math.floor(y/g),cellKey=`${i},${j}`;
+    assert(!queryPositions.has(key),'duplicate query: candidate/footprint replay');queryPositions.add(key);
+    if(r===cellRadius){
+      cellQueries++;assert.equal(x,(i+.5)*g);assert.equal(y,(j+.5)*g);
+    }else{
+      markQueries++;assert.equal(r,o.dotSize*1.03);
+      const cell=cells.get(cellKey);assert(cell&&cell.clearance<cellRadius-1e-12,'certified cell must not query individual marks');
+      // Independently recognize the Poisson candidate stream, rejecting any
+      // old 16-ray footprint replay. Production caps each cell at 1000 marks.
+      let candidate=false;
+      for(let k=0;k<=1000;k++)if(x===(i+hash(i,j,10000+2*k))*g&&y===(j+hash(i,j,10001+2*k))*g){candidate=true;break;}
+      assert(candidate,'query is neither a cell center nor a Poisson candidate');
+    }
+    queries++;const q=ctx.regions.query(x,y,r);
+    if(r===cellRadius)cells.set(cellKey,q);
+    if(q){accepted++;pending={x,y,id:q.id};}
+    return q;
+  }};
+  function depth(s,x,y) {
+    depthCalls++;assert(pending,`${label}: depth without accepted query (footprint ray)`);
+    assert.strictEqual(s,ctx.scene[pending.id],`${label}: queried nonowner primitive`);
+    assert(Math.abs(x-(pending.x-origin[0])/ctx.scale)<1e-12&&Math.abs(y-(origin[1]-pending.y)/ctx.scale)<1e-12,'depth reconstructed away from query center');
+    pending=null;return renderer.depthAt(s,x,y);
+  }
+  // Omit optional tone calibration here to isolate candidate queries; the
+  // renderer capture above separately checks the complete nine-argument ABI.
+  const fast=dots.buildDots(ctx.scene,depth,ctx.project,ctx.scale,ctx.illumination,o,wrapped);
+  assert.equal(pending,null);assert.equal(depthCalls,accepted);assert(depthCalls<=queries);
+  assert(depthCalls<fallbackDepth,`${label}: certification must save depth queries`);
+  assert(cellQueries>0&&markQueries>0,'exercise both cell certification and boundary candidates');
+  assert.equal(fast,dots.buildDots(...args,ctx.regions),'accelerated output not exactly deterministic');
+  const fastMarks=marks(fast),a=new Map(oldMarks.map(c=>[c.key,c])),b=new Map(fastMarks.map(c=>[c.key,c]));
+  let interior=0,edge=0;
+  function certifiedSerializedCell(c){
+    // toFixed(3) may round a Poisson mark across a grid boundary. Require
+    // certification for every cell compatible with that serialization bin.
+    for(const dx of [-.000501,.000501])for(const dy of [-.000501,.000501]){
+      const q=cells.get(`${Math.floor((c.x+dx)/g)},${Math.floor((c.y+dy)/g)}`);
+      if(!q||q.clearance<cellRadius-1e-12)return false;
+    }
+    return true;
+  }
+  for(const c of oldMarks){
+    // Poisson density is evaluated at the CELL center; a disk can be far
+    // from an edge while its cell center lies on that edge. Interior parity
+    // therefore requires a certified whole cell, not only the disk center.
+    if(certifiedSerializedCell(c)){assert.deepEqual(b.get(c.key),c,`${label}: interior Poisson position/radius/ink changed`);interior++;}else edge++;
+  }
+  for(const c of fastMarks)if(!a.has(c.key)){
+    assert(!certifiedSerializedCell(c),`${label}: added interior position ${c.key}`);
+  }
+  assert(interior>10,`${label}: vacuous interior equivalence`);
+  // Dense independent region-clearance checks above cover every scene; here
+  // check a spread of actual serialized accelerated footprints as well.
+  footprints(fastMarks.filter((_,i)=>i%Math.max(1,Math.floor(fastMarks.length/1024))===0));
+  stats.push({case:label,queries,accepted,depthCalls,cellQueries,markQueries,dots:fastMarks.length,interior,edge});
 }
 const defaults=new Map();
 for(const [name,molecule] of Object.entries(renderer.examples))test(`default ${name}: accelerated / geometry / legacy`,()=> {
@@ -203,6 +227,20 @@ for(const [name,molecule] of Object.entries(renderer.examples))test(`default ${n
     assert([...seen].some(id=>ctx.scene[id].kind==='cylinder'),'white rod ownership missing');
   }
   compareDots(ctx,`default ${name}`);
+});
+
+test('full ABI: calibrated black stipple preserves disks across surface batching',()=> {
+  const ctx=defaults.get('sphere');assert(ctx&&ctx.regions&&ctx.surfaces);
+  let calibrations=0;
+  const reference=(...a)=>{calibrations++;return ctx.referenceCoverage(...a);};
+  const args=[ctx.scene,renderer.depthAt,ctx.project,ctx.scale,ctx.illumination,ctx.options,ctx.regions,reference];
+  const compact=dots.buildDots(...args,{...ctx.surfaces,compactStipple:true});
+  const circles=dots.buildDots(...args,{...ctx.surfaces,compactStipple:false});
+  assert(calibrations>0,'eighth parameter is the tone reference callback');
+  assert(compact.includes('data-stipple-radius=')&&circles.includes('<circle'),'ninth parameter controls surface encoding');
+  const order=cs=>cs.sort((a,b)=>a.x-b.x||a.y-b.y||a.r-b.r);
+  assert(marks(compact).length>100);
+  assert.deepEqual(order(marks(compact)),order(marks(circles)),'batching preserves every physical black disk');
 });
 
 test('40 deterministic ethanol rotations: report every fallback and verify every successful region',()=> {
@@ -275,7 +313,7 @@ test('browser VM loads dot-regions.js before boundaries/dots/renderer and accele
   for(const file of ['dot-regions.js','wash.js','boundaries.js','dots.js','renderer.js'])vm.runInContext(fs.readFileSync(require.resolve('./'+file),'utf8'),context,{filename:file});
   assert.equal(typeof context.MolDotRegions.create,'function');
   const original=context.MolDots.buildDots;let received=null;
-  context.MolDots.buildDots=function(...args){received=args[7];return original(...args);};
+  context.MolDots.buildDots=function(...args){received=args[6];return original(...args);};
   try {
     const options={shadingMode:'stipple',outlineWidth:0,width:320,height:280};
     const svg=context.MolEngraver.render(context.MolEngraver.examples.ethanol,options);

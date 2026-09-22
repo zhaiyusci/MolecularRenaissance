@@ -26,8 +26,10 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
   const threshold = (limit: number) => 1 - 2 * Math.pow((1 - limit) / 2, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
   const fillFor = (element?: string) => o.colorWash ? elementColor(element, o.washStrength, o.colorSaturation, o.colorScheme) : '#ffffff';
   // Geometry, styles AND title enter the namespace, including texture-only edits.
+  // The layered hatch selector is precise-only; it must not perturb fast IDs.
+  const { hatchMode: _preciseHatchMode, quantizeShading: _sharedSwitch, ...fastOptions } = o;
   let hash1 = 2166136261, hash2 = 5381;
-  for (const ch of JSON.stringify([molecule, o])) {
+  for (const ch of JSON.stringify([molecule, fastOptions])) {
     const n = ch.charCodeAt(0); hash1 = Math.imul(hash1 ^ n, 16777619); hash2 = Math.imul(hash2, 33) ^ n;
   }
   const prefix = 'fast-painter-' + (hash1 >>> 0).toString(16) + '-' + (hash2 >>> 0).toString(16);

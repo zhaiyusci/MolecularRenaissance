@@ -1,0 +1,5402 @@
+{
+  "baseline": "Fixed, 48-tests-passing pre-round-two workspace snapshot; NOT git HEAD or the pre-optimization baseline.",
+  "environment": {
+    "node": "26.8.2",
+    "v8": "14.6.202.34-node.28",
+    "quickjs": "QuickJS-ng 0.16.2 native Release"
+  },
+  "files": [
+    {
+      "name": "renderer.js",
+      "baseline": "7447a2a08c22bbeb27996af424b1b3f3fb3b675a4a5a378c6cc5fab193ab93c3",
+      "current": "c67430b0f8f2c2dbdb4f66235429df6cb646771b96011bf7c7f83eb9f1c27f06"
+    },
+    {
+      "name": "boundaries.js",
+      "baseline": "57853315aec3a72b5bed90cb1e5b8590962f8d5218e0c92001dffa25a8bb3f9c",
+      "current": "c404ee6933599ee44dd29c38efb28e9a4c231b710d5705514dc1a9862ff44574"
+    },
+    {
+      "name": "dot-regions.js",
+      "baseline": "641597db1605395112e223f8837948d3e5683f7641b545c0f6d0985d440bf647",
+      "current": "31194c110bbf515fe899559c629cb8db4f56c4b4528acb390c4b493f01d771a1"
+    },
+    {
+      "name": "dots.js",
+      "baseline": "9d0e7256b4d0f8270e2d2ad631af804d4955ff96237c87f12816b3fff17601cd",
+      "current": "9d0e7256b4d0f8270e2d2ad631af804d4955ff96237c87f12816b3fff17601cd"
+    },
+    {
+      "name": "wash.js",
+      "baseline": "af954e4c449475b6587741d44302c72c744296f4d5405e2406b2d851eaa05751",
+      "current": "af954e4c449475b6587741d44302c72c744296f4d5405e2406b2d851eaa05751"
+    },
+    {
+      "name": "molplotter.mjs",
+      "baseline": "64241b59eb0b369a30471463613c45cd76c7c71d9535c3c2131697d4de3db0f7",
+      "current": "40723da40778170006d9b2e4471c8cfbd50844af7d00d8f9464513b072f89460"
+    }
+  ],
+  "rounds": {
+    "v8": [
+      {
+        "engine": "node-jit",
+        "protocol": "Independent fixed-baseline/current bundles in same process; 1 initial + 3 warmups each, 6 alternating timed pairs. All outputs compared exactly outside render timer. No geometry, sampling, checks or tolerances changed.",
+        "rows": [
+          {
+            "id": "phenol-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 70.1456,
+              "samplesMs": [
+                48.59250000000003,
+                35.31569999999999,
+                38.02089999999998,
+                32.17410000000007,
+                32.66639999999995,
+                33.471000000000004
+              ],
+              "medianMs": 34.39335,
+              "minMs": 32.17410000000007,
+              "maxMs": 48.59250000000003
+            },
+            "after": {
+              "firstMs": 68.3868,
+              "samplesMs": [
+                42.75259999999997,
+                26.867900000000077,
+                26.66339999999991,
+                23.2423,
+                24.312700000000063,
+                25.224199999999996
+              ],
+              "medianMs": 25.943799999999953,
+              "minMs": 23.2423,
+              "maxMs": 42.75259999999997
+            },
+            "speedup": 1.3256866765855448,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 185.56330000000003,
+              "samplesMs": [
+                148.79129999999986,
+                138.1192000000001,
+                128.61900000000014,
+                188.1307999999999,
+                132.62750000000005,
+                137.3044
+              ],
+              "medianMs": 137.71180000000004,
+              "minMs": 128.61900000000014,
+              "maxMs": 188.1307999999999
+            },
+            "after": {
+              "firstMs": 159.78739999999993,
+              "samplesMs": [
+                112.43560000000025,
+                103.45280000000002,
+                103.25510000000031,
+                100.7206000000001,
+                103.84830000000011,
+                97.52439999999979
+              ],
+              "medianMs": 103.35395000000017,
+              "minMs": 97.52439999999979,
+              "maxMs": 112.43560000000025
+            },
+            "speedup": 1.3324289976338575,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-fast-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "fast",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 6.461299999999937,
+              "samplesMs": [
+                2.624499999999898,
+                3.156199999999899,
+                2.6991000000002714,
+                2.7932999999998174,
+                2.41399999999976,
+                2.6875
+              ],
+              "medianMs": 2.6933000000001357,
+              "minMs": 2.41399999999976,
+              "maxMs": 3.156199999999899
+            },
+            "after": {
+              "firstMs": 6.9176000000002205,
+              "samplesMs": [
+                3.66379999999981,
+                3.4618000000000393,
+                3.4090000000001055,
+                3.31230000000005,
+                3.945799999999963,
+                4.847200000000157
+              ],
+              "medianMs": 3.5627999999999247,
+              "minMs": 3.31230000000005,
+              "maxMs": 4.847200000000157
+            },
+            "speedup": 0.7559503761087326,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-elements",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": true,
+              "shadingSize": 0
+            },
+            "before": {
+              "firstMs": 58.64269999999988,
+              "samplesMs": [
+                48.14229999999998,
+                37.33780000000024,
+                46.71780000000035,
+                39.42659999999978,
+                38.25489999999991,
+                41.44599999999991
+              ],
+              "medianMs": 40.43629999999985,
+              "minMs": 37.33780000000024,
+              "maxMs": 48.14229999999998
+            },
+            "after": {
+              "firstMs": 45.53530000000001,
+              "samplesMs": [
+                30.050900000000183,
+                30.727600000000166,
+                29.124499999999898,
+                28.045999999999367,
+                29.131499999999505,
+                26.950699999999415
+              ],
+              "medianMs": 29.1279999999997,
+              "minMs": 26.950699999999415,
+              "maxMs": 30.727600000000166
+            },
+            "speedup": 1.3882278220269246,
+            "byteIdentical": true
+          },
+          {
+            "id": "glucose-precise-hatch-labels",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": true,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 57.136500000000524,
+              "samplesMs": [
+                49.922599999999875,
+                52.15650000000005,
+                49.28430000000026,
+                69.28669999999966,
+                59.04079999999976,
+                48.39679999999953
+              ],
+              "medianMs": 51.03954999999996,
+              "minMs": 48.39679999999953,
+              "maxMs": 69.28669999999966
+            },
+            "after": {
+              "firstMs": 69.98309999999947,
+              "samplesMs": [
+                38.84619999999995,
+                37.26260000000002,
+                39.627300000000105,
+                38.98160000000007,
+                85.15920000000006,
+                53.01180000000022
+              ],
+              "medianMs": 39.30445000000009,
+              "minMs": 37.26260000000002,
+              "maxMs": 85.15920000000006
+            },
+            "speedup": 1.2985692459759608,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-stipple",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "stipple",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 143.01040000000012,
+              "samplesMs": [
+                155.96090000000004,
+                136.54939999999988,
+                171.20330000000013,
+                140.46649999999954,
+                166.79890000000069,
+                141.8158999999996
+              ],
+              "medianMs": 148.88839999999982,
+              "minMs": 136.54939999999988,
+              "maxMs": 171.20330000000013
+            },
+            "after": {
+              "firstMs": 152.05189999999948,
+              "samplesMs": [
+                134.95039999999972,
+                127.13569999999982,
+                157.4391999999998,
+                140.03160000000025,
+                164.23369999999886,
+                145.6864999999998
+              ],
+              "medianMs": 142.85905000000002,
+              "minMs": 127.13569999999982,
+              "maxMs": 164.23369999999886
+            },
+            "speedup": 1.0422048865647628,
+            "byteIdentical": true
+          }
+        ]
+      },
+      {
+        "engine": "node-jit",
+        "protocol": "Independent fixed-baseline/current bundles in same process; 1 initial + 3 warmups each, 6 alternating timed pairs. All outputs compared exactly outside render timer. No geometry, sampling, checks or tolerances changed.",
+        "rows": [
+          {
+            "id": "phenol-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 76.42960000000001,
+              "samplesMs": [
+                40.79230000000001,
+                36.862499999999955,
+                42.33990000000006,
+                41.880499999999984,
+                38.93089999999995,
+                68.769
+              ],
+              "medianMs": 41.3364,
+              "minMs": 36.862499999999955,
+              "maxMs": 68.769
+            },
+            "after": {
+              "firstMs": 57.481899999999996,
+              "samplesMs": [
+                31.595700000000022,
+                27.93279999999993,
+                34.76959999999997,
+                30.455799999999954,
+                33.76819999999998,
+                35.688499999999976
+              ],
+              "medianMs": 32.68195,
+              "minMs": 27.93279999999993,
+              "maxMs": 35.688499999999976
+            },
+            "speedup": 1.2648082504256937,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 194.8111,
+              "samplesMs": [
+                131.70380000000023,
+                147.6170000000002,
+                133.8059000000003,
+                126.25979999999981,
+                125.78399999999965,
+                193.60619999999972
+              ],
+              "medianMs": 132.75485000000026,
+              "minMs": 125.78399999999965,
+              "maxMs": 193.60619999999972
+            },
+            "after": {
+              "firstMs": 153.8843999999999,
+              "samplesMs": [
+                99.67110000000002,
+                112.6545000000001,
+                165.2527,
+                108.3723,
+                116.50390000000016,
+                101.23509999999987
+              ],
+              "medianMs": 110.51340000000005,
+              "minMs": 99.67110000000002,
+              "maxMs": 165.2527
+            },
+            "speedup": 1.2012556848309817,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-fast-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "fast",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 6.503900000000158,
+              "samplesMs": [
+                3.070799999999963,
+                3.47420000000011,
+                2.9962000000000444,
+                3.2935999999999694,
+                2.852400000000216,
+                2.68769999999995
+              ],
+              "medianMs": 3.0335000000000036,
+              "minMs": 2.68769999999995,
+              "maxMs": 3.47420000000011
+            },
+            "after": {
+              "firstMs": 6.127899999999954,
+              "samplesMs": [
+                2.871599999999944,
+                3.024499999999989,
+                2.24369999999999,
+                2.6778999999996813,
+                2.288499999999658,
+                2.3274999999998727
+              ],
+              "medianMs": 2.502699999999777,
+              "minMs": 2.24369999999999,
+              "maxMs": 3.024499999999989
+            },
+            "speedup": 1.212090941782984,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-elements",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": true,
+              "shadingSize": 0
+            },
+            "before": {
+              "firstMs": 45.10400000000027,
+              "samplesMs": [
+                42.6259,
+                44.91600000000017,
+                37.608000000000175,
+                38.70859999999993,
+                39.05499999999938,
+                55.26049999999941
+              ],
+              "medianMs": 40.84044999999969,
+              "minMs": 37.608000000000175,
+              "maxMs": 55.26049999999941
+            },
+            "after": {
+              "firstMs": 41.27430000000004,
+              "samplesMs": [
+                31.755699999999706,
+                29.726200000000063,
+                31.704200000000128,
+                30.196200000000317,
+                29.617999999999483,
+                29.485599999999977
+              ],
+              "medianMs": 29.96120000000019,
+              "minMs": 29.485599999999977,
+              "maxMs": 31.755699999999706
+            },
+            "speedup": 1.3631112906024936,
+            "byteIdentical": true
+          },
+          {
+            "id": "glucose-precise-hatch-labels",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": true,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 61.69889999999941,
+              "samplesMs": [
+                49.67939999999999,
+                59.52559999999994,
+                61.51429999999982,
+                51.566899999999805,
+                50.32760000000053,
+                57.41220000000067
+              ],
+              "medianMs": 54.489550000000236,
+              "minMs": 49.67939999999999,
+              "maxMs": 61.51429999999982
+            },
+            "after": {
+              "firstMs": 49.66899999999987,
+              "samplesMs": [
+                37.70840000000044,
+                43.15450000000055,
+                83.0555000000004,
+                61.86500000000069,
+                39.66399999999976,
+                40.832400000000234
+              ],
+              "medianMs": 41.993450000000394,
+              "minMs": 37.70840000000044,
+              "maxMs": 83.0555000000004
+            },
+            "speedup": 1.2975725976312906,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-stipple",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "stipple",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 147.0728999999992,
+              "samplesMs": [
+                150.84010000000035,
+                197.79420000000027,
+                140.54459999999926,
+                168.11779999999908,
+                139.14459999999963,
+                183.65339999999924
+              ],
+              "medianMs": 159.4789499999997,
+              "minMs": 139.14459999999963,
+              "maxMs": 197.79420000000027
+            },
+            "after": {
+              "firstMs": 160.76339999999982,
+              "samplesMs": [
+                137.34880000000067,
+                183.0041000000001,
+                131.79250000000047,
+                152.99559999999929,
+                145.0018,
+                125.92069999999876
+              ],
+              "medianMs": 141.17530000000033,
+              "minMs": 125.92069999999876,
+              "maxMs": 183.0041000000001
+            },
+            "speedup": 1.1296519291972416,
+            "byteIdentical": true
+          }
+        ]
+      }
+    ],
+    "quickjs": [
+      {
+        "engine": "quickjs-ng",
+        "protocol": "Independent fixed-baseline/current bundles in same process; 1 initial + 3 warmups each, 6 alternating timed pairs. All outputs compared exactly outside render timer. No geometry, sampling, checks or tolerances changed.",
+        "rows": [
+          {
+            "id": "phenol-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 448.6502999961376,
+              "samplesMs": [
+                420.8077000081539,
+                411.76530000567436,
+                412.379399985075,
+                414.6191999912262,
+                427.41889998316765,
+                410.0896999835968
+              ],
+              "medianMs": 413.4992999881506,
+              "minMs": 410.0896999835968,
+              "maxMs": 427.41889998316765
+            },
+            "after": {
+              "firstMs": 422.8638000190258,
+              "samplesMs": [
+                398.8770999908447,
+                444.7452000081539,
+                409.7457999885082,
+                388.2908000051975,
+                390.02109998464584,
+                412.6570000052452
+              ],
+              "medianMs": 404.3114499896765,
+              "minMs": 388.2908000051975,
+              "maxMs": 444.7452000081539
+            },
+            "speedup": 1.022724684148096,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 2223.1176000237465,
+              "samplesMs": [
+                2240.335299998522,
+                2192.8540000021458,
+                2332.4588000178337,
+                2252.8947000205517,
+                2237.6755000054836,
+                2221.2181999981403
+              ],
+              "medianMs": 2239.0054000020027,
+              "minMs": 2192.8540000021458,
+              "maxMs": 2332.4588000178337
+            },
+            "after": {
+              "firstMs": 2141.646099984646,
+              "samplesMs": [
+                2097.2955999970436,
+                2118.9952999949455,
+                2120.5938999950886,
+                2087.30450001359,
+                2025.957399994135,
+                2096.121699988842
+              ],
+              "medianMs": 2096.708649992943,
+              "minMs": 2025.957399994135,
+              "maxMs": 2120.5938999950886
+            },
+            "speedup": 1.0678667253123313,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-fast-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "fast",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 31.500900000333786,
+              "samplesMs": [
+                35.53169998526573,
+                34.74149999022484,
+                34.4142000079155,
+                33.874700009822845,
+                36.27239999175072,
+                34.13780000805855
+              ],
+              "medianMs": 34.57784999907017,
+              "minMs": 33.874700009822845,
+              "maxMs": 36.27239999175072
+            },
+            "after": {
+              "firstMs": 30.938999980688095,
+              "samplesMs": [
+                34.1482999920845,
+                32.196799993515015,
+                33.68249997496605,
+                33.28889998793602,
+                32.18110001087189,
+                32.37340000271797
+              ],
+              "medianMs": 32.831149995326996,
+              "minMs": 32.18110001087189,
+              "maxMs": 34.1482999920845
+            },
+            "speedup": 1.0532025227258803,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-elements",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": true,
+              "shadingSize": 0
+            },
+            "before": {
+              "firstMs": 942.6562000215054,
+              "samplesMs": [
+                866.1516999900341,
+                862.9227000176907,
+                868.8851000070572,
+                876.1037999987602,
+                854.7168000042439,
+                854.6231999993324
+              ],
+              "medianMs": 864.5372000038624,
+              "minMs": 854.6231999993324,
+              "maxMs": 876.1037999987602
+            },
+            "after": {
+              "firstMs": 866.5446000099182,
+              "samplesMs": [
+                828.839300006628,
+                839.2961999773979,
+                825.6579999923706,
+                825.6263000071049,
+                819.0326000154018,
+                817.8290999829769
+              ],
+              "medianMs": 825.6421499997377,
+              "minMs": 817.8290999829769,
+              "maxMs": 839.2961999773979
+            },
+            "speedup": 1.047108847342807,
+            "byteIdentical": true
+          },
+          {
+            "id": "glucose-precise-hatch-labels",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": true,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 744.7213000059128,
+              "samplesMs": [
+                731.6701000034809,
+                732.771899998188,
+                750.47650000453,
+                756.8966000080109,
+                739.1137999892235,
+                755.015399992466
+              ],
+              "medianMs": 744.7951499968767,
+              "minMs": 731.6701000034809,
+              "maxMs": 756.8966000080109
+            },
+            "after": {
+              "firstMs": 778.0172999799252,
+              "samplesMs": [
+                695.2294999957085,
+                695.9426999986172,
+                678.2827000021935,
+                708.3356000185013,
+                713.5301999747753,
+                671.0165999829769
+              ],
+              "medianMs": 695.5860999971628,
+              "minMs": 671.0165999829769,
+              "maxMs": 713.5301999747753
+            },
+            "speedup": 1.0707447287976493,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-stipple",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "stipple",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 2782.4810999929905,
+              "samplesMs": [
+                2773.043799996376,
+                2828.7148000001907,
+                2946.1974000036716,
+                2769.9767000079155,
+                2819.682200014591,
+                2796.9016000032425
+              ],
+              "medianMs": 2808.291900008917,
+              "minMs": 2769.9767000079155,
+              "maxMs": 2946.1974000036716
+            },
+            "after": {
+              "firstMs": 2770.733799993992,
+              "samplesMs": [
+                2752.9765999913216,
+                2737.9891999959946,
+                2760.6213000118732,
+                2754.120499998331,
+                2735.5891000032425,
+                2781.9369000196457
+              ],
+              "medianMs": 2753.5485499948263,
+              "minMs": 2735.5891000032425,
+              "maxMs": 2781.9369000196457
+            },
+            "speedup": 1.01988101862747,
+            "byteIdentical": true
+          }
+        ]
+      },
+      {
+        "engine": "quickjs-ng",
+        "protocol": "Independent fixed-baseline/current bundles in same process; 1 initial + 3 warmups each, 6 alternating timed pairs. All outputs compared exactly outside render timer. No geometry, sampling, checks or tolerances changed.",
+        "rows": [
+          {
+            "id": "phenol-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 433.3523000180721,
+              "samplesMs": [
+                411.49490001797676,
+                405.46109998226166,
+                424.5842000246048,
+                415.75890001654625,
+                419.31220000982285,
+                411.1966000199318
+              ],
+              "medianMs": 413.6269000172615,
+              "minMs": 405.46109998226166,
+              "maxMs": 424.5842000246048
+            },
+            "after": {
+              "firstMs": 409.8576000034809,
+              "samplesMs": [
+                382.8628000020981,
+                408.9107999801636,
+                445.2670000195503,
+                387.4884000122547,
+                389.8964000046253,
+                397.71680000424385
+              ],
+              "medianMs": 393.8066000044346,
+              "minMs": 382.8628000020981,
+              "maxMs": 445.2670000195503
+            },
+            "speedup": 1.0503300351304516,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 2216.5444999933243,
+              "samplesMs": [
+                2204.983300000429,
+                2207.021899998188,
+                2207.2948000133038,
+                2260.5546000003815,
+                2248.071000009775,
+                2189.331900000572
+              ],
+              "medianMs": 2207.158350005746,
+              "minMs": 2189.331900000572,
+              "maxMs": 2260.5546000003815
+            },
+            "after": {
+              "firstMs": 2143.236599981785,
+              "samplesMs": [
+                2147.9092999994755,
+                2116.5634999871254,
+                2120.2299000024796,
+                2105.704600006342,
+                2059.40909999609,
+                2102.4199000000954
+              ],
+              "medianMs": 2111.1340499967337,
+              "minMs": 2059.40909999609,
+              "maxMs": 2147.9092999994755
+            },
+            "speedup": 1.0454847005140013,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-fast-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "fast",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 33.87200000882149,
+              "samplesMs": [
+                34.937700003385544,
+                37.098999977111816,
+                34.77709999680519,
+                35.870200008153915,
+                38.84950000047684,
+                35.65070000290871
+              ],
+              "medianMs": 35.76045000553131,
+              "minMs": 34.77709999680519,
+              "maxMs": 38.84950000047684
+            },
+            "after": {
+              "firstMs": 29.621899992227554,
+              "samplesMs": [
+                32.21950000524521,
+                32.032999992370605,
+                32.154699981212616,
+                31.891500025987625,
+                37.45960000157356,
+                36.993000000715256
+              ],
+              "medianMs": 32.18709999322891,
+              "minMs": 31.891500025987625,
+              "maxMs": 37.45960000157356
+            },
+            "speedup": 1.1110180790768387,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-elements",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": true,
+              "shadingSize": 0
+            },
+            "before": {
+              "firstMs": 886.1613999903202,
+              "samplesMs": [
+                869.0803000032902,
+                914.1238999962807,
+                902.9399999976158,
+                881.0469999909401,
+                877.2671999931335,
+                871.0225999951363
+              ],
+              "medianMs": 879.1570999920368,
+              "minMs": 869.0803000032902,
+              "maxMs": 914.1238999962807
+            },
+            "after": {
+              "firstMs": 807.8479999899864,
+              "samplesMs": [
+                825.9548999965191,
+                825.6162000000477,
+                824.2507999837399,
+                836.8768999874592,
+                826.8301999866962,
+                817.9131000041962
+              ],
+              "medianMs": 825.7855499982834,
+              "minMs": 817.9131000041962,
+              "maxMs": 836.8768999874592
+            },
+            "speedup": 1.0646312471729062,
+            "byteIdentical": true
+          },
+          {
+            "id": "glucose-precise-hatch-labels",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": true,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 753.2682000100613,
+              "samplesMs": [
+                721.8570000231266,
+                738.8923000097275,
+                798.4420999884605,
+                796.2060000002384,
+                795.3704000115395,
+                746.2716999948025
+              ],
+              "medianMs": 770.821050003171,
+              "minMs": 721.8570000231266,
+              "maxMs": 798.4420999884605
+            },
+            "after": {
+              "firstMs": 756.7246000170708,
+              "samplesMs": [
+                713.8716000020504,
+                706.0857999920845,
+                752.0615999996662,
+                773.2241000235081,
+                724.6933999955654,
+                691.1101000010967
+              ],
+              "medianMs": 719.2824999988079,
+              "minMs": 691.1101000010967,
+              "maxMs": 773.2241000235081
+            },
+            "speedup": 1.0716527233798243,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-stipple",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "stipple",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 2807.6315999925137,
+              "samplesMs": [
+                2790.4420999884605,
+                2802.9855999946594,
+                2807.66139999032,
+                2794.3344999849796,
+                2809.9699000120163,
+                2824.5198000073433
+              ],
+              "medianMs": 2805.32349999249,
+              "minMs": 2790.4420999884605,
+              "maxMs": 2824.5198000073433
+            },
+            "after": {
+              "firstMs": 2752.529300004244,
+              "samplesMs": [
+                2787.6906000077724,
+                2801.1872999966145,
+                2762.984200000763,
+                2799.829099982977,
+                2780.6207000017166,
+                2774.234099984169
+              ],
+              "medianMs": 2784.1556500047445,
+              "minMs": 2762.984200000763,
+              "maxMs": 2801.1872999966145
+            },
+            "speedup": 1.0076029693195168,
+            "byteIdentical": true
+          }
+        ]
+      }
+    ],
+    "jitless": [
+      {
+        "engine": "node-jitless",
+        "protocol": "Independent fixed-baseline/current bundles in same process; 1 initial + 3 warmups each, 6 alternating timed pairs. All outputs compared exactly outside render timer. No geometry, sampling, checks or tolerances changed.",
+        "rows": [
+          {
+            "id": "phenol-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 201.3185,
+              "samplesMs": [
+                172.51299999999992,
+                176.97810000000004,
+                177.3451,
+                165.1617000000001,
+                165.99260000000004,
+                187.15869999999995
+              ],
+              "medianMs": 174.74554999999998,
+              "minMs": 165.1617000000001,
+              "maxMs": 187.15869999999995
+            },
+            "after": {
+              "firstMs": 183.846,
+              "samplesMs": [
+                163.23900000000003,
+                174.45759999999996,
+                170.91960000000017,
+                165.6014,
+                177.99089999999978,
+                177.26569999999992
+              ],
+              "medianMs": 172.68860000000006,
+              "minMs": 163.23900000000003,
+              "maxMs": 177.99089999999978
+            },
+            "speedup": 1.011911324777663,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 918.3137000000002,
+              "samplesMs": [
+                877.8392999999996,
+                845.8557000000001,
+                884.3873999999996,
+                842.1167000000005,
+                888.1117000000013,
+                854.0172999999995
+              ],
+              "medianMs": 865.9282999999996,
+              "minMs": 842.1167000000005,
+              "maxMs": 888.1117000000013
+            },
+            "after": {
+              "firstMs": 878.0501999999997,
+              "samplesMs": [
+                820.9505000000008,
+                830.0135000000009,
+                782.0923999999995,
+                804.3499000000011,
+                786.2924999999996,
+                785.4965000000011
+              ],
+              "medianMs": 795.3212000000003,
+              "minMs": 782.0923999999995,
+              "maxMs": 830.0135000000009
+            },
+            "speedup": 1.0887780936808917,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-fast-hatch",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "fast",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 12.24789999999848,
+              "samplesMs": [
+                11.606999999999971,
+                11.410299999999552,
+                10.941600000001927,
+                12.449599999999919,
+                12.139400000000023,
+                12.704799999999523
+              ],
+              "medianMs": 11.873199999999997,
+              "minMs": 10.941600000001927,
+              "maxMs": 12.704799999999523
+            },
+            "after": {
+              "firstMs": 12.206300000001647,
+              "samplesMs": [
+                11.175999999999476,
+                10.573300000000017,
+                13.221799999999348,
+                15.668599999997241,
+                12.278800000000047,
+                12.571799999997893
+              ],
+              "medianMs": 12.42529999999897,
+              "minMs": 10.573300000000017,
+              "maxMs": 15.668599999997241
+            },
+            "speedup": 0.9555664651960903,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-elements",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": true,
+              "shadingSize": 0
+            },
+            "before": {
+              "firstMs": 337.05189999999857,
+              "samplesMs": [
+                301.6964000000007,
+                307.41820000000007,
+                333.24479999999676,
+                294.8264999999992,
+                300.97320000000036,
+                306.3047000000006
+              ],
+              "medianMs": 304.00055000000066,
+              "minMs": 294.8264999999992,
+              "maxMs": 333.24479999999676
+            },
+            "after": {
+              "firstMs": 274.3783999999978,
+              "samplesMs": [
+                265.1176000000014,
+                265.51910000000134,
+                265.6045000000013,
+                266.20130000000063,
+                280.84100000000035,
+                265.54049999999916
+              ],
+              "medianMs": 265.5725000000002,
+              "minMs": 265.1176000000014,
+              "maxMs": 280.84100000000035
+            },
+            "speedup": 1.1446989051953813,
+            "byteIdentical": true
+          },
+          {
+            "id": "glucose-precise-hatch-labels",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "hatch",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": true,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 301.16140000000087,
+              "samplesMs": [
+                308.22859999999855,
+                296.2328000000016,
+                297.35589999999866,
+                319.4278999999988,
+                291.0994000000028,
+                319.8748000000014
+              ],
+              "medianMs": 302.7922499999986,
+              "minMs": 291.0994000000028,
+              "maxMs": 319.8748000000014
+            },
+            "after": {
+              "firstMs": 287.58190000000104,
+              "samplesMs": [
+                280.0097999999998,
+                277.0089999999982,
+                269.91809999999896,
+                270.66040000000066,
+                267.0452000000005,
+                294.74029999999766
+              ],
+              "medianMs": 273.83469999999943,
+              "minMs": 267.0452000000005,
+              "maxMs": 294.74029999999766
+            },
+            "speedup": 1.105748285370697,
+            "byteIdentical": true
+          },
+          {
+            "id": "c60-precise-stipple",
+            "options": {
+              "width": 800,
+              "height": 700,
+              "scale": 50,
+              "quality": "preview",
+              "renderMode": "precise",
+              "shadingMode": "stipple",
+              "lightType": "directional",
+              "castShadows": false,
+              "colorWash": false,
+              "labels": false,
+              "elementTextures": false
+            },
+            "before": {
+              "firstMs": 1072.4864000000016,
+              "samplesMs": [
+                1093.4193999999989,
+                1133.3561000000045,
+                1077.839399999997,
+                1064.1054999999978,
+                1068.7055000000037,
+                1051.1641999999993
+              ],
+              "medianMs": 1073.2724500000004,
+              "minMs": 1051.1641999999993,
+              "maxMs": 1133.3561000000045
+            },
+            "after": {
+              "firstMs": 1052.6371999999974,
+              "samplesMs": [
+                1058.2583999999988,
+                1016.9906000000046,
+                1039.424699999996,
+                1053.5808000000034,
+                1022.4506000000038,
+                1052.7255000000005
+              ],
+              "medianMs": 1046.0750999999982,
+              "minMs": 1016.9906000000046,
+              "maxMs": 1058.2583999999988
+            },
+            "speedup": 1.0259994239419352,
+            "byteIdentical": true
+          }
+        ]
+      }
+    ]
+  },
+  "crossEngine": [
+    {
+      "id": "phenol-precise-hatch",
+      "byteIdentical": true
+    },
+    {
+      "id": "c60-precise-hatch",
+      "byteIdentical": true
+    },
+    {
+      "id": "c60-fast-hatch",
+      "byteIdentical": true
+    },
+    {
+      "id": "c60-precise-elements",
+      "byteIdentical": true
+    },
+    {
+      "id": "glucose-precise-hatch-labels",
+      "byteIdentical": false
+    },
+    {
+      "id": "c60-precise-stipple",
+      "byteIdentical": true
+    }
+  ],
+  "parity": {
+    "count": 272,
+    "byteIdentical": true,
+    "rows": [
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 67298,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 43658,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 18138,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 36087,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 40286,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 14766,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 54217,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 40787,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 16773,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 30738,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 40788,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 16774,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 122138,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 79487,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 43404,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 66013,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 73622,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 37539,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 103831,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 84472,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 50884,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 64135,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 87991,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 54251,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 101581,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 54754,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 59707,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 54099,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 48493,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 53446,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 70621,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 64307,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 76119,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 46512,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 68104,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 80136,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 278670,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 150541,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 136948,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 148755,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 134945,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 121352,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 131231,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 184899,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 174337,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 81925,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 188193,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 177631,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 2013617,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 1089261,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 740061,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 1097513,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 1011268,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 662068,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 106200,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 2413499,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 985008,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 82721,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 2413500,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 985009,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 155568,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 77022,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 92863,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 81951,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 67372,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 83213,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 81060,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 89980,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 111179,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 53284,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 92985,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 114184,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 122410,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 66976,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 78037,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 65044,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 59434,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 70495,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 75754,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 75033,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 91806,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 47933,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 77196,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 93969,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 150811,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 104385,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 44945,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 81474,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 97616,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 38176,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 98758,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 106619,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 49538,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 56304,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 106620,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 49539,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 207876,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 109351,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 118484,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 109693,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 96923,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 106056,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 128508,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 128604,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 143855,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 82215,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 133111,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 148362,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 497786,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 279690,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 217329,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 265072,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 255766,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 193405,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 105369,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 341405,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 281110,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 83351,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 351690,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 290573,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 146739,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 77985,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 78086,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 77529,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 68759,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 68860,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 70391,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 94789,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 93291,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 46153,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 97765,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 96282,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 545700,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 305531,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 240075,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 289799,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 279056,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 213600,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 149160,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 369176,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 300042,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 107727,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 379680,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 311422,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 356976,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 184896,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 216803,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 187747,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 164787,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 196694,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 158047,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 279780,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 308682,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 114505,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 292346,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 321248,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 297858,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 172142,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 114223,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 158538,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 157696,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 99777,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 156826,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 242604,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 142454,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 94636,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 246101,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 145971,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 379863,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 208935,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 167862,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 200902,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 189238,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 148165,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 185225,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 258389,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 219385,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 117487,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 264487,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 224826,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 784493,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 415646,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 378862,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 419732,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 372980,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 336196,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 175530,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 610844,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 527369,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 132989,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 624690,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 539559,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 1994032,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 962438,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 1114104,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 1065084,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 855196,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "precise",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 1006862,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "hatch"
+        },
+        "bytes": 429050,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "stipple"
+        },
+        "bytes": 1728762,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "preview",
+          "shadingMode": "halftone"
+        },
+        "bytes": 1525355,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "hatch"
+        },
+        "bytes": 343268,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "stipple"
+        },
+        "bytes": 1771391,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "renderMode": "fast",
+          "quality": "export",
+          "shadingMode": "halftone"
+        },
+        "bytes": 1572555,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 69311,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 62228,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 38100,
+        "byteIdentical": true
+      },
+      {
+        "name": "sphere",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 37879,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 130221,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 104601,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 73021,
+        "byteIdentical": true
+      },
+      {
+        "name": "pair",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 66667,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 108052,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 88199,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 62042,
+        "byteIdentical": true
+      },
+      {
+        "name": "water",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 55817,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 337874,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 249702,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 201192,
+        "byteIdentical": true
+      },
+      {
+        "name": "ethanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 169041,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 2489883,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 1947331,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 1521148,
+        "byteIdentical": true
+      },
+      {
+        "name": "c60",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 1374141,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 169100,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 127850,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 98489,
+        "byteIdentical": true
+      },
+      {
+        "name": "methane",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 85845,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 140822,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 105097,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 81338,
+        "byteIdentical": true
+      },
+      {
+        "name": "ammonia",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 71087,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 161706,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 132149,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 93505,
+        "byteIdentical": true
+      },
+      {
+        "name": "carbonDioxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 82935,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 230852,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 169672,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 135164,
+        "byteIdentical": true
+      },
+      {
+        "name": "methanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 114102,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 613139,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 471445,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 365546,
+        "byteIdentical": true
+      },
+      {
+        "name": "benzene",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 312590,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 177920,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 131802,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 103017,
+        "byteIdentical": true
+      },
+      {
+        "name": "hydrogenPeroxide",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 89599,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 680257,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 528081,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 405262,
+        "byteIdentical": true
+      },
+      {
+        "name": "phenol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 352773,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 469808,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 360173,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 280900,
+        "byteIdentical": true
+      },
+      {
+        "name": "isopropanol",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 242017,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 337416,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 273163,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 193199,
+        "byteIdentical": true
+      },
+      {
+        "name": "sulfuricAcid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 178970,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 454174,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 347946,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 270554,
+        "byteIdentical": true
+      },
+      {
+        "name": "glycine",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 232272,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 937596,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 715566,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 563539,
+        "byteIdentical": true
+      },
+      {
+        "name": "glucose",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 500175,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 2736759,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "preview",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 2010646,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "directional",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 1641994,
+        "byteIdentical": true
+      },
+      {
+        "name": "phospholipid",
+        "options": {
+          "width": 420,
+          "height": 360,
+          "scale": 35,
+          "quality": "export",
+          "lightType": "point",
+          "labels": true,
+          "elementTextures": true,
+          "colorWash": true,
+          "castShadows": true,
+          "yaw": 0.73,
+          "pitch": 0.42
+        },
+        "bytes": 1399265,
+        "byteIdentical": true
+      }
+    ]
+  },
+  "verification": {
+    "svgNumberComparisonsPerEngine": 2106018,
+    "svgNumberEngines": [
+      "V8",
+      "native QuickJS"
+    ],
+    "boundaryIndexComparisons": 6729,
+    "privateRegionDifferentialComparisons": 23332,
+    "fullSuite": {
+      "job": "pwsh-116",
+      "npmTest": {
+        "exitCode": 0,
+        "testScriptsPassed": 50,
+        "quick": false
+      },
+      "typecheck": {
+        "exitCode": 0
+      },
+      "nativeNumberParity": {
+        "passed": true,
+        "comparisons": 2106018
+      },
+      "crossEngineGlucoseBaselineRecheck": {
+        "nodeBeforeEqualsAfter": true,
+        "quickjsBeforeEqualsAfter": true,
+        "nodeCharacters": 1301941,
+        "quickjsCharacters": 1302045
+      },
+      "gitDiffCheck": "passed"
+    }
+  }
+}

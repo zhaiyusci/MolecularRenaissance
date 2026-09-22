@@ -17,9 +17,9 @@ export interface Molecule {
     bonds: readonly Bond[];
 }
 export type ShadingMode = 'hatch' | 'stipple' | 'halftone';
+export type HatchMode = 'continuous' | 'layered';
 export type RenderQuality = 'preview' | 'export';
 export type ColorScheme = 'jmol' | 'rasmol' | 'pymol' | 'ortep' | 'greenCarbon' | 'cyanCarbon' | 'magentaCarbon';
-export type LightType = 'directional' | 'point';
 export type RenderMode = 'precise' | 'fast';
 /** Angles are radians; stroke/label sizes are SVG units, not angstrom or print mm. */
 export interface RenderOptions {
@@ -36,18 +36,24 @@ export interface RenderOptions {
     scale?: number;
     /** User-controlled sphere-radius multiplier, default 1; never changes atom centers or bonds. */
     atomRadiusScale?: number;
+    /** Camera-fixed directional light angles, in radians. */
     lightAzimuth?: number;
     lightElevation?: number;
-    lightType?: LightType;
-    lightDistance?: number;
-    /** Point-light falloff k: 1/(1+k*(distance/sceneRadius)^2). Default 0 disables it. */
-    lightAttenuation?: number;
     /** Hard shadows from spheres and closed bond cylinders; default false. */
     castShadows?: boolean;
     /** Fraction of light removed by an occluder, 0–1; default 0.8. */
     shadowStrength?: number;
     quality?: RenderQuality;
     shadingMode?: ShadingMode;
+    /** Defaults to layered (16-tone shared curved hatches) in precise mode and
+     * continuous in fast mode. Explicit continuous retains the legacy ribbons;
+     * uncertified visible-region geometry also uses the continuous path. */
+    hatchMode?: HatchMode;
+    /** Shared precise-mode hatch/halftone tone quantization, default true.
+     * False uses continuous hatch widths or individual continuous-radius screen
+     * dots. Does not alter stippling. Explicit values require precise mode;
+     * a conflicting explicit hatchMode is rejected for hatch shading. */
+    quantizeShading?: boolean;
     /** Joint spacing and mark-size scale, 0.2–2.5; larger means coarser at similar mean coverage. */
     textureScale?: number;
     /** Independent categorical sphere patterns, default false; unaffected by lighting/shading. */
@@ -132,7 +138,7 @@ export interface DotRegions {
     /** When available, null means the owner is fully hidden. */
     surface?(id: number): SurfaceRegion | null;
 }
-export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast' | 'width' | 'height' | 'quality' | 'shadingBrightness' | 'shadowStrength'>;
+export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast' | 'width' | 'height' | 'quality' | 'shadingBrightness' | 'shadowStrength' | 'quantizeShading'>;
 /** Internal geometric context; custom low-level callbacks may omit it. */
 export interface SurfaceToneContext {
     paths: readonly (string | null)[] | null;

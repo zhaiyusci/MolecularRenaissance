@@ -121,7 +121,6 @@ export function planPainterSpheres(spheres: readonly Sphere[]): PainterPlan {
 }
 function unsupported(molecule: Molecule, o: NormalizedOptions): string | null {
   if (molecule.bonds.length) return 'unsupported-bonds';
-  if (o.lightType !== 'directional') return 'unsupported-light-type';
   if (o.castShadows) return 'unsupported-cast-shadows';
   if (o.shadingMode !== 'hatch') return 'unsupported-shading-mode';
   return null;

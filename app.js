@@ -26,11 +26,8 @@
   var lightElevation = byId('light-elevation');
   var fastOverlay = byId('fast-overlay');
   var preciseLightSettings = null;
-  var pointLight = byId('point-light');
   var castShadows = byId('cast-shadows');
   var shadowStrength = byId('shadow-strength');
-  var lightDistance = byId('light-distance');
-  var lightAttenuation = byId('light-attenuation');
   var variableWidth = byId('variable-width');
   var shadingMode = byId('shading-mode');
   var shadingEnabled = byId('shading-enabled');
@@ -48,6 +45,7 @@
   var shadingContrast = byId('shading-contrast');
   var outlineWidth = byId('outline-width');
   var crossHatch = byId('cross-hatch');
+  var quantizedShading = byId('quantized-shading');
   var colorWash = byId('color-wash');
   var colorScheme = byId('color-scheme');
   var washStrength = byId('wash-strength');
@@ -274,19 +272,16 @@
 
   function syncOutputs() {
     syncTextureLegend();
-    // Remember precise-mode preferences only on entry; restore them on exit.
+    // Remember the precise-mode shadow preference only on entry; restore on exit.
     if (fastOverlay.checked) {
       if (preciseLightSettings === null) {
-        preciseLightSettings = { pointLight: pointLight.checked, castShadows: castShadows.checked };
+        preciseLightSettings = { castShadows: castShadows.checked };
       }
-      pointLight.checked = false;
       castShadows.checked = false;
     } else if (preciseLightSettings !== null) {
-      pointLight.checked = preciseLightSettings.pointLight;
       castShadows.checked = preciseLightSettings.castShadows;
       preciseLightSettings = null;
     }
-    pointLight.disabled = fastOverlay.checked || !shadingEnabled.checked;
     castShadows.disabled = fastOverlay.checked || !shadingEnabled.checked;
     [shadingMode, textureScale, shadingBrightness, shadingContrast, lightAzimuth, lightElevation].forEach(function (input) {
       input.disabled = !shadingEnabled.checked;
@@ -303,11 +298,9 @@
     byId('light-elevation-value').textContent = lightElevation.value + '°';
     shadowStrength.disabled = !shadingEnabled.checked || !castShadows.checked;
     byId('shadow-strength-value').textContent = shadowStrength.value + '%';
-    lightDistance.disabled = !shadingEnabled.checked || !pointLight.checked;
-    lightAttenuation.disabled = !shadingEnabled.checked || !pointLight.checked;
-    byId('light-attenuation-value').textContent = Number(lightAttenuation.value).toFixed(3);
-    byId('light-distance-value').textContent = pointLight.checked ? Number(lightDistance.value).toFixed(1) + ' R' : '∞';
     var isHatch = shadingMode.value === 'hatch';
+    // Disable without clearing the user's preference when it cannot be used.
+    quantizedShading.disabled = !shadingEnabled.checked || shadingMode.value === 'stipple' || fastOverlay.checked;
     [crossHatch, variableWidth].forEach(function (input) {
       input.disabled = !shadingEnabled.checked || !isHatch;
     });
@@ -346,9 +339,6 @@
         orientation: orientation.slice(),
         lightAzimuth: Number(lightAzimuth.value) * Math.PI / 180,
         lightElevation: Number(lightElevation.value) * Math.PI / 180,
-        lightType: pointLight.checked ? 'point' : 'directional',
-        lightDistance: Number(lightDistance.value),
-        lightAttenuation: Number(lightAttenuation.value),
         castShadows: castShadows.checked,
         shadowStrength: Number(shadowStrength.value) / 100,
         shadingMode: shadingMode.value,
@@ -373,6 +363,9 @@
         labelBold: labelBold.checked,
         labelItalic: labelItalic.checked
       };
+      if (!fastOverlay.checked && (shadingMode.value === 'hatch' || shadingMode.value === 'halftone')) {
+        options.quantizeShading = quantizedShading.checked;
+      }
       // The master switch suppresses shading in BOTH preview and export snapshots.
       if (!shadingEnabled.checked) {
         options.shadingSize = 0;
@@ -413,16 +406,16 @@
     if (frame === null) frame = requestAnimationFrame(renderNow);
   }
 
-  [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
+  [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [fastOverlay, shadingEnabled, elementTextures, shadingMode, pointLight, castShadows, variableWidth, crossHatch, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
+  [fastOverlay, shadingEnabled, elementTextures, shadingMode, castShadows, variableWidth, crossHatch, quantizedShading, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
   // Native range inputs keep their own drag/capture behavior. Window release
   // handlers also cover releasing outside the slider. No idle timer/debounce.
-  [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, lightDistance, lightAttenuation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
+  [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelStrokeWidth].forEach(function (input) {
     input.addEventListener('pointerdown', function (event) {
       if (event.button !== 0 || input.disabled || controlPointer) return;
       controlPointer = { id: event.pointerId, input: input };
@@ -453,11 +446,8 @@
     lightElevation.value = '32';
     fastOverlay.checked = false;
     preciseLightSettings = null;
-    pointLight.checked = false;
     castShadows.checked = true;
     shadowStrength.value = '80';
-    lightDistance.value = '3';
-    lightAttenuation.value = '0';
     shadingEnabled.checked = true;
     elementTextures.checked = false;
     elementTextureScale.value = '100';
@@ -468,6 +458,7 @@
     variableWidth.checked = true;
     outlineWidth.value = '0.8';
     crossHatch.checked = true;
+    quantizedShading.checked = true;
     colorWash.checked = true;
     colorScheme.value = 'jmol';
     washStrength.value = '100';

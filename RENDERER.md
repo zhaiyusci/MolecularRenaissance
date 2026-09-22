@@ -55,6 +55,22 @@ const svg = render(examples.c60, { colorWash: true });
 
 **`dist/molplotter.mjs` 是独立单文件**，内部已包含几何、排线、填色和网点实现，不需再加载其他模块。浏览器以模块方式加载时，应遵守浏览器的模块 URL/CORS 限制；直接双击的现有 GUI 仍使用下面的经典脚本方案。
 
+## 16级明暗与兼容选项
+
+`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线与规则网点。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻忽略此选项，不量化为16级。
+
+GUI 控件现名 **16级明暗**（英文 **16-level shading**，旧名16级排线）；默认与重置均开启。关闭光影、使用快速模式或点刻时禁用但保留两种勾选偏好，精确规则网点时可用。界面仅为精确排线／规则网点发送该布尔值；快速／点刻省略，不再发送 `hatchMode`。
+
+旧 `hatchMode: 'layered' | 'continuous'` 仍是仅作用于排线样式的兼容别名，分别对应 `true`／`false`，不改变网点算法；排线中同时显式提供两项且不一致时，报错 `Conflicting quantizeShading and hatchMode`。非布尔 `quantizeShading` 报错 `Invalid quantizeShading`。快速模式显式提供任一布尔值均报错 `16-level shading switch requires precise rendering`；请省略或使用 `undefined`，例如 `{ renderMode: 'fast', castShadows: false }`。旧的显式 fast＋layered 错误 `Layered hatching requires precise rendering` 仍保留，快速模式默认排线仍为 continuous。
+
+历史 continuous／layered 性能与默认效果批准记录见 [LAYERED-HATCHING.md](LAYERED-HATCHING.md)，不代表本次共享开关及连续网点的新测量或完整验证结果。
+
+## 平行光与已移除选项
+
+仅支持平行光；`lightAzimuth`、`lightElevation` 控制方向（弧度），精确模式支持 `castShadows` 和 `shadowStrength`。快速模式要求 `castShadows: false`，否则报错 `Fast rendering requires castShadows=false`。GUI 在退出快速模式时仅恢复先前的投影开关。
+
+`lightType`、`lightDistance`、`lightAttenuation` 已从公共 API 删除。显式提供其中任一键都会报错 `Removed lighting option: ${key}; only directional lighting is supported`，包括 `lightType: 'directional'`；迁移时删除这些键，不要传入替代值。
+
 ## 四元数姿态与欧拉角
 
 `RenderOptions.orientation?: Quaternion` 为 `[x,y,z,w]`，接受非零、有限的四个分量，归一化副本后使用，优先于 `yaw/pitch`；不传时保留旧旋转算法。只旋转居中的分子坐标，不改 Å 比例、半径或相机空间光照。
@@ -121,6 +137,12 @@ const { render } = require('./molplotter/renderer.js');
 
 既有 `MolEngraver`、`MolBoundaries`、`MolWash`、`MolDots`、`MolDotRegions` 全局入口保留。主 API 的 `examples`、`depthAt`、`engravingWidth`、配色函数和色板也保持兼容。
 
+## 相切场景与标签
+
+精确模式对外切/近外切原子球保留保守保护，但允许一个有条件的例外：只有连接两个球心的有效有限圆柱，严格包住接触点附近的完整不确定区域时，才省略这条不可见的球–球接缝。该区域半径界来自 `|seam-contact|² ≤ 2*ra*epsilon`，并额外加入数值裕量；不是放宽原有相切容差。
+
+这使过氧化氢、异丙醇、甘氨酸、葡萄糖和磷脂等预设保留认证表面及正确分层的标签，不改原子半径、坐标或Å比例。无连接键、键太细/太短、内切或嵌套、无效轴等情况仍保守回退；无法认证的表面仍不冒险绘制浮在前景上的标签。`test-tangent-labels.cjs` 覆盖相切两侧扰动、多视角、标签开关、元素纹理及独立深度所有权。
+
 ## 维护与验证（源码仓库）
 
 源码默认采用静态 ES Module 依赖，模块依赖图无循环。`runtime-legacy.ts` 仅在构建经典脚本 / CommonJS 兼容产物时替换加载方式，不改变数值实现。
@@ -132,4 +154,4 @@ const { render } = require('./molplotter/renderer.js');
 - `npm test`：先构建，再运行全部测试，不覆盖已有样张；单独运行 `node test.cjs` 仍可重新生成默认样张。
 - `npm test -- --quick`：跳过三组较长的旋转压力扫描，其余类型、可见性和输出测试仍运行。
 
-`test-typescript.cjs` 用 49 组迁移前 SVG 的哈希基线，以显式历史半径和固定比例夹具在 CommonJS、ES Module、无 DOM 的经典脚本环境分别对照（不再假定旧默认值）；`test-radii-scale.cjs` 另行验证科学半径和固定比例；另有实际包入口的 TypeScript 消费者编译测试（包括错误参数必须被拒绝）。原有遮挡、共享边界、排线、点刻、C60 和 GUI 交互测试保留，不用放宽几何容差来迁就迁移。
+`test-typescript.cjs` 在49组显式历史半径/固定比例场景中，对照 CommonJS、ES Module、无 DOM 经典脚本的完整输出，并独立验证球半径与居中投影；另有9组固定历史实现的完整SVG比较，以及实际包入口的严格 TypeScript 消费者测试（包括错误参数、已删除API必须被拒绝）。`test-radii-scale.cjs` 另行验证科学半径和固定比例。历史对照使用 `test-fixtures/historical-renderer.cjs` 固定的Git提交与blob哈希，仅对齐已批准的投影变更；首次测试自动从本地Git历史提取到忽略的缓存，不再按临时fixture是否存在来跳过断言。浅克隆缺少提交时会明确失败并提示所需的fetch命令，不联网隐式取数。遮挡、共享边界、排线、点刻、C60和GUI检查保留，不用放宽几何容差来迁就实现。

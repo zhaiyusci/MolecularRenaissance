@@ -22,7 +22,7 @@ export interface RegionSegment {
   left: number;
   right: number;
 }
-interface Edge { p: Vector; q: Vector; bounds: Vector; }
+interface Edge { p: Vector; q: Vector; dx: number; dy: number; length2: number; bounds: Vector; }
 interface DirectedEdge { start: number; end: number; poly: Edge[]; reverse: boolean; used: boolean; }
 interface OwnerIndex { id: number; bounds: Vector; rows: (Edge[] | undefined)[]; rowScale: number; }
 interface OwnerBuild {
@@ -43,8 +43,8 @@ function include(b: Vector, p: Vector) {
 }
 function insideBox(b: Vector, x: number, y: number) { return x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
 function distance2(e: Edge, x: number, y: number) {
-  var dx = e.q[0] - e.p[0], dy = e.q[1] - e.p[1];
-  var t = Math.max(0, Math.min(1, ((x - e.p[0]) * dx + (y - e.p[1]) * dy) / (dx * dx + dy * dy)));
+  var dx = e.dx, dy = e.dy;
+  var t = Math.max(0, Math.min(1, ((x - e.p[0]) * dx + (y - e.p[1]) * dy) / e.length2));
   var a = x - e.p[0] - t * dx, b = y - e.p[1] - t * dy;
   return a * a + b * b;
 }
@@ -118,7 +118,8 @@ function build(scene: Scene, segments: readonly RegionSegment[], nodes: readonly
       next = [next[0], next[1]];
       if (next[0] === prev[0] && next[1] === prev[1]) return null;
       var eb = [Math.min(prev[0], next[0]), Math.min(prev[1], next[1]), Math.max(prev[0], next[0]), Math.max(prev[1], next[1])];
-      var edge = { p: prev, q: next, bounds: eb };
+      var dx = next[0] - prev[0], dy = next[1] - prev[1];
+      var edge = { p: prev, q: next, dx: dx, dy: dy, length2: dx * dx + dy * dy, bounds: eb };
       poly.push(edge); edges.push(edge); include(bounds, prev); include(bounds, next); prev = next;
     }
     if (!attach(s.left, s.start, s.end, poly, false) || !attach(s.right, s.end, s.start, poly, true)) return null;
@@ -180,7 +181,7 @@ function build(scene: Scene, segments: readonly RegionSegment[], nodes: readonly
     var list = o.rows[row] || [], yes = false;
     for (var i = 0; i < list.length; i++) {
       var p = list[i].p, q = list[i].q;
-      if ((p[1] > y) !== (q[1] > y) && x < p[0] + (y - p[1]) * (q[0] - p[0]) / (q[1] - p[1])) yes = !yes;
+      if ((p[1] > y) !== (q[1] > y) && x < p[0] + (y - p[1]) * list[i].dx / list[i].dy) yes = !yes;
     }
     return yes;
   }

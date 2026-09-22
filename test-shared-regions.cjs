@@ -7,16 +7,29 @@ function moduleURL(file){
   const url='data:text/javascript;base64,'+Buffer.from(source).toString('base64');urls.set(file,url);return url;
 }
 function disks(svg){
-  const body=svg.match(/<g data-role="dots"[\s\S]*?<\/g>/)?.[0]||'',out=[];
-  for(const m of body.matchAll(/<circle cx="([^"]+)" cy="([^"]+)" r="([^"]+)"/g))out.push(m.slice(1).join(','));
-  for(const m of body.matchAll(/<path data-stipple-radius="([^"]+)"[^>]* d="([^"]+)"/g)){
-    const attrs=m[0];assert(attrs.includes('stroke-linecap="round"')&&attrs.includes('fill="none"'));
-    assert.equal(+attrs.match(/stroke-width="([^"]+)"/)[1],2*+m[1]);
-    for(const point of m[2].matchAll(/M(-?[\d.]+) (-?[\d.]+)h0/g))out.push(point[1]+','+point[2]+','+m[1]);
+  // Walk every owner layer, but never count pattern/clip definition circles.
+  const artwork=svg.replace(/<defs\b[^>]*>[\s\S]*?<\/defs>/g,''),out=[],stack=[false];
+  for(const m of artwork.matchAll(/<\/?(?:g|circle|path)\b[^>]*>/g)){
+    const tag=m[0],a=Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(v=>[v[1],v[2]]));
+    if(tag.startsWith('</g')){assert(stack.length>1);stack.pop();continue;}
+    if(/^<g\b/.test(tag)){if(!tag.endsWith('/>'))stack.push(stack.at(-1)||a['data-role']==='dots');continue;}
+    if(!stack.at(-1))continue;
+    if(/^<circle\b/.test(tag)){
+      assert([a.cx,a.cy,a.r].every(v=>v!==undefined&&Number.isFinite(+v))&&+a.r>0);
+      out.push([a.cx,a.cy,a.r].join(','));
+    }else if(a['data-stipple-radius']!==undefined){
+      const r=a['data-stipple-radius'];assert(Number.isFinite(+r)&&+r>0);
+      assert.equal(a['stroke-linecap'],'round');assert.equal(a.fill,'none');
+      assert(a.stroke&&a.stroke!=='none');assert.equal(+a['stroke-width'],2*+r);
+      const points=[...a.d.matchAll(/M(-?[\d.]+) (-?[\d.]+)h0/g)];
+      assert(points.length>0);assert.equal(points.map(p=>p[0]).join(''),a.d,'all stipple subpaths are isolated disks');
+      for(const point of points){assert(Number.isFinite(+point[1])&&Number.isFinite(+point[2]));out.push(point[1]+','+point[2]+','+r);}
+    }
   }
-  return out.sort();
+  assert.equal(stack.length,1,'balanced artwork groups');return out.sort();
 }
 async function main(){
+  assert.deepEqual(disks('<svg><defs><g data-role="dots"><circle cx="9" cy="9" r="9"/></g></defs><g data-role="dots"><g><circle cx="1" cy="2" r=".3"/></g></g><g><g data-role="dots"><path data-stipple-radius=".2" stroke="black" stroke-width=".4" stroke-linecap="round" fill="none" d="M3 4h0M3 4h0"/></g></g></svg>'),['1,2,.3','3,4,.2','3,4,.2'],'all artwork groups, nested groups, multiplicity, and no definition disks');
   const current=await import('./dist/molplotter.mjs');
   const {prepareScene,depthAt}=await import(moduleURL('scene.js')),{normalizeOptions}=await import(moduleURL('options.js'));
   const {createSurfaceAtlas}=await import(moduleURL('surface-atlas.js'));
@@ -29,18 +42,18 @@ async function main(){
     const get=result.dotRegions;result.dotRegions=()=>{const r=get();if(r?.surface)regionClips++;return r;};return result;
   };
   try{for(const name of ['sphere','ethanol','c60'])for(const castShadows of [false,true]){
-    const svg=classic.render(classic.examples[name],{castShadows,quality:'preview'});
+    const svg=classic.render(classic.examples[name],{hatchMode:'continuous',castShadows,quality:'preview'});
     assert(!/NaN|Infinity/.test(svg));
   }}finally{boundaries.build=build;}
   assert.equal(regionClips,6,'all certified hatch renders consume the shared owner index');
   const reports=[];
-  for(const lightType of ['directional','point']){
-    const o=normalizeOptions({castShadows:true,lightType,lightAttenuation:.2,quality:'preview'}),p=prepareScene(current.examples.ethanol,o);
+  for(const lightAzimuth of [-.6,1.4]){
+    const o=normalizeOptions({castShadows:true,lightAzimuth,quality:'preview'}),p=prepareScene(current.examples.ethanol,o);
     const b=boundaries.build(p.scene,depthAt,p.project,p.scale);assert(b.validate(()=> '#fff'));
     const regions=b.dotRegions();assert(regions?.surface);
     const oracleFor=p.lightingFor;let traceQueries=0;
     p.lightingFor=s=>{const f=oracleFor(s);return (n,v)=>{traceQueries++;return f(n,v);};};
-    if(lightType==='directional'){const ctx=p.directionalShadows(),original=ctx.shadowed;ctx.shadowed=(...args)=>{traceQueries++;return original(...args);};}
+    {const ctx=p.directionalShadows(),original=ctx.shadowed;ctx.shadowed=(...args)=>{traceQueries++;return original(...args);};}
     const atlas=createSurfaceAtlas(p,regions,o);
     for(const s of p.scene){const one=atlas.shadow(s);assert.equal(atlas.shadow(s),one);atlas.lightingFor(s);}
     const builds=atlas.stats.shadowBuilds,samples=atlas.stats.shadowSamples,traces=traceQueries,origin=p.project([0,0,0]);
@@ -54,13 +67,16 @@ async function main(){
     assert.equal(atlas.stats.shadowSamples,samples,'no repeated shadow sampling');
     assert.equal(traceQueries,traces,'texture queries do not invoke physical shadow callbacks');
     assert(checked>1000&&different/checked<.02,'local shadow classification differs on under 2% of visible probes');
-    reports.push({lightType,checked,different,fraction:different/checked,builds,samples});
+    reports.push({lightAzimuth,checked,different,fraction:different/checked,builds,samples});
   }
-  if(fs.existsSync('build/baselines/pre-regions.mjs')){
-    const before=await import('./build/baselines/pre-regions.mjs');
+  {
+    // Use the tracked pre-shading commit, not the untracked intermediate
+    // pre-regions snapshot. Projection is aligned before stochastic sampling.
+    const before=await require('./test-fixtures/historical-renderer.cjs').historicalRenderer();
     const {coverage}=require('./test-style-coverage.cjs');
     for(const name of ['ethanol','c60']){
-      const options={shadingMode:'hatch',castShadows:true,quality:'preview',textureScale:1};
+      // Historical ribbon coverage uses a path-only oracle, not layered use/clip expansion.
+      const options={hatchMode:'continuous',shadingMode:'hatch',castShadows:true,quality:'preview',textureScale:1};
       const old=before.render(before.examples[name],options),next=current.render(current.examples[name],options);
       const a=coverage(old,[200,100,700,600]),b=coverage(next,[200,100,700,600]);
       assert(Math.abs(a-b)<.01,`${name}: shadowed hatch ink stays within one percentage point in the same window`);
@@ -70,6 +86,10 @@ async function main(){
       const options={shadingMode:'stipple',castShadows:false,quality:'preview',textureScale:1};
       const old=before.render(before.examples[name],options),next=current.render(current.examples[name],options);
       const oldDisks=disks(old),newDisks=disks(next);assert(oldDisks.length>1000);
+      if(name==='sphere')for(const disk of newDisks){
+        const [x,y,r]=disk.split(',').map(Number);
+        assert(Math.hypot(x-450,y-350)+r<=45.6,'entire serialized disk stays inside the sphere silhouette');
+      }
       assert.deepEqual(newDisks,oldDisks,`${name}: every unshadowed disk retains its exact serialized position and radius`);
       assert(next.length<old.length*.6,'batching removes per-mark XML overhead');
     }

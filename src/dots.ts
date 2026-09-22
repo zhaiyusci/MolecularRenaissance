@@ -1,7 +1,8 @@
 /* Deterministic, depth-aware SVG stipple and 45-degree halftone screens. */
 import type { Scene, Primitive, Vector, DepthAt, Project, Illumination, DotRegions, DotOptions, SurfaceToneContext } from './types';
-import { buildSurfacePatterns, sampledTonePaths, projectedSilhouette, type SurfacePatternLayer } from './halftone.js';
+import { buildSurfacePatterns, sampledTonePaths, projectedSilhouette, halftoneRadiusRatio, type SurfacePatternLayer } from './halftone.js';
 import { directionalTonePath } from './surface-tones.js';
+import { TONE_LEVELS } from './tone-levels.js';
 interface Hit { id: number; s: Primitive; p: Vector; clearance?: number; }
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 function hash(x:number,y:number,salt:number){
@@ -10,6 +11,8 @@ function hash(x:number,y:number,salt:number){
 }
 export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:number,illumination:Illumination,options?:DotOptions,regions:DotRegions|null=null,referenceCoverage?: (s:Primitive,n:Vector,lit:number)=>number,surfaces?:SurfaceToneContext):string{
   const o={shadingMode:'stipple',dotSpacing:2.5,dotSize:.5,dotContrast:1.2,...options};
+  if(o.quantizeShading!==undefined&&typeof o.quantizeShading!=='boolean')throw new Error('Invalid quantizeShading');
+  const continuousHalftone=o.shadingMode==='halftone'&&o.quantizeShading===false;
   if(!['stipple','halftone'].includes(o.shadingMode))throw new Error('Invalid dot mode');
   if(!Number.isFinite(o.dotSpacing)||o.dotSpacing<.3||o.dotSpacing>19||!Number.isFinite(o.dotSize)||o.dotSize<0||o.dotSize>4||!Number.isFinite(o.dotContrast)||o.dotContrast<.5||o.dotContrast>2.5)throw new Error('Invalid dot settings');
   if(!(scale>0)||!Number.isFinite(scale))throw new Error('Invalid scale');
@@ -27,7 +30,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
   const maxX=Math.max(...shapes.map(s=>s.b[2])),maxY=Math.max(...shapes.map(s=>s.b[3]));
   function hit(x:number,y:number,queryRadius=maxRadius*1.03):Hit|null{
     const wx=(x-origin[0])/scale,wy=(origin[1]-y)/scale;
-    if(regions&&o.shadingMode!=='halftone'){
+    if(regions&&(o.shadingMode!=='halftone'||continuousHalftone)){
       // Visibility/occlusion is already solved. The one surface intersection
       // below only reconstructs this known owner's position for its normal.
       const region=regions.query(x,y,queryRadius);if(!region)return null;
@@ -51,7 +54,11 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
     const radial=q.map((v,i)=>v-t*s.u[i]),length=Math.hypot(...radial);
     return length?radial.map(v=>v/length):[0,0,1];
   }
-  const dirs=Array.from({length:16},(_,i)=>[Math.cos(i*Math.PI/8),Math.sin(i*Math.PI/8)]);
+  // The numerical fallback needs angular resolution at exposed rod-cap corners:
+  // a corner can enter a disk between the old 16 rays even after radius padding.
+  // Certified regions bypass this sampling entirely; retain the existing safety
+  // contraction and tone calibration rather than shrinking every interior dot.
+  const dirs=!regions&&(o.shadingMode==='stipple'||continuousHalftone)?Array.from({length:64},(_,i)=>[Math.cos(i*Math.PI/32),Math.sin(i*Math.PI/32)]):[];
   function safeRadius(x:number,y:number,r:number,owner:number){
     // The whole sampled disk must stay on the same visible primitive, not
     // merely its center. Shrink at silhouettes and occlusion boundaries.
@@ -101,6 +108,40 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
     const lit=clamp(lightAt(h,normal(h)),-1,1);
     return clamp(toneGain*smoothTone(lit),0,1);
   }
+  if(continuousHalftone){
+    if(toneGain===0)return '';
+    const left=o.width===undefined?minX:Math.max(0,minX),right=o.width===undefined?maxX:Math.min(o.width,maxX);
+    const top=o.height===undefined?minY:Math.max(0,minY),bottom=o.height===undefined?maxY:Math.min(o.height,maxY);
+    if(!(right>left&&bottom>top))return '';
+    const pitch=g*Math.SQRT2/5,halfDiagonal=g/5;
+    // rotate(45) applied to ((i+.5)*pitch,(j+.5)*pitch) gives
+    // (a*g/5,b*g/5), with integer a+b odd. Enumerating screen rows
+    // avoids an enormous rotated scene box when a viewport is supplied.
+    const a0=Math.ceil(left/halfDiagonal),a1=Math.floor(right/halfDiagonal);
+    const b0=Math.ceil(top/halfDiagonal),b1=Math.floor(bottom/halfDiagonal);
+    const candidates=Math.ceil((a1-a0+1)/2)*(b1-b0+1);
+    if(!Number.isSafeInteger(candidates)||candidates>2000000)throw new Error('Too many halftone marks; increase spacing or reduce output size');
+    const circles:string[]=[],owners=new Map<number,string[]>();
+    const emitSurface=surfaces?.emitSurface;
+    for(let b=b0;b<=b1;b++)for(let a=a0+((a0+b)%2===0?1:0);a<=a1;a+=2){
+      const x=a*halfDiagonal,y=b*halfDiagonal,h=hit(x,y,halfDiagonal*1.03);if(!h)continue;
+      let radius=pitch*halftoneRadiusRatio(coverage(h));if(!(radius>0))continue;
+      const clearance=regions?h.clearance!:safeRadius(x,y,radius*1.03,h.id);
+      radius=Math.min(radius,Math.max(0,clearance*Math.cos(Math.PI/16)-.003*fineScale));
+      // Keep complete serialized disks within the viewport as well as their
+      // owner. Six decimals preserve continuous tone, not a 16-radius palette.
+      if(o.width!==undefined)radius=Math.min(radius,x,o.width-x);
+      if(o.height!==undefined)radius=Math.min(radius,y,o.height-y);
+      radius=Math.floor(Math.max(0,radius-.000001)*1000000)/1000000;
+      if(!(radius>0))continue;
+      const circle=`<circle cx="${x.toFixed(6)}" cy="${y.toFixed(6)}" r="${radius.toFixed(6)}"/>`;
+      if(emitSurface){let target=owners.get(h.id);if(!target){target=[];owners.set(h.id,target);}target.push(circle);}
+      else circles.push(circle);
+    }
+    const wrap=(marks:string[])=>`<g data-role="dots" data-mode="halftone" data-renderer="continuous" fill="#161616" stroke="none">${marks.join('')}</g>`;
+    if(emitSurface){for(const [id,marks] of owners)emitSurface(id,wrap(marks));return '';}
+    return circles.length?wrap(circles):'';
+  }
   if(o.shadingMode==='halftone'){
     if(toneGain===0)return '';
     const bounds:[number,number,number,number]=[
@@ -108,7 +149,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       o.width===undefined?maxX:Math.min(o.width,maxX),o.height===undefined?maxY:Math.min(o.height,maxY)
     ];
     const layers:SurfacePatternLayer[]=[];
-    const thresholds=Array.from({length:16},(_,i)=>(i+.5)/16),brightness=o.shadingBrightness??0;
+    const thresholds=Array.from({length:TONE_LEVELS},(_,i)=>(i+.5)/TONE_LEVELS),brightness=o.shadingBrightness??0;
     const step=o.quality==='preview'?2:1;
     for(const {s,id,b} of shapes){
       if(surfaces?.paths&&!surfaces.paths[id])continue;
@@ -148,8 +189,8 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
         }
         layers.push(layer);
       }else{
-        // Point-light attenuation, unsupported visibility arrangements, and
-        // custom low-level light callbacks stay local to each primitive.
+        // Unsupported visibility arrangements and custom low-level light
+        // callbacks stay local to each primitive.
         layers.push({sourceId:id,clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step)});
       }
     }

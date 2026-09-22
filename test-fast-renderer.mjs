@@ -3,14 +3,15 @@ import {createRequire} from 'node:module';
 import {load} from './scripts/load-painter.mjs';
 const require=createRequire(import.meta.url),{marks}=require('./test-style-coverage.cjs');
 const current=await import('./dist/molplotter.mjs');
-const {existsSync}=await import('node:fs');
-const before=existsSync(new URL('./build/baselines/pre-fast.mjs',import.meta.url))?await import('./build/baselines/pre-fast.mjs'):null;
-if(!before)console.log('Optional local pre-fast snapshot absent; skipping historical byte comparison.');
+const {historicalRenderer}=require('./test-fixtures/historical-renderer.cjs');
+// Mandatory pinned reference, with the documented projection correction. Labels
+// were repaired after that version; their whole-layer contract is checked below.
+const before=await historicalRenderer('pre-labels');
 const {prepareScene}=await load('scene.js'),{normalizeOptions}=await load('options.js');
 const attr=(svg,name)=>+(svg.match(new RegExp(`\\s${name}="([^"]+)"`))?.[1]??NaN);
 for(const shadingMode of ['hatch','stipple','halftone']){
   const o={labels:true,shadingMode,colorWash:true,quality:'preview',castShadows:false};
-  if(before)assert.equal(current.render(current.examples.c60,o),before.render(before.examples.c60,o),'precise path unchanged');
+  assert(current.render(current.examples.c60,{...o,labels:false,hatchMode:'continuous'})===before.render(before.examples.c60,{...o,labels:false}),'pinned historical precise no-label parity');
   for(const atomRadiusScale of [1,.65]){
     const svg=current.render(current.examples.c60,{...o,renderMode:'fast',atomRadiusScale});
     assert.match(svg,/data-render-mode="fast"/);assert.equal(attr(svg,'data-bond-count'),current.examples.c60.bonds.length);
@@ -26,7 +27,13 @@ for(const shadingMode of ['hatch','stipple','halftone']){
     }
   }
 }
-for(const o of [{lightType:'point'},{castShadows:true}])assert.throws(()=>current.render(current.examples.sphere,{renderMode:'fast',...o}),/requires directional/);
+for(const key of ['lightType','lightDistance','lightAttenuation']){
+  assert.equal(Object.hasOwn(normalizeOptions({}),key),false,'normalized defaults omit removed keys');
+  for(const value of [undefined,'directional','point',0,3])assert.throws(
+    ()=>current.render(current.examples.sphere,{renderMode:'fast',castShadows:false,[key]:value}),
+    {message:`Removed lighting option: ${key}; only directional lighting is supported`});
+}
+assert.throws(()=>current.render(current.examples.sphere,{renderMode:'fast',castShadows:true}),{message:'Fast rendering requires castShadows=false'});
 assert.throws(()=>current.render(current.examples.sphere,{renderMode:'guess'}),/Invalid renderMode/);
 // Independent closed-cylinder ray equation, including both end caps.
 function cylinderZ(s,x,y){

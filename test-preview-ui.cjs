@@ -72,6 +72,26 @@ function verifyDownload(){
  assert.equal(elements.preview.innerHTML,display);assert.equal(elements.download.disabled,false);
  assert.ok(links.at(-1).download.endsWith('.svg'));assert.ok(links.at(-1).removed);
 }
+assert.equal(calls.at(-1).options.quantizeShading,true);
+assert(elements['quantized-shading'].checked);verifyDownload();
+assert.equal(document.querySelector('[data-i18n="static.quantizedShading"]').textContent,'16级明暗');
+ui.locale('en');
+assert.equal(document.querySelector('[data-i18n="static.quantizedShading"]').textContent,'16-level shading');
+ui.locale('zh-CN');
+for(const mode of ['hatch','halftone']){
+ change('shading-mode',mode,'change');flush();
+ assert(!elements['quantized-shading'].disabled);
+ for(const preference of [false,true,false]){
+  check('quantized-shading',preference);
+  assert(elements.download.disabled,'checkbox change invalidates the export snapshot');
+  const beforePreview=calls.length;click();assert.equal(calls.length,beforePreview);
+  flush();assert.equal(calls.at(-1).options.quantizeShading,preference);verifyDownload();
+  // Export uses the successful preview snapshot, not an unannounced checkbox edit.
+  elements['quantized-shading'].checked=!preference;click();assert.equal(calls.at(-1).options.quantizeShading,preference);
+  elements['quantized-shading'].checked=preference;
+ }
+}
+change('shading-mode','hatch','change');flush();
 nearQuaternion(calls.at(-1).options.orientation,initialOrientation());
 assert.equal(elements.yaw,undefined);assert.equal(elements.pitch,undefined);
 assert.equal(elements['rotation-step'],undefined,'obsolete step selector removed');
@@ -142,16 +162,16 @@ for(const [id,value,option,expected,output] of [['scale','120','scale',120,'120'
  assert.equal(calls.at(-1).options[option],expected);assert.equal(timers.length,timerCount);verifyDownload();
 }
 assert.equal(calls.at(-1).options.scale,120);assert.equal(calls.at(-1).options.atomRadiusScale,1.35);
-check('point-light',true);flush();
-pointer('light-distance','pointerdown');change('light-distance','2');flush();suppressed();
-assert.equal(calls.at(-1).options.lightDistance,2);
-pointer('window','pointerup');flush();restored(.8);assert.equal(calls.at(-1).options.lightType,'point');verifyDownload();
-for(const id of ['scale','atom-radius-scale','light-azimuth','light-elevation','light-distance','texture-scale'])for(const [target,event] of [['window','pointercancel'],[id,'lostpointercapture'],['window','blur']]){
+for(const id of ['point-light','light-distance','light-distance-value','light-attenuation','light-attenuation-value'])assert.equal(elements[id],undefined);
+for(const option of ['lightType','lightDistance','lightAttenuation'])assert(calls.every(call=>!Object.hasOwn(call.options,option)));
+for(const id of ['scale','atom-radius-scale','light-azimuth','light-elevation','shadow-strength','texture-scale'])for(const [target,event] of [['window','pointercancel'],[id,'lostpointercapture'],['window','blur']]){
  pointer(id,'pointerdown');flush();suppressed();pointer(target,event);flush();restored(.8);assert.equal(calls.at(-1).options.atomRadiusScale,1.35);
 }
 check('shading-enabled',false);flush();pointer('scale','pointerdown');flush();pointer('window','pointerup');flush();
 assert.equal(calls.at(-1).options.shadingSize,0,'release preserves intentionally disabled shading');assert.equal(calls.at(-1).options.textureScale,.8);verifyDownload();
 pointer('scale','pointerdown');flush();elements.reset.listeners.click();flush();restored(1);
+assert(elements['quantized-shading'].checked);assert.equal(calls.at(-1).options.quantizeShading,true);
+assert(calls.every(call=>!Object.hasOwn(call.options,'hatchMode')));
 nearQuaternion(calls.at(-1).options.orientation,initialOrientation());
 assert.equal(elements['rotation-step'],undefined);
 assert.equal(calls.at(-1).options.scale,60);assert.equal(elements.scale.value,'60');assert.equal(elements['scale-value'].textContent,'60');

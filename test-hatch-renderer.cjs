@@ -7,11 +7,11 @@ const signature=/const visible\s*=\s*\(?p\)?\s*=>\s*!scene\.some\([\s\S]*?\);/;
 assert.equal([...source.matchAll(new RegExp(signature.source,'g'))].length,1);
 const context={module:{exports:{}},require:createRequire(require.resolve('./renderer.js'))};
 vm.runInNewContext(source.replace(signature,'const visible=()=>{throw new Error("sampled visibility invoked");};'),context);
-for(const quality of ['preview','export'])for(const lightType of ['directional','point'])for(const variableWidth of [false,true])for(const shadingContrast of [.5,1.2,2.5]){
- const svg=context.module.exports.render(renderer.examples.ethanol,{quality,lightType,variableWidth,shadingContrast,colorWash:true,outlineWidth:0,labels:false});
+for(const quality of ['preview','export'])for(const lightAzimuth of [-.6,1.4])for(const variableWidth of [false,true])for(const shadingContrast of [.5,1.2,2.5]){
+ const svg=context.module.exports.render(renderer.examples.ethanol,{quality,lightAzimuth,variableWidth,shadingContrast,colorWash:true,outlineWidth:0,labels:false});
  assert.ok(svg.includes('<path'));assert.ok(!/NaN|Infinity/.test(svg));
 }
-console.log('PASS sphere and rod hatches avoid per-sample visibility in both lighting and quality modes');
+console.log('PASS sphere and rod hatches avoid per-sample visibility at varied directional angles in both quality modes');
 // Clip output controls are geometry-only; dot renderers must not invoke them.
 const original=boundaries.build;
 try{
@@ -19,12 +19,25 @@ try{
  for(const shadingMode of ['stipple','halftone'])renderer.render(renderer.examples.ethanol,{shadingMode,colorWash:true});
  console.log('PASS dot modes never call hatch interval clipping');
 }finally{boundaries.build=original;}
+// The explicit continuous certified atlas route is a separate contract: it must really
+// consume surface regions, and must never call the legacy interval methods.
+try{
+ let surfaces=0;
+ boundaries.build=(...args)=>{const b=original(...args);assert(b);const get=b.dotRegions;
+  b.dotRegions=()=>{const r=get();assert(r&&r.surface);return {...r,surface(...xs){surfaces++;return r.surface(...xs);}};};
+  b.clipCircle=b.clipLine=()=>{throw Error('atlas invoked legacy clipper');};return b;};
+ const svg=renderer.render(renderer.examples.ethanol,{hatchMode:'continuous',quality:'preview',outlineWidth:0});
+ assert(surfaces>0&&svg.includes('<path')&&!/NaN|Infinity/.test(svg));
+ console.log('PASS certified atlas hatches bypass legacy clippers');
+}finally{boundaries.build=original;}
 // Very short physical intervals must produce a nonzero ribbon, not two
 // zero-width tapered endpoints. A circle callback override isolates the writer.
 try{
- boundaries.build=(...args)=>{const b=original(...args);if(b)b.clipCircle=()=>[[.201,.2011]];return b;};
- const svg=renderer.render(renderer.examples.sphere,{quality:'preview',outlineWidth:0,shadingContrast:.5});
- const ribbons=[...svg.matchAll(/<path fill="#161616" stroke="none" d="([^"]+)"/g)];
+ let clips=0;
+ boundaries.build=(...args)=>{const b=original(...args);if(b){b.dotRegions=()=>null;b.clipCircle=()=>{clips++;return [[.201,.2011]];};}return b;};
+ const svg=renderer.render(renderer.examples.sphere,{hatchMode:'continuous',quality:'preview',outlineWidth:0,shadingContrast:.5});
+ assert(clips>0,'short-interval injection reached legacy circle route');
+  const ribbons=[...svg.matchAll(/<path fill="#161616" stroke="none" d="([^"]+)"/g)];
  assert.ok(ribbons.length>0,'short accepted light-mask spans remain drawable');
  assert.ok(ribbons.some(m=>{
   const values=m[1].match(/[-+]?\d+(?:\.\d+)?/g).map(Number),p=[];
@@ -36,9 +49,9 @@ try{
 // The legacy branch remains usable if just one interval solver is unavailable.
 try{
  let circles=0,lines=0;
- boundaries.build=(...args)=>{const b=original(...args);if(b){const c=b.clipCircle,l=b.clipLine;
+ boundaries.build=(...args)=>{const b=original(...args);if(b){b.dotRegions=()=>null;const c=b.clipCircle,l=b.clipLine;
   b.clipCircle=(...xs)=>{circles++;return circles===1?null:c(...xs);};b.clipLine=(...xs)=>{lines++;return l(...xs);};}return b;};
- assert.ok(!/NaN|Infinity/.test(renderer.render(renderer.examples.ethanol,{quality:'preview',colorWash:true})));
+ assert.ok(!/NaN|Infinity/.test(renderer.render(renderer.examples.ethanol,{hatchMode:'continuous',quality:'preview',colorWash:true})));
  assert.ok(circles>1&&lines>0,'one curve fallback does not disable the rest');
  console.log('PASS per-curve fallback leaves other analytic hatches enabled');
 }finally{boundaries.build=original;}

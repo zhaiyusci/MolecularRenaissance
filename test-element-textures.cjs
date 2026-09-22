@@ -36,7 +36,7 @@ for(const renderMode of ['precise','fast'])for(const quality of ['preview','expo
  const on=render(model,{...options,elementTextures:true});vectorOnly(on);assert.equal(definitions(on).length,6);assert.equal(tags(on,'element-texture').length,6,'categorical patterns survive shadingSize:0');
  assert.deepEqual(definitions(on),definitions(render(model,{...options,elementTextures:true,elementTextureScale:1})));
  const lit={...options,elementTextures:true,shadingSize:.6};const reference=definitions(render(model,lit));
- for(const change of [{lightAzimuth:1.2,lightElevation:.7},{shadingBrightness:.4,shadingContrast:2},{textureScale:2},{shadowStrength:.8},...(renderMode==='precise'?[{castShadows:true,shadowStrength:.8},{lightType:'point',lightDistance:3,lightAttenuation:.5}]:[])]){
+ for(const change of [{lightAzimuth:1.2,lightElevation:.7},{shadingBrightness:.4,shadingContrast:2},{textureScale:2},{shadowStrength:.8},...(renderMode==='precise'?[{castShadows:true,shadowStrength:.8},{lightAzimuth:-2,lightElevation:-.5}]:[])]){
   const svg=render(model,{...lit,...change});vectorOnly(svg);assert.deepEqual(definitions(svg),reference,`${renderMode}/${quality}/${shadingMode}: recipes independent of lighting/shading`);
  }
  for(const scale of [.5,3])assert.notDeepEqual(definitions(render(model,{...options,elementTextures:true,elementTextureScale:scale})),definitions(on));

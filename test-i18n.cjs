@@ -10,6 +10,14 @@ function verifyStatic(ui,locale){
  const header=ui.document.querySelector('header').textContent;
  assert(!header.includes(locale==='en'?'分子文艺复兴':'Molecular Renaissance'),'no bilingual header');
  assert.equal(ui.elements.language.value,locale);
+ assert.equal(i.t('static.quantizedShading'),locale==='en'?'16-level shading':'16级明暗');
+ for(const [english,chinese] of [
+  ['Invalid quantizeShading','16级明暗开关设置无效'],
+  ['16-level shading switch requires precise rendering','16级明暗开关需要精确渲染'],
+  ['Conflicting quantizeShading and hatchMode','16级明暗开关与排线模式冲突'],
+  ['Invalid hatchMode','排线模式无效'],
+  ['Layered hatching requires precise rendering','分级排线需要精确渲染']
+ ])assert.equal(i.error(new Error(english)),locale==='en'?english:chinese);
  assert.deepEqual(ui.elements.language.querySelectorAll('option').map(n=>n.textContent),['English','简体中文'],'language names stay in their own languages');
  assert.equal(ui.elements.language.querySelectorAll('[data-i18n]').length,0);
  assert(ui.elements.language.parent.querySelector('svg'),'language entry uses a universal icon');

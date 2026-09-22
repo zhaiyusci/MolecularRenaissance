@@ -1,5 +1,6 @@
 'use strict';
-const assert=require('node:assert/strict'),fs=require('node:fs');
+const assert=require('node:assert/strict');
+const {historicalRenderer}=require('./test-fixtures/historical-renderer.cjs');
 const {marks}=require('./test-style-coverage.cjs');
 const {disks}=require('./test-shared-regions.cjs');
 const attrs=tag=>Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
@@ -40,7 +41,10 @@ const allDisks=svg=>[...svg.matchAll(/<g data-role="dots"[\s\S]*?<\/g>/g)].flatM
     const px=+back.attrs.x+8,py=+back.attrs.y-24*.3;
     const solid=marks(front.fill.tag.replace(/fill="[^"]+"/,'fill="#161616"'));
     assert(solid.some(m=>m.contains(px,py)),'foreground fill actually covers the rear label neighbourhood');
-    assert(!/<use\b/.test(svg),'no repeated full-scene snapshots');
+    const skeletonIds=new Set([...svg.matchAll(/<path\b[^>]*\bid="([^"]+)"/g)].map(m=>m[1]));
+    for(const use of svg.matchAll(/<use\b[^>]*>/g)){
+      const href=/\bhref="#([^"]+)"/.exec(use[0]);assert(href&&skeletonIds.has(href[1]),'uses may reuse skeleton paths, never whole scene/group snapshots');
+    }
     const ids=[...svg.matchAll(/\sid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
     for(const ref of svg.matchAll(/url\(#([^)]+)\)/g))assert(ids.includes(ref[1]),'shared definition references resolve');
     cases++;
@@ -51,11 +55,11 @@ const allDisks=svg=>[...svg.matchAll(/<g data-role="dots"[\s\S]*?<\/g>/g)].flatM
     assert(parsed.texts.length>10&&parsed.out.length>20,'C60 labels use owner layers');
     if(shadingMode==='stipple')assert.deepEqual(allDisks(svg),allDisks(current.render(current.examples.c60,{...options,labels:false})),'layering preserves every stipple disk');
   }
-  if(fs.existsSync('build/baselines/pre-labels.mjs')){
-    const before=await import('./build/baselines/pre-labels.mjs');
+  {
+    const before=await historicalRenderer('pre-labels');
     for(const name of ['sphere','ethanol','c60'])for(const shadingMode of ['hatch','stipple','halftone']){
       const options={labels:false,shadingMode,castShadows:true,colorWash:true,quality:'preview'};
-      assert.equal(current.render(current.examples[name],options),before.render(before.examples[name],options),`${name}/${shadingMode}: no-label SVG unchanged`);
+      assert.equal(current.render(current.examples[name],{...options,hatchMode:'continuous'}),before.render(before.examples[name],options),`${name}/${shadingMode}: no-label SVG unchanged`);
     }
   }
   console.log(`Label depth checks passed: ${cases} overlap cases, three C60 styles, identical no-label output, no text clipping.`);

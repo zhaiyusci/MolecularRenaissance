@@ -173,7 +173,9 @@ for(const mode of ['stipple','halftone'])for(const target of [.1,.35,.65]){
   const model={atoms:[{element:'O',position:[0,0,0]}],bonds:[]};
   const result={};
   for(const shadingMode of ['hatch','stipple','halftone']){
-    const svg=render(model,{width:200,height:200,quality:'preview',textureScale:1,shadingMode});
+    // The calibration oracle expands paths/patterns, not layered <use>/clip trees.
+    // Retain the original continuous-ink calibration; layered bands have their own independent oracle.
+    const svg=render(model,{hatchMode:'continuous',width:200,height:200,quality:'preview',textureScale:1,shadingMode});
     // Rendered SVGs also contain atom/outline artwork, so only validate the
     // screen fragment structurally in the direct buildDots cases above.
     // Normalize over the visible disk, not a cropped interior: the smooth

@@ -2,6 +2,8 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {examples,render}=require('./renderer.js');
+const {disks}=require('./test-shared-regions.cjs');
+const {coverage}=require('./test-style-coverage.cjs');
 const m=examples.c60;
 assert.equal(m.atoms.length,60);assert.equal(m.bonds.length,90);
 assert.ok(m.atoms.every(a=>a.element==='C'&&a.position.every(Number.isFinite)));
@@ -42,8 +44,25 @@ assert.equal(incidences.size,90);assert.ok([...incidences.values()].every(x=>x==
 console.log('PASS C60: 60 carbons, 90 equal-length edges, degree 3, 12 pentagons, 20 hexagons, connected closed cage');
 for(const shadingMode of ['hatch','stipple','halftone'])for(const quality of ['preview','export']){
  const start=performance.now(),svg=render(m,{shadingMode,quality,colorWash:true});
- assert.ok(svg.includes('C₆₀')&&svg.includes('mol-wash'));assert.ok(!/NaN|Infinity|undefined/.test(svg));
- assert.ok(svg.includes(shadingMode==='hatch'?'<path':'<circle'));
+ assert.ok(svg.includes('C₆₀')&&(svg.includes('mol-wash')||svg.includes('data-role="surface-fill"')));assert.ok(!/NaN|Infinity|undefined/.test(svg));
+ const artwork=svg.replace(/<defs\b[^>]*>[\s\S]*?<\/defs>/g,'');
+ if(shadingMode==='stipple')assert.ok(disks(svg).length>1000,'actual nonzero-radius stipple disks, including round-cap batches');
+ else if(shadingMode==='halftone'){
+  const patterns=new Set([...svg.matchAll(/<pattern\b[^>]*\bid="([^"]+)"/g)].map(m=>m[1]));
+  const paints=[...artwork.matchAll(/<rect\b[^>]*data-tone-level="[^"]+"[^>]*>/g)];
+  assert.ok(paints.length>0,'halftone must paint artwork, not merely define tile circles');
+  for(const paint of paints)assert.ok(patterns.has(/fill="url\(#([^)]*)\)"/.exec(paint[0])?.[1]),'actual tone paint resolves its pattern');
+ }else {
+  assert.match(svg,/data-hatch-mode="layered"/);
+  const skeletons=new Set([...svg.matchAll(/<path\b[^>]*\bid="([^"]+)"/g)].map(m=>m[1]));
+  const uses=[...artwork.matchAll(/<use\b[^>]*href="#([^"]+)"/g)];assert(uses.length>100,'actual default hatch instances');
+  for(const use of uses)assert(skeletons.has(use[1]),'painted use resolves a real skeleton');
+ }
+ // This path/pattern coverage oracle does not expand <use>. Keep its original
+ // continuous calibration; default band/owner membership is independently tested
+ // over C60 and all presets in test-layered-hatching, not inferred from defs ink.
+ const measured=shadingMode==='hatch'?render(m,{shadingMode,quality,colorWash:true,hatchMode:'continuous'}):svg;
+ assert.ok(coverage(measured,[390,290,510,410])>.01,'nonzero central texture ink');
  console.log(`PASS C60 ${shadingMode}/${quality}: ${(performance.now()-start).toFixed(0)} ms`);
 }
 const rotated=render(m,{shadingMode:'halftone',quality:'preview',yaw:.73,pitch:.41,colorWash:true});

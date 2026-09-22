@@ -49,12 +49,17 @@ export interface ProjectedCurve {
   path(a:number,b:number):string;
 }
 /** A projected circle stays an ellipse; do not sample and refit its centerline. */
-export function projectedCircle(project:Project,center:Vector,u:Vector,v:Vector):ProjectedCurve{
+export function projectedCircle(project:Project,center:Vector,u:Vector,v:Vector):ProjectedCurve & {pointFromTrig(cos:number,sin:number):Vector}{
   const c=project(center),pu=project(center.map((x,i)=>x+u[i])),pv=project(center.map((x,i)=>x+v[i]));
   const U=pu.map((x,i)=>x-c[i]),V=pv.map((x,i)=>x-c[i]);
-  const point=(t:number)=>{const a=t*TAU;return c.map((x,i)=>x+U[i]*Math.cos(a)+V[i]*Math.sin(a));};
-  const tangent=(t:number)=>{const a=t*TAU;return U.map((x,i)=>TAU*(-x*Math.sin(a)+V[i]*Math.cos(a)));};
-  return {point,tangent,clip:region=>region.clipEllipse(c,U,V),path:(a,b)=>{
+  // Share trig with the world-space sample without replacing this projected
+  // expression by project(p): the latter changes floating-point grouping.
+  const pointFromTrig=(cos:number,sin:number):Vector=>c.length===2?
+    [c[0]+U[0]*cos+V[0]*sin,c[1]+U[1]*cos+V[1]*sin]:c.map((x,i)=>x+U[i]*cos+V[i]*sin);
+  const point=(t:number)=>{const a=t*TAU;return pointFromTrig(Math.cos(a),Math.sin(a));};
+  const tangent=(t:number)=>{const a=t*TAU,cos=Math.cos(a),sin=Math.sin(a);return U.length===2?
+    [TAU*(-U[0]*sin+V[0]*cos),TAU*(-U[1]*sin+V[1]*cos)]:U.map((x,i)=>TAU*(-x*sin+V[i]*cos));};
+  return {point,pointFromTrig,tangent,clip:region=>region.clipEllipse(c,U,V),path:(a,b)=>{
     const count=Math.max(1,Math.ceil(Math.abs(b-a)*8)),step=(b-a)/count,k=4/3*Math.tan(step*TAU/4)/TAU;
     let path='M'+fmt(point(a));
     for(let i=0;i<count;i++){

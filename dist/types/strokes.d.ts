@@ -12,6 +12,7 @@ interface StrokeContext {
 interface CurvePoint {
     p: Vector;
     n: Vector;
+    xy?: Vector;
 }
 export interface CurveHints {
     geometry?: ProjectedCurve;

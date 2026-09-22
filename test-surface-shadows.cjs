@@ -38,15 +38,15 @@ const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]
   for(const direction of [[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[1,2,3],[-2,1,-.5]]){
     const light=norm(direction),context=module.directionalShadowContext(scene,light,1e-6);
     for(const {id,n,p} of samples){
-      const expected=dot(n,light)>0&&module.shadowBlocked(scene,p,n,light,Infinity,1e-6);
+      const expected=dot(n,light)>0&&module.shadowBlocked(scene,p,n,light,1e-6);
       assert.equal(context.shadowed(id,n,p),expected,`shadow candidate loss for surface ${id}`);checks++;
     }
   }
   const {render,examples}=await import('./dist/molplotter.mjs');
-  for(const lightType of ['directional','point'])for(const shadowStrength of [.8,1]){
-    const svg=render(examples.ethanol,{shadingMode:'halftone',lightType,castShadows:true,shadowStrength,lightAttenuation:.15,shadingBrightness:.1,quality:'preview'});
+  for(const lightAzimuth of [-.6,1.4])for(const shadowStrength of [.8,1]){
+    const svg=render(examples.ethanol,{shadingMode:'halftone',lightAzimuth,castShadows:true,shadowStrength,shadingBrightness:.1,quality:'preview'});
     assert(svg.includes('<pattern'),'complex illumination retains pattern ink');
-    assert(svg.includes(`data-tone-method="${lightType==='point'?'surface-sampled':'analytic-local-shadows'}"`),'use per-surface path');
+    assert(svg.includes('data-tone-method="analytic-local-shadows"'),'use directional per-surface path');
     assert(!/NaN|Infinity|<image\b|<filter\b/.test(svg),'finite vector output');
   }
   console.log(`Surface shadow checks passed: ${checks} ray comparisons and 4 renderer cases`);

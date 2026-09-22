@@ -1,0 +1,479 @@
+{
+  "experiment": "opt-in 16-level hatching, shared sphere skeletons, disjoint tone/shadow bands",
+  "recordedAt": "2026-09-22T07:45:36.297Z",
+  "comparison": "Visually approximate alternative to continuous ribbons, NOT equal-output optimization",
+  "rendererHashes": {
+    "renderer.js": "c4ace5a915edb225bb5cd9713cd04e514aedbc6df9d5ea449b83389b9fca9c16",
+    "boundaries.js": "dad09e51b6add3abd714aaa127107f2fca310640300b3eeb7aeb98de166d37d6",
+    "dot-regions.js": "31194c110bbf515fe899559c629cb8db4f56c4b4528acb390c4b493f01d771a1",
+    "dots.js": "7dc33b2d908f5524a0c1035855b554b050fd457bdae2fc16ef4e1f093c4115d2",
+    "wash.js": "af954e4c449475b6587741d44302c72c744296f4d5405e2406b2d851eaa05751",
+    "scripts/bench-layered-hatching.cjs": "c62e2d042f59112504c194b06dfa0291d06ff96b4c6868a25d7b2c1abcc10354"
+  },
+  "defaultParity": {
+    "count": 272,
+    "byteIdentical": true,
+    "baseline": "Renderer immediately before the opt-in layered-hatching experiment; default options omit hatchMode",
+    "scope": "17 models, modes/qualities/styles, directional shadows, labels and categorical textures; no ID normalization"
+  },
+  "engines": [
+    {
+      "engine": "node-jit",
+      "nodeVersion": "26.8.2",
+      "protocol": "2 warmups per mode, 5 alternating timed pairs, median render-only latency. Determinism and active layered route checked outside timing. Outputs intentionally visually approximate; not byte-identical. Does not measure browser paint.",
+      "rows": [
+        {
+          "name": "sphere",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              5.4325000000000045,
+              6.085700000000003,
+              6.90870000000001,
+              4.993000000000023,
+              4.3341000000000065
+            ],
+            "medianMs": 5.4325000000000045,
+            "svgCharacters": 103597
+          },
+          "layered": {
+            "samplesMs": [
+              1.9587000000000216,
+              1.9514000000000067,
+              1.7332000000000107,
+              1.5498000000000047,
+              1.5119000000000256
+            ],
+            "medianMs": 1.7332000000000107,
+            "svgCharacters": 44842
+          },
+          "speedup": 3.134375721209307,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "ethanol",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              22.614700000000028,
+              18.74079999999998,
+              21.678699999999992,
+              23.71479999999997,
+              17.778399999999976
+            ],
+            "medianMs": 21.678699999999992,
+            "svgCharacters": 432882
+          },
+          "layered": {
+            "samplesMs": [
+              9.523400000000038,
+              10.646699999999953,
+              12.187600000000032,
+              9.14870000000002,
+              9.082100000000025
+            ],
+            "medianMs": 9.523400000000038,
+            "svgCharacters": 337003
+          },
+          "speedup": 2.2763613835394825,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "c60",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              156.53480000000002,
+              149.79510000000005,
+              173.87660000000005,
+              146.64629999999988,
+              120.2706999999998
+            ],
+            "medianMs": 149.79510000000005,
+            "svgCharacters": 3147300
+          },
+          "layered": {
+            "samplesMs": [
+              79.24090000000001,
+              67.62959999999998,
+              87.61329999999998,
+              55.71349999999984,
+              47.286099999999806
+            ],
+            "medianMs": 67.62959999999998,
+            "svgCharacters": 1773669
+          },
+          "speedup": 2.2149339933993413,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "glucose",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": true
+          },
+          "continuous": {
+            "samplesMs": [
+              49.236399999999776,
+              62.91829999999982,
+              48.2820999999999,
+              44.694600000000264,
+              45.563500000000204
+            ],
+            "medianMs": 48.2820999999999,
+            "svgCharacters": 1301941
+          },
+          "layered": {
+            "samplesMs": [
+              31.339200000000346,
+              31.430099999999584,
+              24.423899999999776,
+              18.003000000000156,
+              19.76720000000023
+            ],
+            "medianMs": 24.423899999999776,
+            "svgCharacters": 866130
+          },
+          "speedup": 1.9768382608838204,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "phospholipid",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              132.54460000000017,
+              137.29829999999993,
+              137.39139999999998,
+              175.3816999999999,
+              130.39199999999983
+            ],
+            "medianMs": 137.29829999999993,
+            "svgCharacters": 3190316
+          },
+          "layered": {
+            "samplesMs": [
+              68.7215000000001,
+              67.18040000000019,
+              85.64739999999983,
+              69.06129999999985,
+              70.56259999999975
+            ],
+            "medianMs": 69.06129999999985,
+            "svgCharacters": 2622931
+          },
+          "speedup": 1.9880642269983366,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "ethanol",
+          "castShadows": true,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": true,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              55.54539999999997,
+              32.04449999999997,
+              32.15009999999984,
+              27.021200000000135,
+              26.926800000000185
+            ],
+            "medianMs": 32.04449999999997,
+            "svgCharacters": 464060
+          },
+          "layered": {
+            "samplesMs": [
+              15.857500000000073,
+              10.995499999999993,
+              9.315200000000004,
+              10.364399999999478,
+              8.78229999999985
+            ],
+            "medianMs": 10.364399999999478,
+            "svgCharacters": 387605
+          },
+          "speedup": 3.091785342132838,
+          "approximateVisualOutput": true
+        }
+      ]
+    },
+    {
+      "engine": "quickjs-ng",
+      "nodeVersion": null,
+      "protocol": "2 warmups per mode, 5 alternating timed pairs, median render-only latency. Determinism and active layered route checked outside timing. Outputs intentionally visually approximate; not byte-identical. Does not measure browser paint.",
+      "rows": [
+        {
+          "name": "sphere",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              42.74149999022484,
+              42.22450000047684,
+              42.807799994945526,
+              41.66740000247955,
+              42.203599989414215
+            ],
+            "medianMs": 42.22450000047684,
+            "svgCharacters": 103597
+          },
+          "layered": {
+            "samplesMs": [
+              6.30009999871254,
+              6.212799996137619,
+              6.055400013923645,
+              6.166999995708466,
+              6.213800013065338
+            ],
+            "medianMs": 6.212799996137619,
+            "svgCharacters": 44842
+          },
+          "speedup": 6.796372010482716,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "ethanol",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              266.57399997115135,
+              246.3711999952793,
+              234.88620001077652,
+              258.90389999747276,
+              250.20860001444817
+            ],
+            "medianMs": 250.20860001444817,
+            "svgCharacters": 432882
+          },
+          "layered": {
+            "samplesMs": [
+              63.65370002388954,
+              64.92260000109673,
+              63.50119999051094,
+              63.46169999241829,
+              61.21249997615814
+            ],
+            "medianMs": 63.50119999051094,
+            "svgCharacters": 338077
+          },
+          "speedup": 3.9402184533809934,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "c60",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              2400.0476999878883,
+              2538.232499986887,
+              2457.222299993038,
+              2435.207500010729,
+              2441.0377999842167
+            ],
+            "medianMs": 2441.0377999842167,
+            "svgCharacters": 3147300
+          },
+          "layered": {
+            "samplesMs": [
+              1051.7198000252247,
+              1052.6604000031948,
+              1066.5469000041485,
+              1054.1967000067234,
+              1023.5627000033855
+            ],
+            "medianMs": 1052.6604000031948,
+            "svgCharacters": 1773669
+          },
+          "speedup": 2.3189224178821664,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "glucose",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": true
+          },
+          "continuous": {
+            "samplesMs": [
+              797.4498999714851,
+              799.3512000143528,
+              876.2525999844074,
+              790.0038000047207,
+              811.5042999982834
+            ],
+            "medianMs": 799.3512000143528,
+            "svgCharacters": 1302045
+          },
+          "layered": {
+            "samplesMs": [
+              244.32199999690056,
+              246.25479999184608,
+              248.24529999494553,
+              251.35769999027252,
+              244.8585999906063
+            ],
+            "medianMs": 246.25479999184608,
+            "svgCharacters": 868979
+          },
+          "speedup": 3.2460329708936464,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "phospholipid",
+          "castShadows": false,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": false,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              2649.320999979973,
+              2857.3307000100613,
+              2652.0625,
+              2750.2815000116825,
+              2659.1419000029564
+            ],
+            "medianMs": 2659.1419000029564,
+            "svgCharacters": 3190316
+          },
+          "layered": {
+            "samplesMs": [
+              1274.0428999960423,
+              1269.943599998951,
+              1301.867300003767,
+              1321.34090000391,
+              1305.8941999971867
+            ],
+            "medianMs": 1301.867300003767,
+            "svgCharacters": 2631559
+          },
+          "speedup": 2.0425598676572196,
+          "approximateVisualOutput": true
+        },
+        {
+          "name": "ethanol",
+          "castShadows": true,
+          "options": {
+            "width": 800,
+            "height": 640,
+            "scale": 50,
+            "quality": "preview",
+            "shadingMode": "hatch",
+            "castShadows": true,
+            "labels": false
+          },
+          "continuous": {
+            "samplesMs": [
+              375.2276999950409,
+              367.48279997706413,
+              370.17469999194145,
+              405.7166999876499,
+              464.80210000276566
+            ],
+            "medianMs": 375.2276999950409,
+            "svgCharacters": 464060
+          },
+          "layered": {
+            "samplesMs": [
+              110.38600000739098,
+              112.74509999155998,
+              113.8783999979496,
+              110.31270000338554,
+              142.67990002036095
+            ],
+            "medianMs": 112.74509999155998,
+            "svgCharacters": 388854
+          },
+          "speedup": 3.328106498846781,
+          "approximateVisualOutput": true
+        }
+      ]
+    }
+  ]
+}

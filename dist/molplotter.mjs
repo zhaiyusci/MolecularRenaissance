@@ -1,9 +1,11 @@
 /* Generated DOM-free ES module. Source: src/renderer.ts. */
 // Preserve arithmetic order: geometry tolerances are covered by numerical tests.
-const add$3 = (a, b) => a.map((v, i) => v + b[i]);
-const sub$1 = (a, b) => a.map((v, i) => v - b[i]);
-const mul$2 = (a, s) => a.map(v => v * s);
-const dot$3 = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
+// Dense three-component vectors dominate geometry. Keep generic fallbacks for
+// other dimensions, and keep the reduction's initial +0 and arithmetic order.
+const add$3 = (a, b) => a.length === 3 ? [a[0] + b[0], a[1] + b[1], a[2] + b[2]] : a.map((v, i) => v + b[i]);
+const sub$1 = (a, b) => a.length === 3 ? [a[0] - b[0], a[1] - b[1], a[2] - b[2]] : a.map((v, i) => v - b[i]);
+const mul$2 = (a, s) => a.length === 3 ? [a[0] * s, a[1] * s, a[2] * s] : a.map(v => v * s);
+const dot$3 = (a, b) => a.length === 3 ? ((0 + a[0] * b[0]) + a[1] * b[1]) + a[2] * b[2] : a.reduce((s, v, i) => s + v * b[i], 0);
 const cross$2 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const norm$1 = (a) => mul$2(a, 1 / Math.hypot(...a));
 function rotate(p, yaw, pitch) {
@@ -230,14 +232,22 @@ function rotateByOrientation(p, q) {
 const defaults = {
     renderMode: 'precise',
     width: 900, height: 700, scale: 60, atomRadiusScale: 1, yaw: .25, pitch: -0.16, lightAzimuth: -29 * Math.PI / 180, lightElevation: 32 * Math.PI / 180,
-    lightType: 'directional', lightDistance: 3, lightAttenuation: 0, castShadows: false, shadowStrength: .8, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
-    variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', textureScale: 1, elementTextures: false, elementTextureScale: 1, shadingBrightness: 0, shadingContrast: 1.2,
+    castShadows: false, shadowStrength: .8, density: 24, lineWidth: .8, outlineWidth: .8, hatchWidth: .8,
+    variableWidth: true, optimizePaths: true, quality: 'export', shadingMode: 'hatch', hatchMode: 'layered', quantizeShading: true, textureScale: 1, elementTextures: false, elementTextureScale: 1, shadingBrightness: 0, shadingContrast: 1.2,
     dotSpacing: 2.5, dotSize: .5, dotContrast: 1.2, crossHatch: true, colorWash: false, colorScheme: 'jmol', washStrength: 1,
     colorSaturation: 1, labelMatchFill: false, labels: false, labelHydrogens: true, labelSize: 17, labelStrokeWidth: 4, labelStrokeColor: '#ffffff',
     labelColor: '#161616', labelFont: "Georgia, 'Times New Roman', serif", labelBold: false, labelItalic: true
 };
 function normalizeOptions(options) {
+    // Reject obsolete settings rather than silently rendering a different light.
+    for (const key of ['lightType', 'lightDistance', 'lightAttenuation'])
+        if (options && Object.hasOwn(options, key))
+            throw new Error('Removed lighting option: ' + key + '; only directional lighting is supported');
     const o = { ...defaults, ...options };
+    // Fast rendering has its own hatch implementation; an omitted selector must
+    // remain usable there, while explicit unsupported combinations still reject.
+    if (options.hatchMode === undefined)
+        o.hatchMode = o.renderMode === 'fast' ? 'continuous' : defaults.hatchMode;
     if (options.elementTextures === undefined)
         o.elementTextures = defaults.elementTextures;
     if (options.elementTextureScale === undefined)
@@ -287,15 +297,13 @@ function normalizeOptions(options) {
     o.shadingContrast = options.shadingContrast === undefined ? 1.2 : options.shadingContrast;
     if (options.shadingContrast !== undefined)
         o.dotContrast = o.shadingContrast;
-    for (const k of ['dotSpacing', 'dotSize', 'dotContrast', 'outlineWidth', 'hatchWidth', 'colorSaturation', 'width', 'height', 'yaw', 'pitch', 'lightAzimuth', 'lightElevation', 'lightDistance', 'density', 'lineWidth', 'labelSize', 'labelStrokeWidth', 'washStrength'])
+    for (const k of ['dotSpacing', 'dotSize', 'dotContrast', 'outlineWidth', 'hatchWidth', 'colorSaturation', 'width', 'height', 'yaw', 'pitch', 'lightAzimuth', 'lightElevation', 'density', 'lineWidth', 'labelSize', 'labelStrokeWidth', 'washStrength'])
         if (!(o.orientation !== undefined && (k === 'yaw' || k === 'pitch')) && !Number.isFinite(o[k]))
             throw new Error('Invalid option: ' + k);
     if (!Number.isFinite(o.scale) || o.scale <= 0)
         throw new Error('Invalid scale: expected positive finite SVG units per angstrom');
     if (!Number.isFinite(o.atomRadiusScale) || o.atomRadiusScale <= 0)
         throw new Error('Invalid atomRadiusScale: expected a positive finite multiplier');
-    if (!Number.isFinite(o.lightAttenuation) || o.lightAttenuation < 0)
-        throw new Error('Invalid lightAttenuation: expected a nonnegative finite strength');
     if (typeof o.castShadows !== 'boolean')
         throw new Error('Invalid castShadows');
     if (!Number.isFinite(o.shadowStrength) || o.shadowStrength < 0 || o.shadowStrength > 1)
@@ -304,6 +312,26 @@ function normalizeOptions(options) {
         throw new Error('Invalid colorScheme');
     if (!['hatch', 'stipple', 'halftone'].includes(o.shadingMode))
         throw new Error('Invalid shadingMode');
+    if (!['continuous', 'layered'].includes(o.hatchMode))
+        throw new Error('Invalid hatchMode');
+    if (options.quantizeShading === undefined)
+        o.quantizeShading = defaults.quantizeShading;
+    if (typeof o.quantizeShading !== 'boolean')
+        throw new Error('Invalid quantizeShading');
+    if (o.renderMode === 'fast' && options.quantizeShading !== undefined)
+        throw new Error('16-level shading switch requires precise rendering');
+    if (o.shadingMode === 'hatch' && o.renderMode !== 'fast') {
+        const selected = o.quantizeShading ? 'layered' : 'continuous';
+        if (options.quantizeShading !== undefined) {
+            if (options.hatchMode !== undefined && o.hatchMode !== selected)
+                throw new Error('Conflicting quantizeShading and hatchMode');
+            o.hatchMode = selected;
+        }
+        else
+            o.quantizeShading = o.hatchMode === 'layered';
+    }
+    if (o.renderMode === 'fast' && o.hatchMode === 'layered')
+        throw new Error('Layered hatching requires precise rendering');
     if (o.dotSpacing < .3 || o.dotSpacing > 19 || o.dotSize < 0 || o.dotSize > 4 || o.dotContrast < .5 || o.dotContrast > 2.5)
         throw new Error('Invalid dot settings');
     if (o.width < 200 || o.height < 200 || o.lineWidth < 0 || o.outlineWidth < 0 || o.hatchWidth < 0)
@@ -319,16 +347,12 @@ function normalizeOptions(options) {
             throw new Error('Invalid label color: ' + key);
     if (typeof o.labelFont !== 'string' || !o.labelFont.trim() || o.labelFont.length > 200)
         throw new Error('Invalid label font');
-    if (!['directional', 'point'].includes(o.lightType))
-        throw new Error('Invalid lightType');
-    if (o.lightDistance < 1.2)
-        throw new Error('lightDistance must be at least 1.2 scene radii');
     if (options.textureScale === undefined)
         o.density = Math.round(Math.max(8, Math.min(60, o.density)));
     if (!['precise', 'fast'].includes(o.renderMode))
         throw new Error('Invalid renderMode');
-    if (o.renderMode === 'fast' && (o.lightType !== 'directional' || o.castShadows))
-        throw new Error('Fast rendering requires directional light and castShadows=false');
+    if (o.renderMode === 'fast' && o.castShadows)
+        throw new Error('Fast rendering requires castShadows=false');
     return o;
 }
 
@@ -397,15 +421,14 @@ function directionalShadowContext(scene, light, bias) {
         /** Same conservative lists for physical surface illumination; scene order is retained. */
         candidates: lists,
         mayShadow: lists.map(list => list.length > 0),
-        shadowed: (id, n, p) => n.reduce((sum, v, k) => sum + v * light[k], 0) > 0 && shadowBlocked(lists[id], p, n, light, Infinity, bias)
+        shadowed: (id, n, p) => n.reduce((sum, v, k) => sum + v * light[k], 0) > 0 && shadowBlocked(lists[id], p, n, light, bias)
     };
 }
-/** Any solid intersecting the ray toward the light (finite for a point source).
+/** Any solid intersecting the infinite ray toward the directional light.
  * Normal bias avoids self-shadow acne; closed cylinders include both end caps.
  */
-function shadowBlocked(scene, p, n, d, maxDistance, bias) {
+function shadowBlocked(scene, p, n, d, bias) {
     const x = p[0] + n[0] * bias, y = p[1] + n[1] * bias, z = p[2] + n[2] * bias;
-    const limit = maxDistance - bias;
     for (const s of scene) {
         if (s.kind === 'sphere') {
             const ox = x - s.c[0], oy = y - s.c[1], oz = z - s.c[2];
@@ -414,14 +437,14 @@ function shadowBlocked(scene, p, n, d, maxDistance, bias) {
             if (disc <= 0)
                 continue;
             const root = Math.sqrt(disc), near = -b - root, far = -b + root;
-            if (Math.min(far, limit) > Math.max(near, bias))
+            if (far > Math.max(near, bias))
                 return true;
         }
         else {
             const ox = x - s.a[0], oy = y - s.a[1], oz = z - s.a[2];
             const along = ox * s.u[0] + oy * s.u[1] + oz * s.u[2];
             const slope = d[0] * s.u[0] + d[1] * s.u[1] + d[2] * s.u[2];
-            let near = bias, far = limit;
+            let near = bias, far = Infinity;
             if (Math.abs(slope) < 1e-12) {
                 if (along <= 0 || along >= s.length)
                     continue;
@@ -509,24 +532,14 @@ function prepareScene(molecule, o) {
     const project = p => [p[0] * scale + o.width / 2, o.height / 2 - p[1] * scale];
     const light = [Math.sin(o.lightAzimuth) * Math.cos(o.lightElevation), Math.sin(o.lightElevation), Math.cos(o.lightAzimuth) * Math.cos(o.lightElevation)];
     const sceneRadius = Math.max(...spheres.map(s => Math.hypot(...s.c) + s.r));
-    const lightPosition = mul$2(light, o.lightDistance * sceneRadius);
     const shadowBias = Math.max(1e-9, Math.min(sceneRadius * 1e-6, ...scene.map(s => s.r * 1e-4)));
     const traceShadows = o.castShadows && o.shadowStrength > 0 && o.shadingSize !== 0;
     // Share the evaluator so broad-phase specialization cannot drift from the
     // generic callback's physical formulas or arithmetic order.
     const lighting = (casters) => (n, p) => {
-        const point = o.lightType === 'point', delta = point ? sub$1(lightPosition, p) : light;
-        const direction = point ? norm$1(delta) : light;
-        const distance = point ? Math.hypot(...delta) : Infinity;
-        const facing = dot$3(n, direction);
+        const facing = dot$3(n, light);
         let lit = facing;
-        if (point && o.lightAttenuation > 0) {
-            // Soft inverse-square falloff in model units, independent of screen zoom.
-            const relativeDistance = distance / sceneRadius;
-            const attenuation = 1 / (1 + o.lightAttenuation * relativeDistance * relativeDistance);
-            lit = (Math.max(-1, Math.min(1, lit)) + 1) * attenuation - 1;
-        }
-        if (casters.length && traceShadows && facing > 0 && shadowBlocked(casters, p, n, direction, distance, shadowBias)) {
+        if (casters.length && traceShadows && facing > 0 && shadowBlocked(casters, p, n, light, shadowBias)) {
             // Signed engraving brightness maps to [0,1] before shadow attenuation.
             // At strength .8, keep 20% of the local brightness instead of solid black.
             lit = (Math.max(-1, Math.min(1, lit)) + 1) * (1 - o.shadowStrength) - 1;
@@ -543,12 +556,10 @@ function prepareScene(molecule, o) {
             return cached;
         const id = ids.get(source);
         let result = illumination;
-        if (traceShadows && o.lightType === 'directional' && id !== undefined) {
+        if (traceShadows && id !== undefined) {
             result = lighting(directionalShadows().candidates[id]);
         }
-        // Point rays vary across a receiver: retain the complete caster list,
-        // including self, rather than apply an unsafe directional broad phase.
-        // Unknown primitives also keep the fully generic behavior.
+        // Unknown primitives retain the full caster list.
         cache.set(source, result);
         return result;
     };
@@ -556,7 +567,7 @@ function prepareScene(molecule, o) {
         if (!traceShadows)
             return false;
         const id = ids.get(source);
-        if (o.lightType !== 'directional' || id === undefined)
+        if (id === undefined)
             return scene.length > 0;
         return directionalShadows().mayShadow[id];
     };
@@ -631,7 +642,7 @@ function createRegion(input, bounds) {
         const p = e.p.slice(0, 2), q = e.q.slice(0, 2);
         if (p[0] === q[0] && p[1] === q[1])
             continue;
-        edges.push({ p, q, bounds: [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])] });
+        edges.push({ p, q, dx: q[0] - p[0], dy: q[1] - p[1], bounds: [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])] });
     }
     const root = index(edges), regionBounds = root.bounds.slice();
     if (bounds && bounds.length >= 4 && bounds.slice(0, 4).every(Number.isFinite)) {
@@ -643,7 +654,7 @@ function createRegion(input, bounds) {
             return false;
         let inside = false, boundary = false;
         visit(root, [x, y, Infinity, y], e => {
-            const [px, py] = e.p, [qx, qy] = e.q, dx = qx - px, dy = qy - py;
+            const [px, py] = e.p, qy = e.q[1], dx = e.dx, dy = e.dy;
             const cross = (x - px) * dy - (y - py) * dx;
             const tolerance = 8 * EPS * (Math.abs((x - px) * dy) + Math.abs((y - py) * dx));
             if (x >= e.bounds[0] && x <= e.bounds[2] && Math.abs(cross) <= tolerance)
@@ -671,32 +682,37 @@ function createRegion(input, bounds) {
         if (!edges.length || !overlaps(root.bounds, eb))
             return [];
         let unsafe = false;
-        function inverse(p) {
-            const x = (p[0] - c[0]) / scale, y = (p[1] - c[1]) / scale;
-            return [(vy * x - vx * y) / det, (ux * y - uy * x) / det];
-        }
         function intersect(e) {
-            const p = inverse(e.p), q = inverse(e.q), dx = q[0] - p[0], dy = q[1] - p[1], length = Math.hypot(dx, dy);
-            if (!valid(p) || !valid(q) || !(length > 0) || Math.max(Math.hypot(...p), Math.hypot(...q)) > 1e8) {
+            const x = (e.p[0] - c[0]) / scale, y = (e.p[1] - c[1]) / scale;
+            const px = (vy * x - vx * y) / det, py = (ux * y - uy * x) / det;
+            const qx = (e.q[0] - c[0]) / scale, qy = (e.q[1] - c[1]) / scale;
+            const qpx = (vy * qx - vx * qy) / det, qpy = (ux * qy - uy * qx) / det;
+            const dx = qpx - px, dy = qpy - py, length = Math.hypot(dx, dy);
+            if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(qpx) || !Number.isFinite(qpy) || !(length > 0)) {
+                unsafe = true;
+                return;
+            }
+            const norm = Math.hypot(px, py);
+            if (Math.max(norm, Math.hypot(qpx, qpy)) > 1e8) {
                 unsafe = true;
                 return;
             }
             const ex = dx / length, ey = dy / length;
             // Unit-speed segment in the inverse ellipse frame meets the unit circle.
             // D = 1 - cross(p,e)^2 avoids cancellation of b*b - a*c.
-            const b = p[0] * ex + p[1] * ey, h = p[0] * ey - p[1] * ex;
+            const b = px * ex + py * ey, h = px * ey - py * ex;
             let d = (1 - Math.abs(h)) * (1 + Math.abs(h));
             if (d < -32 * EPS * Math.max(1, h * h))
                 return;
             d = Math.max(0, d);
-            const r = Math.sqrt(d), stable = -b - (b < 0 ? -r : r), norm = Math.hypot(p[0], p[1]);
+            const r = Math.sqrt(d), stable = -b - (b < 0 ? -r : r);
             const roots = stable === 0 ? [-b] : [stable, (norm - 1) * (norm + 1) / stable];
             for (const s of roots) {
                 const t = s / length;
                 if (t < -32 * EPS || t > 1 + 32 * EPS)
                     continue;
                 const f = Math.max(0, Math.min(1, t));
-                let angle = Math.atan2(p[1] + f * dy, p[0] + f * dx) / TAU$3;
+                let angle = Math.atan2(py + f * dy, px + f * dx) / TAU$3;
                 if (angle < 0)
                     angle += 1;
                 cuts.push(angle);
@@ -796,7 +812,7 @@ function createRegion(input, bounds) {
             if (!overlaps(root.bounds, lb))
                 return [];
             visit(root, lb, e => {
-                const ex = e.q[0] - e.p[0], ey = e.q[1] - e.p[1], px = e.p[0] - a[0], py = e.p[1] - a[1];
+                const ex = e.dx, ey = e.dy, px = e.p[0] - a[0], py = e.p[1] - a[1];
                 const det = dx * ey - dy * ex;
                 if (det !== 0) {
                     const t = (px * ey - py * ex) / det, s = (px * dy - py * dx) / det;
@@ -878,8 +894,8 @@ function include(b, p) {
 }
 function insideBox(b, x, y) { return x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
 function distance2(e, x, y) {
-    var dx = e.q[0] - e.p[0], dy = e.q[1] - e.p[1];
-    var t = Math.max(0, Math.min(1, ((x - e.p[0]) * dx + (y - e.p[1]) * dy) / (dx * dx + dy * dy)));
+    var dx = e.dx, dy = e.dy;
+    var t = Math.max(0, Math.min(1, ((x - e.p[0]) * dx + (y - e.p[1]) * dy) / e.length2));
     var a = x - e.p[0] - t * dx, b = y - e.p[1] - t * dy;
     return a * a + b * b;
 }
@@ -976,7 +992,8 @@ function build$1(scene, segments, nodes) {
             if (next[0] === prev[0] && next[1] === prev[1])
                 return null;
             var eb = [Math.min(prev[0], next[0]), Math.min(prev[1], next[1]), Math.max(prev[0], next[0]), Math.max(prev[1], next[1])];
-            var edge = { p: prev, q: next, bounds: eb };
+            var dx = next[0] - prev[0], dy = next[1] - prev[1];
+            var edge = { p: prev, q: next, dx: dx, dy: dy, length2: dx * dx + dy * dy, bounds: eb };
             poly.push(edge);
             edges.push(edge);
             include(bounds, prev);
@@ -1073,7 +1090,7 @@ function build$1(scene, segments, nodes) {
         var list = o.rows[row] || [], yes = false;
         for (var i = 0; i < list.length; i++) {
             var p = list[i].p, q = list[i].q;
-            if ((p[1] > y) !== (q[1] > y) && x < p[0] + (y - p[1]) * (q[0] - p[0]) / (q[1] - p[1]))
+            if ((p[1] > y) !== (q[1] > y) && x < p[0] + (y - p[1]) * list[i].dx / list[i].dy)
                 yes = !yes;
         }
         return yes;
@@ -1137,11 +1154,36 @@ const Regions = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
 // renderer -> boundaries -> dot-regions (never boundaries -> renderer helpers).
 function getDotRegions() { return Regions; }
 
-const TAU$2 = 2 * Math.PI, dot$2 = (a, b) => a.reduce((v, x, i) => v + x * b[i], 0);
-const add$2 = (a, b) => a.map((x, i) => x + b[i]), mul$1 = (a, k) => a.map(x => x * k), sub = (a, b) => add$2(a, mul$1(b, -1));
+const TAU$2 = 2 * Math.PI;
+// Numeric policy: these inherited thresholds retain their original values.
+// Unless a formula is explained below, tuning/proof provenance is unknown;
+// names describe use, not an error guarantee. SVG units are projected user
+// coordinates (not necessarily device pixels); world lengths are in Å.
+// Keep shared-helper constants here for consumers that extract this interval.
+const SVG_COORDINATE_DECIMALS = 4;
+// Polynomial coefficients are normalized by their largest magnitude. The
+// root variable is a line fraction or a tan(half-angle) chart coordinate.
+const ROOT_LEADING_COEFFICIENT_TOLERANCE = 1e-13;
+const ROOT_INTERVAL_PADDING = 1e-10, ROOT_RESIDUAL_TOLERANCE = 1e-10;
+const ROOT_BISECTION_STEPS = 48;
+// Carrier equality: relative line angle, SVG offset/center distance, then
+// dimensionless Gram-matrix residual in the other ellipse's local basis.
+const CARRIER_LINE_ANGLE_TOLERANCE = 1e-12, CARRIER_LINE_OFFSET_SVG = 1e-8;
+const CARRIER_CENTER_DISTANCE_SVG = 1e-8, CARRIER_GRAM_TOLERANCE = 1e-11;
+const INTERSECTION_BOX_PADDING_SVG = 1e-6;
+// Mixed parameter units: radians for ellipses, [0,1] fractions for lines.
+const INTERSECTION_PARAMETER_PADDING = 1e-8, INTERSECTION_RESIDUAL_SVG = .00002;
+const LINE_INTERSECTION_DETERMINANT_SVG2 = 1e-10;
+const ELLIPSE_COINCIDENCE_COEFFICIENT_TOLERANCE = 1e-10;
+// Keep the reducer's initial +0 and the original multiply-then-add order.
+const dot$2 = (a, b) => a.length === 2 ? (0 + a[0] * b[0]) + a[1] * b[1] : a.length === 3 ? ((0 + a[0] * b[0]) + a[1] * b[1]) + a[2] * b[2] : a.reduce((v, x, i) => v + x * b[i], 0);
+const add$2 = (a, b) => a.length === 2 ? [a[0] + b[0], a[1] + b[1]] : a.length === 3 ? [a[0] + b[0], a[1] + b[1], a[2] + b[2]] : a.map((x, i) => x + b[i]);
+const mul$1 = (a, k) => a.length === 2 ? [a[0] * k, a[1] * k] : a.length === 3 ? [a[0] * k, a[1] * k, a[2] * k] : a.map(x => x * k);
+const sub = (a, b) => a.length === 2 ? [a[0] + b[0] * -1, a[1] + b[1] * -1] : a.length === 3 ? [a[0] + b[0] * -1, a[1] + b[1] * -1, a[2] + b[2] * -1] : add$2(a, mul$1(b, -1));
 const cross$1 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const norm = (a) => mul$1(a, 1 / Math.hypot(...a)), dist = (a, b) => Math.hypot(...sub(a, b));
-const cross2 = (a, b) => a[0] * b[1] - a[1] * b[0], fmt$3 = (p) => p.map(x => Number(x.toFixed(4))).join(' ');
+const norm = (a) => mul$1(a, 1 / Math.hypot(...a));
+const dist = (a, b) => a.length === 2 ? Math.hypot(a[0] + b[0] * -1, a[1] + b[1] * -1) : a.length === 3 ? Math.hypot(a[0] + b[0] * -1, a[1] + b[1] * -1, a[2] + b[2] * -1) : Math.hypot(...sub(a, b));
+const cross2 = (a, b) => a[0] * b[1] - a[1] * b[0], fmt$3 = (p) => p.map(x => Number(x.toFixed(SVG_COORDINATE_DECIMALS))).join(' ');
 // Isolate real polynomial roots on a bounded interval using derivative roots.
 // Unlike sign-change sampling this also finds double roots (tangent arcs).
 function roots(p, lo, hi) {
@@ -1149,25 +1191,25 @@ function roots(p, lo, hi) {
     if (!size)
         return null; // coincident curves: caller falls back rather than guessing
     p = p.map(x => x / size);
-    while (p.length > 1 && Math.abs(p.at(-1)) < 1e-13)
+    while (p.length > 1 && Math.abs(p.at(-1)) < ROOT_LEADING_COEFFICIENT_TOLERANCE)
         p.pop();
     const value = (x) => p.reduceRight((v, c) => v * x + c, 0);
     if (p.length === 1)
         return [];
     if (p.length === 2) {
         const t = -p[0] / p[1];
-        return t >= lo - 1e-10 && t <= hi + 1e-10 ? [Math.max(lo, Math.min(hi, t))] : [];
+        return t >= lo - ROOT_INTERVAL_PADDING && t <= hi + ROOT_INTERVAL_PADDING ? [Math.max(lo, Math.min(hi, t))] : [];
     }
     const critical = roots(p.slice(1).map((x, i) => x * (i + 1)), lo, hi) || [];
     const cuts = [lo, ...critical, hi], out = [];
     for (const x of cuts)
-        if (Math.abs(value(x)) < 1e-10)
+        if (Math.abs(value(x)) < ROOT_RESIDUAL_TOLERANCE)
             out.push(x);
     for (let i = 1; i < cuts.length; i++) {
         let a = cuts[i - 1], b = cuts[i], fa = value(a), fb = value(b);
-        if (fa * fb >= 0 || Math.abs(fa) < 1e-10 || Math.abs(fb) < 1e-10)
+        if (fa * fb >= 0 || Math.abs(fa) < ROOT_RESIDUAL_TOLERANCE || Math.abs(fb) < ROOT_RESIDUAL_TOLERANCE)
             continue;
-        for (let j = 0; j < 48; j++) {
+        for (let j = 0; j < ROOT_BISECTION_STEPS; j++) {
             const m = (a + b) / 2, f = value(m);
             if (f * fa > 0) {
                 a = m;
@@ -1189,31 +1231,31 @@ function sameCarrier(a, b) {
         return false;
     if (a.line) {
         const la = Math.hypot(...a.D), lb = Math.hypot(...b.D);
-        return Math.abs(cross2(a.D, b.D)) <= 1e-12 * la * lb &&
-            Math.abs(cross2(sub(b.A, a.A), a.D)) <= 1e-8 * la;
+        return Math.abs(cross2(a.D, b.D)) <= CARRIER_LINE_ANGLE_TOLERANCE * la * lb &&
+            Math.abs(cross2(sub(b.A, a.A), a.D)) <= CARRIER_LINE_OFFSET_SVG * la;
     }
     // Most ellipse pairs have different centers: reject without temporary
     // vectors before the exact near-coincidence check below.
-    if (Math.abs(a.C[0] - b.C[0]) > 1e-8 || Math.abs(a.C[1] - b.C[1]) > 1e-8 || dist(a.C, b.C) > 1e-8)
+    if (Math.abs(a.C[0] - b.C[0]) > CARRIER_CENTER_DISTANCE_SVG || Math.abs(a.C[1] - b.C[1]) > CARRIER_CENTER_DISTANCE_SVG || dist(a.C, b.C) > CARRIER_CENTER_DISTANCE_SVG)
         return false;
     const U = [cross2(a.U, b.V) / b.det, cross2(b.U, a.U) / b.det];
     const V = [cross2(a.V, b.V) / b.det, cross2(b.U, a.V) / b.det];
-    return Math.max(Math.abs(dot$2(U, U) - 1), Math.abs(dot$2(V, V) - 1), Math.abs(dot$2(U, V))) < 1e-11;
+    return Math.max(Math.abs(dot$2(U, U) - 1), Math.abs(dot$2(V, V) - 1), Math.abs(dot$2(U, V))) < CARRIER_GRAM_TOLERANCE;
 }
 // Shared projected-curve solver: both the face arrangement and hatch clipping
 // use these intersections. emit receives parameters on a and b respectively.
 function intersections(a, b, emit) {
-    if (a.box[0] > b.box[2] + 1e-6 || b.box[0] > a.box[2] + 1e-6 || a.box[1] > b.box[3] + 1e-6 || b.box[1] > a.box[3] + 1e-6)
+    if (a.box[0] > b.box[2] + INTERSECTION_BOX_PADDING_SVG || b.box[0] > a.box[2] + INTERSECTION_BOX_PADDING_SVG || a.box[1] > b.box[3] + INTERSECTION_BOX_PADDING_SVG || b.box[1] > a.box[3] + INTERSECTION_BOX_PADDING_SVG)
         return;
     function hit(t) {
         const p = a.at(t), q = parameter(b, p);
-        if (q < -1e-8 || q > b.end + 1e-8 || dist(p, b.at(q)) > .00002)
+        if (q < -INTERSECTION_PARAMETER_PADDING || q > b.end + INTERSECTION_PARAMETER_PADDING || dist(p, b.at(q)) > INTERSECTION_RESIDUAL_SVG)
             return;
         emit(t, Math.max(0, Math.min(b.end, q)));
     }
     if (a.line && b.line) {
         const d = cross2(a.D, b.D);
-        if (Math.abs(d) < 1e-10) {
+        if (Math.abs(d) < LINE_INTERSECTION_DETERMINANT_SVG2) {
             if (sameCarrier(a, b)) {
                 // A collinear finite overlap has endpoint events, not isolated roots.
                 for (const t of [0, 1])
@@ -1249,7 +1291,7 @@ function intersections(a, b, emit) {
             const p = add$2(C, u), q = mul$1(v, 2), r = sub(C, u);
             const poly = [dot$2(p, p) - 1, 2 * dot$2(p, q), dot$2(q, q) + 2 * dot$2(p, r) - 2, 2 * dot$2(q, r), dot$2(r, r) - 1];
             const rr = roots(poly, -Math.tan(Math.PI / 8), Math.tan(Math.PI / 8));
-            if (rr === null || Math.max(...poly.map(Math.abs)) < 1e-10)
+            if (rr === null || Math.max(...poly.map(Math.abs)) < ELLIPSE_COINCIDENCE_COEFFICIENT_TOLERANCE)
                 throw new Error('coincident ellipses');
             for (const t of rr)
                 hit((angle + 2 * Math.atan(t) + TAU$2) % TAU$2);
@@ -1257,51 +1299,126 @@ function intersections(a, b, emit) {
     }
 }
 function build(scene, depthAt, project, scale) {
+    // Work budgets / spatial-index performance gates, not geometry tolerances.
+    // These are inherited choices, not claims that 64 or 8 is optimal.
+    const MAX_SCENE_PRIMITIVES = 200, CLEARANCE_INDEX_MIN_CURVES = 64, CLEARANCE_INDEX_LEAF_CAPACITY = 8;
+    // Fast-path input envelope: radii after projection in SVG units; centers
+    // (or cylinder starts) in Å. These limits are inherited fallback policy.
+    const MAX_PROJECTED_RADIUS_SVG = 10000, MIN_PROJECTED_RADIUS_SVG = .01, MAX_WORLD_COORDINATE_ANGSTROM = 1e4;
+    // World-space validation / containment margins (Å), kept separate by role.
+    const BOND_ENDPOINT_MATCH_ANGSTROM = 1e-10, SPHERE_TANGENCY_BAND_ANGSTROM = 1e-8;
+    const SPHERE_NESTING_MARGIN_ANGSTROM = 1e-8, MIN_SEAM_RADIUS_ANGSTROM = 1e-8;
+    const COVERED_ROD_MARGIN_ANGSTROM = 1e-8, INCIDENTAL_CONTACT_MARGIN_ANGSTROM = 1e-8;
+    // Relative envelope factor: the literal 1 in the sum supplies an Å baseline.
+    const HIDDEN_TANGENT_ENVELOPE_FACTOR = 1e-8;
+    // Dimensionless direction checks; basis switch avoids a nearly parallel
+    // cross product. Camera guards are inherited legacy-solver thresholds.
+    const AXIS_UNIT_SQUARED_TOLERANCE = 1e-10, BASIS_AXIS_SWITCH_COSINE = .95;
+    const CAMERA_AXIAL_LOWER_SQUARED = 1e-12, CAMERA_AXIAL_UPPER_SQUARED = 1e-7;
+    const GENERATOR_MIN_TRANSVERSE_DIRECTION = 1e-10, OWNER_MIN_TRANSVERSE_SQUARED = 1e-12;
+    // Projected degeneracy thresholds: determinant is SVG units squared;
+    // determinant/radius and line lengths are SVG units.
+    const ELLIPSE_LINE_DETERMINANT_SVG2 = 1e-10, MIN_ELLIPSE_THICKNESS_SVG = .0001;
+    const MIN_LINE_LENGTH_SVG = 1e-8, VERTEX_SNAP_SVG = .00002;
+    // Curve parameters mix radians (ellipse) and [0,1] fractions (line).
+    // Tangent magnitude is correspondingly SVG units per curve parameter.
+    const ARRANGEMENT_CUT_PARAMETER_GAP = 1e-9, OUTLINE_JOIN_PARAMETER_GAP = 1e-9;
+    const MIN_TANGENT_SVG_PER_PARAMETER = 1e-10;
+    // Side probes: absolute SVG cap, then dimensionless fractions of endpoint
+    // chord, ellipse thickness, opposite normal chord and other-curve clearance.
+    // Fractions are inherited empirical choices; the distance bounds are below.
+    const SIDE_PROBE_CAP_SVG = .0005, SIDE_PROBE_ENDPOINT_CHORD_FRACTION = .01;
+    const SIDE_PROBE_THICKNESS_FRACTION = .05, SIDE_PROBE_NORMAL_CHORD_FRACTION = .2;
+    const SIDE_PROBE_CLEARANCE_FRACTION = .2;
+    const OUTLINE_OCCLUSION_BAND_ANGSTROM = .00015;
+    // SVG path approximation policy: preview angle cap is radians; its sqrt
+    // numerator has SVG units. Cubic coefficient/exponent are inherited fit
+    // parameters (dimensionless); no error bound is asserted by these names.
+    const PREVIEW_MAX_ANGLE_RADIANS = .2, PREVIEW_ANGLE_RADIUS_FACTOR_SVG = .024;
+    const CUBIC_TARGET_ERROR_SVG = .001, CUBIC_ERROR_COEFFICIENT = 4.3e-6, CUBIC_ERROR_POWER = 6;
+    const STROKE_WIDTH_DECIMALS = 3;
+    // Clipping: raw curve cut gap uses mixed parameters, but output joins use
+    // normalized [0,1] fractions. Occlusion is a world depth difference in Å.
+    const CLIP_CUT_PARAMETER_GAP = 1e-10, CLIP_JOIN_NORMALIZED_GAP = 1e-10;
+    const CLIP_OCCLUSION_DEPTH_ANGSTROM = 1e-9;
+    const CONTACT_CIRCLE_MIN_AMPLITUDE_ANGSTROM = 1e-14, CONTACT_PLANE_OFFSET_ANGSTROM = 1e-12;
+    const CONTACT_LINE_MIN_DENOMINATOR_ANGSTROM = 1e-14;
+    const ROD_SIDE_AXIAL_PADDING_ANGSTROM = 1e-9, ROD_CAP_MIN_AXIAL_DIRECTION_ANGSTROM = 1e-14;
+    const ROD_CAP_RADIAL_PADDING_ANGSTROM2 = 1e-10;
+    const OWNERSHIP_CAPSULE_MARGIN_ANGSTROM = 1e-8, OWNERSHIP_PARALLEL_RELATIVE_DETERMINANT = 1e-12;
     const spheres = scene.filter((s) => s.kind === 'sphere'), cylinders = scene.filter((s) => s.kind === 'cylinder');
-    if (!spheres.length || scene.length > 200 || !(scale > 0))
+    if (!spheres.length || scene.length > MAX_SCENE_PRIMITIVES || !(scale > 0))
         return null;
     // This fast path proves its geometry assumptions before omitting any curves.
     // Partial sphere intersections contribute their true 3-D seam circles.
     // Degenerate/nested balls, free caps and incidental exposed sphere/rod
     // contacts still use the general path, never a center-sorted drawing.
-    if (scene.some(s => !(s.r > 0) || s.r * scale > 10000 || s.r * scale < .01 ||
-        (s.kind === 'sphere' ? s.c : s.a).some(x => !Number.isFinite(x) || Math.abs(x) > 1e4)))
+    if (scene.some(s => !(s.r > 0) || s.r * scale > MAX_PROJECTED_RADIUS_SVG || s.r * scale < MIN_PROJECTED_RADIUS_SVG ||
+        (s.kind === 'sphere' ? s.c : s.a).some(x => !Number.isFinite(x) || Math.abs(x) > MAX_WORLD_COORDINATE_ANGSTROM)))
         return null;
     const sphereSeams = [];
+    // Near external tangency, a possible sphere/sphere seam lies in a ball
+    // about A's point facing B: |seam-contact|² = 2*ra*(ra-h) <= 2*ra*eps.
+    // Omit this uncertain seam ONLY if that entire ball is strictly inside a
+    // valid connecting finite cylinder. Such points can never be visible owners.
+    // Unbonded tangencies, nested balls and all other validation still fail closed.
+    function hiddenTangent(a, b, d) {
+        const contact = add$2(a.c, mul$1(sub(b.c, a.c), a.r / d));
+        for (const c of cylinders) {
+            if (!(c.r > 0 && c.length > 0) || Math.abs(dot$2(c.u, c.u) - 1) > AXIS_UNIT_SQUARED_TOLERANCE)
+                continue;
+            const end = add$2(c.a, mul$1(c.u, c.length));
+            if (!((dist(c.a, a.c) < BOND_ENDPOINT_MATCH_ANGSTROM && dist(end, b.c) < BOND_ENDPOINT_MATCH_ANGSTROM) || (dist(c.a, b.c) < BOND_ENDPOINT_MATCH_ANGSTROM && dist(end, a.c) < BOND_ENDPOINT_MATCH_ANGSTROM)))
+                continue;
+            const axis = norm(c.u), relative = sub(contact, c.a), t = dot$2(relative, axis);
+            // Deliberately generous world-coordinate error envelope, not a relaxed
+            // topology tolerance. Increasing it makes this proof harder to satisfy.
+            const margin = HIDDEN_TANGENT_ENVELOPE_FACTOR * (1 + a.r + b.r + c.length + Math.hypot(...a.c) + Math.hypot(...b.c));
+            const radius = Math.sqrt(2 * a.r * SPHERE_TANGENCY_BAND_ANGSTROM) + margin;
+            const radial = Math.hypot(...sub(relative, mul$1(axis, t)));
+            if (t > radius && c.length - t > radius && radial + radius < c.r)
+                return true;
+        }
+        return false;
+    }
     for (let i = 0; i < spheres.length; i++)
         for (let j = 0; j < i; j++) {
             const a = spheres[i], b = spheres[j], d = dist(a.c, b.c), sum = a.r + b.r;
-            if (d > sum + 1e-8)
+            if (d > sum + SPHERE_TANGENCY_BAND_ANGSTROM)
                 continue;
-            // Keep uncertain tangencies and nested/coincident surfaces conservative.
-            if (d >= sum - 1e-8 || d <= Math.abs(a.r - b.r) + 1e-8)
+            if (d <= Math.abs(a.r - b.r) + SPHERE_NESTING_MARGIN_ANGSTROM)
                 return null;
+            if (d >= sum - SPHERE_TANGENCY_BAND_ANGSTROM) {
+                if (hiddenTangent(a, b, d))
+                    continue;
+                return null;
+            }
             const axis = mul$1(sub(b.c, a.c), 1 / d), h = (a.r * a.r - b.r * b.r + d * d) / (2 * d);
             const radius = Math.sqrt(a.r * a.r - h * h);
-            if (!(radius > 1e-8))
+            if (!(radius > MIN_SEAM_RADIUS_ANGSTROM))
                 return null;
-            const e = norm(cross$1(axis, Math.abs(axis[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross$1(axis, e);
+            const e = norm(cross$1(axis, Math.abs(axis[2]) < BASIS_AXIS_SWITCH_COSINE ? [0, 0, 1] : [0, 1, 0])), f = cross$1(axis, e);
             sphereSeams.push({ center: add$2(a.c, mul$1(axis, h)), u: mul$1(e, radius), v: mul$1(f, radius) });
         }
     const ends = [], covered = new Set();
     for (const c of cylinders) {
-        if (Math.abs(dot$2(c.u, c.u) - 1) > 1e-10 || !(c.length > 0))
+        if (Math.abs(dot$2(c.u, c.u) - 1) > AXIS_UNIT_SQUARED_TOLERANCE || !(c.length > 0))
             return null;
         const b = add$2(c.a, mul$1(c.u, c.length));
-        const aSphere = spheres.find(s => dist(s.c, c.a) < 1e-10), bSphere = spheres.find(s => dist(s.c, b) < 1e-10);
+        const aSphere = spheres.find(s => dist(s.c, c.a) < BOND_ENDPOINT_MATCH_ANGSTROM), bSphere = spheres.find(s => dist(s.c, b) < BOND_ENDPOINT_MATCH_ANGSTROM);
         if (!aSphere || !bSphere || aSphere === bSphere || c.r >= Math.min(aSphere.r, bSphere.r))
             return null;
         // Legacy ray tolerances become ill-conditioned close to camera-parallel.
         // This guard also precedes covered-carrier omission: mathematical solid
         // containment does not bound the legacy solver's expanded near-axis hits.
         const axial = 1 - c.u[2] * c.u[2];
-        if (axial > 1e-12 && axial < 1e-7)
+        if (axial > CAMERA_AXIAL_LOWER_SQUARED && axial < CAMERA_AXIAL_UPPER_SQUARED)
             return null;
         ends.push([aSphere, bSphere]);
         // Every cross-sectional disk is contained in at least one endpoint ball.
         // A strict margin covers endpoint matching/roundoff; retain physical rods
         // in scene (and all raw owner IDs), omit only their invisible carriers.
-        if (Math.sqrt(aSphere.r * aSphere.r - c.r * c.r) + Math.sqrt(bSphere.r * bSphere.r - c.r * c.r) > c.length + 1e-8) {
+        if (Math.sqrt(aSphere.r * aSphere.r - c.r * c.r) + Math.sqrt(bSphere.r * bSphere.r - c.r * c.r) > c.length + COVERED_ROD_MARGIN_ANGSTROM) {
             covered.add(c);
             continue;
         }
@@ -1309,7 +1426,7 @@ function build(scene, depthAt, project, scale) {
             if (s === aSphere || s === bSphere)
                 continue;
             const t = Math.max(0, Math.min(c.length, dot$2(sub(s.c, c.a), c.u)));
-            if (dist(s.c, add$2(c.a, mul$1(c.u, t))) <= s.r + c.r + 1e-8)
+            if (dist(s.c, add$2(c.a, mul$1(c.u, t))) <= s.r + c.r + INCIDENTAL_CONTACT_MARGIN_ANGSTROM)
                 return null;
         }
     }
@@ -1318,22 +1435,27 @@ function build(scene, depthAt, project, scale) {
     function circle(c, u, v, source = null) {
         const C = project(c), U = vector(u), V = vector(v), radius = Math.max(Math.hypot(...u), Math.hypot(...v)) * scale;
         const det = cross2(U, V);
-        if (Math.abs(det) < 1e-10) {
+        if (Math.abs(det) < ELLIPSE_LINE_DETERMINANT_SVG2) {
             const axis = norm(Math.hypot(...U) > Math.hypot(...V) ? U : V), half = Math.hypot(dot$2(U, axis), dot$2(V, axis));
             line2(sub(C, mul$1(axis, half)), add$2(C, mul$1(axis, half)));
             return;
         }
-        if (Math.abs(det) / radius < .0001)
+        if (Math.abs(det) / radius < MIN_ELLIPSE_THICKNESS_SVG)
             throw new Error('ill-conditioned ellipse');
-        curves.push({ C, U, V, det, source, world: t => add$2(c, add$2(mul$1(u, Math.cos(t)), mul$1(v, Math.sin(t)))),
-            at: t => add$2(C, add$2(mul$1(U, Math.cos(t)), mul$1(V, Math.sin(t)))),
-            tangent: t => add$2(mul$1(U, -Math.sin(t)), mul$1(V, Math.cos(t))),
+        const extentX = Math.hypot(U[0], V[0]), extentY = Math.hypot(U[1], V[1]);
+        const world = (c.length === 3 && u.length === 3 && v.length === 3) ? (t) => {
+            const cos = Math.cos(t), sin = Math.sin(t);
+            return [c[0] + (u[0] * cos + v[0] * sin), c[1] + (u[1] * cos + v[1] * sin), c[2] + (u[2] * cos + v[2] * sin)];
+        } : (t) => add$2(c, add$2(mul$1(u, Math.cos(t)), mul$1(v, Math.sin(t))));
+        curves.push({ C, U, V, det, source, world,
+            at: t => { const cos = Math.cos(t), sin = Math.sin(t); return C.length === 2 ? [C[0] + (U[0] * cos + V[0] * sin), C[1] + (U[1] * cos + V[1] * sin)] : add$2(C, add$2(mul$1(U, cos), mul$1(V, sin))); },
+            tangent: t => { const sin = -Math.sin(t), cos = Math.cos(t); return U.length === 2 ? [U[0] * sin + V[0] * cos, U[1] * sin + V[1] * cos] : add$2(mul$1(U, sin), mul$1(V, cos)); },
             cuts: [0, Math.PI / 2, Math.PI, Math.PI * 1.5, TAU$2], end: TAU$2, radius,
-            box: [C[0] - Math.hypot(U[0], V[0]), C[1] - Math.hypot(U[1], V[1]), C[0] + Math.hypot(U[0], V[0]), C[1] + Math.hypot(U[1], V[1])] });
+            box: [C[0] - extentX, C[1] - extentY, C[0] + extentX, C[1] + extentY] });
     }
     function line2(A, B) {
         const D = sub(B, A);
-        if (Math.hypot(...D) < 1e-8)
+        if (Math.hypot(...D) < MIN_LINE_LENGTH_SVG)
             return;
         curves.push({ line: true, A, D, at: t => add$2(A, mul$1(D, t)), tangent: () => D, cuts: [0, 1], end: 1,
             box: [Math.min(A[0], B[0]), Math.min(A[1], B[1]), Math.max(A[0], B[0]), Math.max(A[1], B[1])] });
@@ -1348,7 +1470,7 @@ function build(scene, depthAt, project, scale) {
         cylinders.forEach((c, i) => {
             if (covered.has(c))
                 return;
-            const u = c.u, e = norm(cross$1(u, Math.abs(u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross$1(u, e);
+            const u = c.u, e = norm(cross$1(u, Math.abs(u[2]) < BASIS_AXIS_SWITCH_COSINE ? [0, 0, 1] : [0, 1, 0])), f = cross$1(u, e);
             for (let end = 0; end < 2; end++) {
                 const s = ends[i][end], h = Math.sqrt(s.r * s.r - c.r * c.r);
                 const before = curves.length, offset = end ? -h : h;
@@ -1356,7 +1478,7 @@ function build(scene, depthAt, project, scale) {
                 if (curves.length > before)
                     curves.at(-1).contact = { sphere: s, cylinder: c, axis: u, offset };
             }
-            if (Math.hypot(u[0], u[1]) > 1e-10) {
+            if (Math.hypot(u[0], u[1]) > GENERATOR_MIN_TRANSVERSE_DIRECTION) {
                 const edge = mul$1(norm([-u[1], u[0], 0]), c.r);
                 for (const sign of [-1, 1]) {
                     const a = add$2(c.a, mul$1(edge, sign));
@@ -1418,6 +1540,51 @@ function build(scene, depthAt, project, scale) {
     catch (_) {
         return null;
     }
+    const curveIds = curves.map((_, i) => i);
+    function clearanceIndex(ids) {
+        const box = [Infinity, Infinity, -Infinity, -Infinity];
+        for (const id of ids) {
+            const b = curves[id].box;
+            box[0] = Math.min(box[0], b[0]);
+            box[1] = Math.min(box[1], b[1]);
+            box[2] = Math.max(box[2], b[2]);
+            box[3] = Math.max(box[3], b[3]);
+        }
+        if (ids.length <= CLEARANCE_INDEX_LEAF_CAPACITY)
+            return { box, ids };
+        const axis = box[2] - box[0] >= box[3] - box[1] ? 0 : 1;
+        ids.sort((a, b) => curves[a].box[axis] - curves[b].box[axis]);
+        const half = ids.length >>> 1;
+        return { box, left: clearanceIndex(ids.slice(0, half)), right: clearanceIndex(ids.slice(half)) };
+    }
+    const clearanceRoot = curves.length > CLEARANCE_INDEX_MIN_CURVES && curves.every(c => c.box.every(Number.isFinite)) ? clearanceIndex(curveIds.slice()) : null;
+    function clearanceCandidates(p, epsilon) {
+        if (!clearanceRoot || !(epsilon >= 0) || !Number.isFinite(epsilon) || !Number.isFinite(p[0]) || !Number.isFinite(p[1]))
+            return curveIds;
+        const ids = [];
+        function visit(node) {
+            const box = node.box;
+            // Do not rewrite as p +/- epsilon: reassociation changes rounding at
+            // exact boundaries. Enlarging boxes is conservative for this predicate.
+            if (p[0] < box[0] - epsilon || p[0] > box[2] + epsilon || p[1] < box[1] - epsilon || p[1] > box[3] + epsilon)
+                return;
+            if (node.ids) {
+                for (const id of node.ids) {
+                    const b = curves[id].box;
+                    if (p[0] < b[0] - epsilon || p[0] > b[2] + epsilon || p[1] < b[1] - epsilon || p[1] > b[3] + epsilon)
+                        continue;
+                    ids.push(id);
+                }
+            }
+            else {
+                visit(node.left);
+                visit(node.right);
+            }
+        }
+        visit(clearanceRoot);
+        // Epsilon shrinks in original curve order, including ties and degeneracy.
+        return ids.sort((a, b) => a - b);
+    }
     function owner(p) {
         const x = (p[0] - origin[0]) / scale, y = (origin[1] - p[1]) / scale;
         let z = -Infinity, best = -1;
@@ -1433,7 +1600,7 @@ function build(scene, depthAt, project, scale) {
             else {
                 const axis2 = shape.u[0] ** 2 + shape.u[1] ** 2;
                 const perpendicular = (x - shape.a[0]) * shape.u[1] - (y - shape.a[1]) * shape.u[0];
-                if (axis2 > 1e-12 && perpendicular * perpendicular > shape.r * shape.r * axis2)
+                if (axis2 > OWNER_MIN_TRANSVERSE_SQUARED && perpendicular * perpendicular > shape.r * shape.r * axis2)
                     continue;
             }
             const d = depthAt(shape, x, y);
@@ -1445,36 +1612,50 @@ function build(scene, depthAt, project, scale) {
         return best;
     }
     // Canonical shared vertices; intersections can arrive via several curves.
-    const nodes = [], buckets = new Map(), snap = .00002;
+    const nodes = [], buckets = new Map(), snap = VERTEX_SNAP_SVG;
     function node(p) {
         const x = Math.round(p[0] / snap), y = Math.round(p[1] / snap);
-        for (let dx = -1; dx <= 1; dx++)
+        // Numeric columns avoid nine composite string keys per endpoint. Keep
+        // the original dx/dy search order and exact distance/snap predicate.
+        for (let dx = -1; dx <= 1; dx++) {
+            const column = buckets.get(x + dx);
+            if (!column)
+                continue;
             for (let dy = -1; dy <= 1; dy++) {
-                const candidates = buckets.get((x + dx) + ',' + (y + dy)) || [];
+                const candidates = column.get(y + dy);
+                if (!candidates)
+                    continue;
                 for (const id of candidates)
                     if (dist(nodes[id], p) < snap)
                         return id;
             }
+        }
         const id = nodes.length;
         nodes.push(p);
-        const key = x + ',' + y;
-        if (!buckets.has(key))
-            buckets.set(key, []);
-        buckets.get(key).push(id);
+        let column = buckets.get(x);
+        if (!column) {
+            column = new Map();
+            buckets.set(x, column);
+        }
+        const bucket = column.get(y);
+        if (bucket)
+            bucket.push(id);
+        else
+            column.set(y, [id]);
         return id;
     }
     const segments = [], outlines = new Map();
     for (const c of curves) {
         c.cuts.sort((a, b) => a - b);
-        c.cuts = c.cuts.filter((t, i, a) => !i || t - a[i - 1] > 1e-9);
+        c.cuts = c.cuts.filter((t, i, a) => !i || t - a[i - 1] > ARRANGEMENT_CUT_PARAMETER_GAP);
         const silhouettes = c.members.filter(m => m.source);
         for (const raw of silhouettes)
             outlines.set(raw.source, []);
         for (let i = 1; i < c.cuts.length; i++) {
             const a = c.cuts[i - 1], b = c.cuts[i], m = (a + b) / 2, p = c.at(m), t = c.tangent(m), length = Math.hypot(...t);
-            if (length < 1e-10)
+            if (length < MIN_TANGENT_SVG_PER_PARAMETER)
                 continue;
-            const start = node(c.at(a)), end = node(c.at(b));
+            const pa = c.at(a), pb = c.at(b), start = node(pa), end = node(pb);
             // Events already identified as the same shared vertex have no edge.
             // Do this before probing a vanishing parameter interval.
             if (start === end)
@@ -1484,16 +1665,18 @@ function build(scene, depthAt, project, scale) {
             // incorrectly exposed. Bound the probe by clearance to EVERY other
             // analytic curve. sigma_min * |norm(B^-1(p-C))-1| is a conservative
             // distance bound to an ellipse; lines use distance to the finite segment.
-            let epsilon = Math.min(.0005, dist(c.at(a), c.at(b)) * .01);
+            let epsilon = Math.min(SIDE_PROBE_CAP_SVG, dist(pa, pb) * SIDE_PROBE_ENDPOINT_CHORD_FRACTION);
             // Include the opposite half of THIS ellipse. Near a major-axis tip,
             // the normal chord can be far smaller than even its minor axis.
             if (!c.line) {
                 const normal = [-t[1] / length, t[0] / length];
                 const nx = cross2(normal, c.V) / c.det, ny = cross2(c.U, normal) / c.det;
                 const chord = 2 * Math.abs(Math.cos(m) * nx + Math.sin(m) * ny) / (nx * nx + ny * ny);
-                epsilon = Math.min(epsilon, Math.abs(c.det) / c.radius * .05, chord * .2);
+                epsilon = Math.min(epsilon, Math.abs(c.det) / c.radius * SIDE_PROBE_THICKNESS_FRACTION, chord * SIDE_PROBE_NORMAL_CHORD_FRACTION);
             }
-            for (const other of curves) {
+            let candidates = clearanceCandidates(p, epsilon);
+            for (let probe = 0; probe < candidates.length; probe++) {
+                const otherId = candidates[probe], other = curves[otherId];
                 if (other === c)
                     continue;
                 const box = other.box;
@@ -1508,7 +1691,14 @@ function build(scene, depthAt, project, scale) {
                     const q = sub(p, other.C), x = cross2(q, other.V) / other.det, y = cross2(other.U, q) / other.det;
                     clearance = Math.abs(Math.hypot(x, y) - 1) * Math.abs(other.det) / other.radius;
                 }
-                epsilon = Math.min(epsilon, clearance * .2);
+                epsilon = Math.min(epsilon, clearance * SIDE_PROBE_CLEARANCE_FRACTION);
+                // An invalid clearance can make epsilon NaN; its comparisons then
+                // admit every later curve. Resume the original linear suffix rather
+                // than assume that a non-finite epsilon still only shrinks the query.
+                if (candidates !== curveIds && (!(epsilon >= 0) || !Number.isFinite(epsilon))) {
+                    candidates = curveIds;
+                    probe = otherId;
+                }
             }
             const n = mul$1([-t[1], t[0]], epsilon / length), plus = add$2(p, n), minus = sub(p, n);
             // Never accept a zero/rounded-away side probe as evidence that an edge
@@ -1524,8 +1714,8 @@ function build(scene, depthAt, project, scale) {
                 // on a shared projected circle. Do not use owner(p)'s strict outside
                 // test ON the limb: roundoff can put p just outside both circles and
                 // thereby incorrectly expose the entire rear silhouette.
-                if (!scene.some(s => s !== raw.source && depthAt(s, w[0], w[1]) > w[2] + .00015)) {
-                    if (visible.length && Math.abs(visible.at(-1).b - a) < 1e-9)
+                if (!scene.some(s => s !== raw.source && depthAt(s, w[0], w[1]) > w[2] + OUTLINE_OCCLUSION_BAND_ANGSTROM)) {
+                    if (visible.length && Math.abs(visible.at(-1).b - a) < OUTLINE_JOIN_PARAMETER_GAP)
                         visible.at(-1).b = b;
                     else
                         visible.push({ c, a, b, start: segment.start, end: segment.end });
@@ -1538,18 +1728,19 @@ function build(scene, depthAt, project, scale) {
         const c = s.c, a = reverse ? s.b : s.a, b = reverse ? s.a : s.b;
         if (c.line)
             return 'L' + fmt$3(nodes[reverse ? s.start : s.end]);
-        const maxAngle = preview ? Math.min(.2, Math.sqrt(.024 / c.radius)) :
-            Math.min(Math.PI / 4, Math.PI / 4 * Math.pow(.001 / (c.radius * 4.3e-6), 1 / 6));
+        const maxAngle = preview ? Math.min(PREVIEW_MAX_ANGLE_RADIANS, Math.sqrt(PREVIEW_ANGLE_RADIUS_FACTOR_SVG / c.radius)) :
+            Math.min(Math.PI / 4, Math.PI / 4 * Math.pow(CUBIC_TARGET_ERROR_SVG / (c.radius * CUBIC_ERROR_COEFFICIENT), 1 / CUBIC_ERROR_POWER));
         const count = Math.max(1, Math.ceil(Math.abs(b - a) / maxAngle));
         let text = '';
         for (let i = 1; i <= count; i++) {
             const t0 = a + (b - a) * (i - 1) / count, t1 = a + (b - a) * i / count;
-            const end = i === count ? nodes[reverse ? s.start : s.end] : c.at(t1);
+            const analyticEnd = !preview || i !== count ? c.at(t1) : null;
+            const end = i === count ? nodes[reverse ? s.start : s.end] : analyticEnd;
             if (preview)
                 text += 'L' + fmt$3(end);
             else {
                 const k = 4 / 3 * Math.tan((t1 - t0) / 4);
-                text += 'C' + fmt$3(add$2(c.at(t0), mul$1(c.tangent(t0), k))) + ' ' + fmt$3(sub(c.at(t1), mul$1(c.tangent(t1), k))) + ' ' + fmt$3(end);
+                text += 'C' + fmt$3(add$2(c.at(t0), mul$1(c.tangent(t0), k))) + ' ' + fmt$3(sub(analyticEnd, mul$1(c.tangent(t1), k))) + ' ' + fmt$3(end);
             }
         }
         return text;
@@ -1659,7 +1850,7 @@ function build(scene, depthAt, project, scale) {
     function outline(s, preview, width) {
         if (!width)
             return '';
-        return (outlines.get(s) || []).map(segment => '<path stroke-width="' + width.toFixed(3) + '" d="M' + fmt$3(nodes[segment.start]) + commands(segment, preview) + '"/>').join('');
+        return (outlines.get(s) || []).map(segment => '<path stroke-width="' + width.toFixed(STROKE_WIDTH_DECIMALS) + '" d="M' + fmt$3(nodes[segment.start]) + commands(segment, preview) + '"/>').join('');
     }
     // Index geometry by SURFACE identity, not color: white atoms and equal-hue
     // neighbors still have their own visible hatch regions. Build only on use.
@@ -1678,16 +1869,16 @@ function build(scene, depthAt, project, scale) {
     }
     function intervals(path, cuts, source, front = () => true) {
         cuts.sort((a, b) => a - b);
-        cuts = cuts.filter((t, i, a) => !i || t - a[i - 1] > 1e-10);
+        cuts = cuts.filter((t, i, a) => !i || t - a[i - 1] > CLIP_CUT_PARAMETER_GAP);
         const result = [];
         for (let i = 1; i < cuts.length; i++) {
             const a = cuts[i - 1], b = cuts[i], m = (a + b) / 2, p = path.world(m);
             // Physical occlusion, not the legacy .00015 expanded visibility band.
             // Only classify open intervals; boundary endpoints belong to that run.
-            if (!front(m) || scene.some(s => s !== source && depthAt(s, p[0], p[1]) > p[2] + 1e-9))
+            if (!front(m) || scene.some(s => s !== source && depthAt(s, p[0], p[1]) > p[2] + CLIP_OCCLUSION_DEPTH_ANGSTROM))
                 continue;
             const lo = a / path.end, hi = b / path.end;
-            if (result.length && Math.abs(result.at(-1)[1] - lo) < 1e-10)
+            if (result.length && Math.abs(result.at(-1)[1] - lo) < CLIP_JOIN_NORMALIZED_GAP)
                 result.at(-1)[1] = hi;
             else
                 result.push([lo, hi]);
@@ -1730,8 +1921,8 @@ function build(scene, depthAt, project, scale) {
                             // is just constant + A*cos(t) + B*sin(t) = 0.
                             const k = dot$2(sub(center, source.c), contact.axis) - contact.offset;
                             const A = dot$2(u, contact.axis), B = dot$2(v, contact.axis), r = Math.hypot(A, B);
-                            if (r < 1e-14) {
-                                if (Math.abs(k) < 1e-12)
+                            if (r < CONTACT_CIRCLE_MIN_AMPLITUDE_ANGSTROM) {
+                                if (Math.abs(k) < CONTACT_PLANE_OFFSET_ANGSTROM)
                                     return null;
                                 continue;
                             }
@@ -1774,7 +1965,7 @@ function build(scene, depthAt, project, scale) {
                 if (boundary.contacts.length && boundary.contacts.length === boundary.members.length && boundary.contacts.every(c => c.cylinder === source)) {
                     for (const contact of boundary.contacts) {
                         const denominator = dot$2(direction, contact.axis);
-                        if (Math.abs(denominator) > 1e-14) {
+                        if (Math.abs(denominator) > CONTACT_LINE_MIN_DENOMINATOR_ANGSTROM) {
                             const t = (contact.offset - dot$2(sub(a, contact.sphere.c), contact.axis)) / denominator;
                             if (t >= 0 && t <= 1)
                                 cuts.push(t);
@@ -1795,15 +1986,15 @@ function build(scene, depthAt, project, scale) {
                         return null;
                     for (const t of rr) {
                         const axial = wu + t * du;
-                        if (axial >= -1e-9 && axial <= other.length + 1e-9)
+                        if (axial >= -ROD_SIDE_AXIAL_PADDING_ANGSTROM && axial <= other.length + ROD_SIDE_AXIAL_PADDING_ANGSTROM)
                             cuts.push(t);
                     }
-                    if (Math.abs(du) > 1e-14)
+                    if (Math.abs(du) > ROD_CAP_MIN_AXIAL_DIRECTION_ANGSTROM)
                         for (const end of [0, other.length]) {
                             const t = (end - wu) / du;
                             if (t >= 0 && t <= 1) {
                                 const q = add$2(w, mul$1(direction, t));
-                                if (dot$2(q, q) - end * end <= other.r * other.r + 1e-10)
+                                if (dot$2(q, q) - end * end <= other.r * other.r + ROD_CAP_RADIAL_PADDING_ANGSTROM2)
                                     cuts.push(t);
                             }
                         }
@@ -1836,12 +2027,12 @@ function build(scene, depthAt, project, scale) {
         const pointSegment = (p, a, b) => { const d = sub(b, a), length2 = dot$2(d, d), t = length2 ? Math.max(0, Math.min(1, dot$2(sub(p, a), d) / length2)) : 0; return dist(p, add$2(a, mul$1(d, t))); };
         for (let i = 0; i < exposed.length; i++)
             for (let j = 0; j < i; j++) {
-                const x = exposed[i], y = exposed[j], r = x.r + y.r + 1e-8;
+                const x = exposed[i], y = exposed[j], r = x.r + y.r + OWNERSHIP_CAPSULE_MARGIN_ANGSTROM;
                 if ([0, 1, 2].some(k => Math.min(x.a[k], x.b[k]) - Math.max(y.a[k], y.b[k]) > r || Math.min(y.a[k], y.b[k]) - Math.max(x.a[k], x.b[k]) > r))
                     continue;
                 const u = sub(x.b, x.a), v = sub(y.b, y.a), w = sub(x.a, y.a), a = dot$2(u, u), b = dot$2(u, v), c = dot$2(v, v), d = dot$2(u, w), e = dot$2(v, w), det = a * c - b * b;
                 // Nearly parallel axes: do not turn cancellation into a false proof.
-                if (det <= 1e-12 * a * c)
+                if (det <= OWNERSHIP_PARALLEL_RELATIVE_DETERMINANT * a * c)
                     return false;
                 let distance = Math.min(pointSegment(x.a, y.a, y.b), pointSegment(x.b, y.a, y.b), pointSegment(y.a, x.a, x.b), pointSegment(y.b, x.a, x.b));
                 const s = (b * e - c * d) / det, t = (a * e - b * d) / det;
@@ -2425,7 +2616,9 @@ const Wash = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
     fitContour
 }, Symbol.toStringTag, { value: 'Module' }));
 
-const LEVELS = 16;
+/** Shared visual quantization policy, not a geometric accuracy tolerance. */
+const TONE_LEVELS = 16;
+
 const fmt$2 = (n) => String(Number(n.toFixed(4)));
 /** Disk radius / lattice pitch for a desired UNION area (not summed disk area). */
 function halftoneRadiusRatio(coverage) {
@@ -2536,10 +2729,10 @@ function contour(values, nx, ny, x0, y0, step, threshold, refine) {
     }
     return paths.join('');
 }
-/** Local numerical fallback for point lights or a BINARY shadow boundary.
+/** Local numerical sampling for custom scalar fields or a BINARY shadow boundary.
  * It never allocates a full-frame ownership/lighting raster. Optional bisection
  * refines hard shadow edges independently of the coarse discovery grid. */
-function sampledTonePaths(bounds, sample, step, thresholds = Array.from({ length: LEVELS }, (_, i) => (i + .5) / LEVELS), refine = false) {
+function sampledTonePaths(bounds, sample, step, thresholds = Array.from({ length: TONE_LEVELS }, (_, i) => (i + .5) / TONE_LEVELS), refine = false) {
     const [left, top, right, bottom] = bounds;
     if (!(right > left && bottom > top))
         return thresholds.map(() => '');
@@ -2604,7 +2797,7 @@ function buildSurfacePatterns(o, emitSurface) {
     const prefix = 'mp-screen-' + (hash1 >>> 0).toString(16) + (hash2 >>> 0).toString(16);
     const defs = [`<clipPath id="${prefix}-surface" clipPathUnits="userSpaceOnUse">${o.silhouette}</clipPath>`];
     for (const level of [...used].sort((a, b) => a - b)) {
-        const ink = level / LEVELS, r = o.pitch * halftoneRadiusRatio(ink), dots = [], wrap = r > o.pitch / 2 ? 1 : 0;
+        const ink = level / TONE_LEVELS, r = o.pitch * halftoneRadiusRatio(ink), dots = [], wrap = r > o.pitch / 2 ? 1 : 0;
         for (let y = -wrap; y <= wrap; y++)
             for (let x = -wrap; x <= wrap; x++)
                 dots.push(`<circle cx="${fmt$2((x + .5) * o.pitch)}" cy="${fmt$2((y + .5) * o.pitch)}" r="${fmt$2(r)}"/>`);
@@ -2635,12 +2828,12 @@ function buildSurfacePatterns(o, emitSurface) {
             if (layer.sourceId === undefined || !Number.isSafeInteger(layer.sourceId) || layer.sourceId < 0)
                 throw new Error('Per-surface patterns require a primitive sourceId');
             const body = paint(layer, String(i));
-            emitSurface(layer.sourceId, `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${LEVELS}" stroke="none"><g clip-path="url(#${prefix}-surface)">${body}</g></g>`);
+            emitSurface(layer.sourceId, `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${TONE_LEVELS}" stroke="none"><g clip-path="url(#${prefix}-surface)">${body}</g></g>`);
         }
         return `<defs>${defs.join('')}</defs>`;
     }
     const body = o.layers.map((layer, i) => paint(layer, String(i))).join('');
-    return `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${LEVELS}" stroke="none"><defs>${defs.join('')}</defs><g clip-path="url(#${prefix}-surface)">${body}</g></g>`;
+    return `<g data-role="dots" data-mode="halftone" data-renderer="pattern" data-tone-method="${o.method}" data-tone-levels="${TONE_LEVELS}" stroke="none"><defs>${defs.join('')}</defs><g clip-path="url(#${prefix}-surface)">${body}</g></g>`;
 }
 
 const TAU$1 = 2 * Math.PI;
@@ -2782,6 +2975,9 @@ function hash$1(x, y, salt) {
 }
 function buildDots(scene, depthAt, project, scale, illumination, options, regions = null, referenceCoverage, surfaces) {
     const o = { shadingMode: 'stipple', dotSpacing: 2.5, dotSize: .5, dotContrast: 1.2, ...options };
+    if (o.quantizeShading !== undefined && typeof o.quantizeShading !== 'boolean')
+        throw new Error('Invalid quantizeShading');
+    const continuousHalftone = o.shadingMode === 'halftone' && o.quantizeShading === false;
     if (!['stipple', 'halftone'].includes(o.shadingMode))
         throw new Error('Invalid dot mode');
     if (!Number.isFinite(o.dotSpacing) || o.dotSpacing < .3 || o.dotSpacing > 19 || !Number.isFinite(o.dotSize) || o.dotSize < 0 || o.dotSize > 4 || !Number.isFinite(o.dotContrast) || o.dotContrast < .5 || o.dotContrast > 2.5)
@@ -2803,7 +2999,7 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
     const maxX = Math.max(...shapes.map(s => s.b[2])), maxY = Math.max(...shapes.map(s => s.b[3]));
     function hit(x, y, queryRadius = maxRadius * 1.03) {
         const wx = (x - origin[0]) / scale, wy = (origin[1] - y) / scale;
-        if (regions && o.shadingMode !== 'halftone') {
+        if (regions && (o.shadingMode !== 'halftone' || continuousHalftone)) {
             // Visibility/occlusion is already solved. The one surface intersection
             // below only reconstructs this known owner's position for its normal.
             const region = regions.query(x, y, queryRadius);
@@ -2837,7 +3033,11 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
         const radial = q.map((v, i) => v - t * s.u[i]), length = Math.hypot(...radial);
         return length ? radial.map(v => v / length) : [0, 0, 1];
     }
-    const dirs = Array.from({ length: 16 }, (_, i) => [Math.cos(i * Math.PI / 8), Math.sin(i * Math.PI / 8)]);
+    // The numerical fallback needs angular resolution at exposed rod-cap corners:
+    // a corner can enter a disk between the old 16 rays even after radius padding.
+    // Certified regions bypass this sampling entirely; retain the existing safety
+    // contraction and tone calibration rather than shrinking every interior dot.
+    const dirs = !regions && (o.shadingMode === 'stipple' || continuousHalftone) ? Array.from({ length: 64 }, (_, i) => [Math.cos(i * Math.PI / 32), Math.sin(i * Math.PI / 32)]) : [];
     function safeRadius(x, y, r, owner) {
         // The whole sampled disk must stay on the same visible primitive, not
         // merely its center. Shrink at silhouettes and occlusion boundaries.
@@ -2906,6 +3106,63 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
         const lit = clamp(lightAt(h, normal(h)), -1, 1);
         return clamp(toneGain * smoothTone(lit), 0, 1);
     }
+    if (continuousHalftone) {
+        if (toneGain === 0)
+            return '';
+        const left = o.width === undefined ? minX : Math.max(0, minX), right = o.width === undefined ? maxX : Math.min(o.width, maxX);
+        const top = o.height === undefined ? minY : Math.max(0, minY), bottom = o.height === undefined ? maxY : Math.min(o.height, maxY);
+        if (!(right > left && bottom > top))
+            return '';
+        const pitch = g * Math.SQRT2 / 5, halfDiagonal = g / 5;
+        // rotate(45) applied to ((i+.5)*pitch,(j+.5)*pitch) gives
+        // (a*g/5,b*g/5), with integer a+b odd. Enumerating screen rows
+        // avoids an enormous rotated scene box when a viewport is supplied.
+        const a0 = Math.ceil(left / halfDiagonal), a1 = Math.floor(right / halfDiagonal);
+        const b0 = Math.ceil(top / halfDiagonal), b1 = Math.floor(bottom / halfDiagonal);
+        const candidates = Math.ceil((a1 - a0 + 1) / 2) * (b1 - b0 + 1);
+        if (!Number.isSafeInteger(candidates) || candidates > 2000000)
+            throw new Error('Too many halftone marks; increase spacing or reduce output size');
+        const circles = [], owners = new Map();
+        const emitSurface = surfaces?.emitSurface;
+        for (let b = b0; b <= b1; b++)
+            for (let a = a0 + ((a0 + b) % 2 === 0 ? 1 : 0); a <= a1; a += 2) {
+                const x = a * halfDiagonal, y = b * halfDiagonal, h = hit(x, y, halfDiagonal * 1.03);
+                if (!h)
+                    continue;
+                let radius = pitch * halftoneRadiusRatio(coverage(h));
+                if (!(radius > 0))
+                    continue;
+                const clearance = regions ? h.clearance : safeRadius(x, y, radius * 1.03, h.id);
+                radius = Math.min(radius, Math.max(0, clearance * Math.cos(Math.PI / 16) - .003 * fineScale));
+                // Keep complete serialized disks within the viewport as well as their
+                // owner. Six decimals preserve continuous tone, not a 16-radius palette.
+                if (o.width !== undefined)
+                    radius = Math.min(radius, x, o.width - x);
+                if (o.height !== undefined)
+                    radius = Math.min(radius, y, o.height - y);
+                radius = Math.floor(Math.max(0, radius - .000001) * 1000000) / 1000000;
+                if (!(radius > 0))
+                    continue;
+                const circle = `<circle cx="${x.toFixed(6)}" cy="${y.toFixed(6)}" r="${radius.toFixed(6)}"/>`;
+                if (emitSurface) {
+                    let target = owners.get(h.id);
+                    if (!target) {
+                        target = [];
+                        owners.set(h.id, target);
+                    }
+                    target.push(circle);
+                }
+                else
+                    circles.push(circle);
+            }
+        const wrap = (marks) => `<g data-role="dots" data-mode="halftone" data-renderer="continuous" fill="#161616" stroke="none">${marks.join('')}</g>`;
+        if (emitSurface) {
+            for (const [id, marks] of owners)
+                emitSurface(id, wrap(marks));
+            return '';
+        }
+        return circles.length ? wrap(circles) : '';
+    }
     if (o.shadingMode === 'halftone') {
         if (toneGain === 0)
             return '';
@@ -2914,7 +3171,7 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
             o.width === undefined ? maxX : Math.min(o.width, maxX), o.height === undefined ? maxY : Math.min(o.height, maxY)
         ];
         const layers = [];
-        const thresholds = Array.from({ length: 16 }, (_, i) => (i + .5) / 16), brightness = o.shadingBrightness ?? 0;
+        const thresholds = Array.from({ length: TONE_LEVELS }, (_, i) => (i + .5) / TONE_LEVELS), brightness = o.shadingBrightness ?? 0;
         const step = o.quality === 'preview' ? 2 : 1;
         for (const { s, id, b } of shapes) {
             if (surfaces?.paths && !surfaces.paths[id])
@@ -2969,8 +3226,8 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
                 layers.push(layer);
             }
             else {
-                // Point-light attenuation, unsupported visibility arrangements, and
-                // custom low-level light callbacks stay local to each primitive.
+                // Unsupported visibility arrangements and custom low-level light
+                // callbacks stay local to each primitive.
                 layers.push({ sourceId: id, clip: visiblePath, bounds: box, tones: sampledTonePaths(box, (x, y) => { const h = onSurface(x, y); return h ? coverage(h) : null; }, step) });
             }
         }
@@ -3079,6 +3336,26 @@ function getBoundaries() { return Boundaries; }
 function getWash() { return Wash; }
 function getDots() { return Dots; }
 
+// Exact legacy round-to-three-decimals serialization in the normal SVG range.
+// Integer conversion avoids repeatedly formatting a fractional binary double.
+// This table is module-private and independent of scenes, callbacks and options.
+const tails = [''];
+for (let i = 1; i < 1000; i++)
+    tails[i] = '.' + (i % 100 === 0 ? String(i / 100) : i % 10 === 0 ? ('0' + i / 10).slice(-2) : ('00' + i).slice(-3));
+function rounded3(value) {
+    const n = Math.round(value * 1000);
+    // Below one million SVG units, every integer thousandth has exactly the same
+    // shortest decimal spelling as n/1000. Keep native formatting for extremes,
+    // non-finite values, exponential notation and coarser floating-point spacing.
+    if (!(n > -1e9 && n < 1e9))
+        return String(n / 1000);
+    if (n < 0) {
+        const a = -n;
+        return '-' + Math.floor(a / 1000) + tails[a % 1000];
+    }
+    return Math.floor(n / 1000) + tails[n % 1000];
+}
+
 const TAU = 2 * Math.PI;
 const fmt = (p) => p.slice(0, 2).map(v => String(Number(v.toFixed(4)))).join(' ');
 /** Intervals in normalized circle parameter where k+a*cos+b*sin < limit. */
@@ -3145,9 +3422,17 @@ function complementSpans(spans) {
 function projectedCircle(project, center, u, v) {
     const c = project(center), pu = project(center.map((x, i) => x + u[i])), pv = project(center.map((x, i) => x + v[i]));
     const U = pu.map((x, i) => x - c[i]), V = pv.map((x, i) => x - c[i]);
-    const point = (t) => { const a = t * TAU; return c.map((x, i) => x + U[i] * Math.cos(a) + V[i] * Math.sin(a)); };
-    const tangent = (t) => { const a = t * TAU; return U.map((x, i) => TAU * (-x * Math.sin(a) + V[i] * Math.cos(a))); };
-    return { point, tangent, clip: region => region.clipEllipse(c, U, V), path: (a, b) => {
+    // Share trig with the world-space sample without replacing this projected
+    // expression by project(p): the latter changes floating-point grouping.
+    const pointFromTrig = (cos, sin) => c.length === 2 ?
+        [c[0] + U[0] * cos + V[0] * sin, c[1] + U[1] * cos + V[1] * sin] : c.map((x, i) => x + U[i] * cos + V[i] * sin);
+    const point = (t) => { const a = t * TAU; return pointFromTrig(Math.cos(a), Math.sin(a)); };
+    const tangent = (t) => {
+        const a = t * TAU, cos = Math.cos(a), sin = Math.sin(a);
+        return U.length === 2 ?
+            [TAU * (-U[0] * sin + V[0] * cos), TAU * (-U[1] * sin + V[1] * cos)] : U.map((x, i) => TAU * (-x * sin + V[i] * cos));
+    };
+    return { point, pointFromTrig, tangent, clip: region => region.clipEllipse(c, U, V), path: (a, b) => {
             const count = Math.max(1, Math.ceil(Math.abs(b - a) * 8)), step = (b - a) / count, k = 4 / 3 * Math.tan(step * TAU / 4) / TAU;
             let path = 'M' + fmt(point(a));
             for (let i = 0; i < count; i++) {
@@ -3173,7 +3458,7 @@ function createCurveRenderer(context) {
     const fitter = o.optimizePaths ? getWash() : null;
     if (o.optimizePaths && (!fitter || typeof fitter.fitContour !== 'function'))
         throw new Error('Load updated wash.js before renderer.js');
-    const rounded = (v) => String(Math.round(v * 1000) / 1000);
+    const rounded = rounded3;
     const coord = (p) => p.map(rounded).join(' ');
     function compactPath(points, tolerance = .015) {
         const a = points[0], b = points.at(-1), dx = b[0] - a[0], dy = b[1] - a[1], length2 = dx * dx + dy * dy;
@@ -3206,13 +3491,13 @@ function createCurveRenderer(context) {
         const flush = () => { if (run.length > 1)
             runs.push(run); run = []; };
         function evaluate(t) {
-            const { p, n } = fn(t);
+            const { p, n, xy } = fn(t);
             let lit = hints.ignoreLighting ? 0 : (hints.illumination || illumination)(n, p);
             if (engrave && o.shadingContrast !== 1.2) {
                 const darkness = (1 - Math.max(-1, Math.min(1, lit))) / 2;
                 lit = 1 - 2 * Math.pow(darkness, o.shadingContrast / 1.2);
             }
-            return { p, n, lit, xy: hints.geometry ? hints.geometry.point(t) : project(p), index: t * steps };
+            return { p, n, lit, xy: xy ?? (hints.geometry ? hints.geometry.point(t) : project(p)), index: t * steps };
         }
         function sample(t, knownVisible) {
             const value = evaluate(t);
@@ -3299,7 +3584,8 @@ function createCurveRenderer(context) {
             for (let i = 1; i < clean.length; i++)
                 distances.push(distances[i - 1] + Math.hypot(clean[i].xy[0] - clean[i - 1].xy[0], clean[i].xy[1] - clean[i - 1].xy[1]));
             const total = distances.at(-1), tipLength = Math.min(5, total * .25), left = [], right = [];
-            clean.forEach((p, i) => p.distance = distances[i]);
+            for (let i = 0; i < clean.length; i++)
+                clean[i].distance = distances[i];
             if (hints.geometry) {
                 if (hints.spans && visibleSpans !== null && !loop) {
                     // Smoothstep tips need their own samples even along a straight line.
@@ -3312,12 +3598,13 @@ function createCurveRenderer(context) {
                                 i++;
                             const span = distances[i] - distances[i - 1], f = span ? (d - distances[i - 1]) / span : 0;
                             const point = evaluate((clean[i - 1].index + (clean[i].index - clean[i - 1].index) * f) / steps);
-                            extra.push({ ...point, distance: d });
+                            point.distance = d;
+                            extra.push(point);
                         }
                     clean = clean.concat(extra).sort((a, b) => a.index - b.index).filter((p, i, a) => !i || p.index - a[i - 1].index > 1e-10 || Math.abs(p.lit - a[i - 1].lit) > 1e-8);
                 }
                 else {
-                    // Shadow/point-light discovery stays dense for correctness; simplify
+                    // Unknown visibility/lighting discovery stays dense for correctness; simplify
                     // only after topology and the original sampled width changes are known.
                     const keep = new Uint8Array(clean.length), tolerance = Math.min(.02, width * .025), stack = [];
                     keep[0] = keep[clean.length - 1] = 1;
@@ -3351,29 +3638,47 @@ function createCurveRenderer(context) {
                     clean = clean.filter((_, i) => keep[i]);
                 }
             }
+            // Fill both ribbon sides in final serialization order, then join once.
+            // This avoids both temporary coordinate arrays and a deep string rope.
+            const ribbonText = o.optimizePaths ? null : new Array(clean.length * 2);
             for (let i = 0; i < clean.length; i++) {
                 const p = clean[i].xy;
-                const prev = clean[i === 0 ? (loop ? clean.length - 2 : 0) : i - 1].xy;
-                const next = clean[i === clean.length - 1 ? (loop ? 1 : i) : i + 1].xy;
                 const tangent = hints.geometry?.tangent(clean[i].index / steps);
-                const direction = tangent && Math.hypot(tangent[0], tangent[1]) > 1e-9 ? tangent : [next[0] - prev[0], next[1] - prev[1]];
-                const dx = direction[0], dy = direction[1], length = Math.hypot(dx, dy) || 1;
+                const tangentLength = tangent ? Math.hypot(tangent[0], tangent[1]) : 0;
+                let dx, dy, length;
+                if (tangent && tangentLength > 1e-9) {
+                    dx = tangent[0];
+                    dy = tangent[1];
+                    length = tangentLength;
+                }
+                else {
+                    const prev = clean[i === 0 ? (loop ? clean.length - 2 : 0) : i - 1].xy;
+                    const next = clean[i === clean.length - 1 ? (loop ? 1 : i) : i + 1].xy;
+                    dx = next[0] - prev[0];
+                    dy = next[1] - prev[1];
+                    length = Math.hypot(dx, dy) || 1;
+                }
                 const distance = clean[i].distance;
                 const t = loop ? 1 : Math.min(1, distance / tipLength, (total - distance) / tipLength);
                 const taper = t * t * (3 - 2 * t), half = engravingWidth(width, clean[i].lit) * taper / 2;
-                left.push([p[0] - dy / length * half, p[1] + dx / length * half]);
-                right.push([p[0] + dy / length * half, p[1] - dx / length * half]);
+                const offsetX = dy / length * half, offsetY = dx / length * half;
+                if (o.optimizePaths) {
+                    left.push([p[0] - offsetX, p[1] + offsetY]);
+                    right.push([p[0] + offsetX, p[1] - offsetY]);
+                }
+                else {
+                    ribbonText[i] = (i ? 'L' : 'M') + rounded(p[0] - offsetX) + ' ' + rounded(p[1] + offsetY);
+                    ribbonText[clean.length * 2 - 1 - i] = 'L' + rounded(p[0] + offsetX) + ' ' + rounded(p[1] - offsetY);
+                }
             }
-            right.reverse();
             let d;
             if (o.optimizePaths) {
+                right.reverse();
                 const tolerance = Math.min(.015, width * .025);
                 d = compactPath(left, tolerance) + compactPath(right, tolerance).replace(/^M/, 'L') + 'Z';
             }
-            else {
-                const outline = left.concat(right);
-                d = outline.map((p, i) => (i ? 'L' : 'M') + rounded(p[0]) + ' ' + rounded(p[1])).join('') + 'Z';
-            }
+            else
+                d = ribbonText.join('') + 'Z';
             paths.push(`<path fill="#161616" stroke="none" d="${d}"/>`);
         }
     };
@@ -3398,8 +3703,7 @@ function createSurfaceAtlas(prepared, regions, o) {
             return empty;
         }
         const b = face.bounds, bounds = [Math.max(-8, b[0]), Math.max(-8, b[1]), Math.min(o.width + 8, b[2]), Math.min(o.height + 8, b[3])];
-        const physical = prepared.lightingFor(s);
-        const directional = o.lightType === 'directional' ? prepared.directionalShadows() : null, id = ids.get(s);
+        const directional = prepared.directionalShadows(), id = ids.get(s);
         const sample = (x, y) => {
             stats.shadowSamples++;
             const wx = (x - origin[0]) / scale, wy = (origin[1] - y) / scale, z = depthAt(s, wx, wy);
@@ -3420,7 +3724,7 @@ function createSurfaceAtlas(prepared, regions, o) {
                     n = length ? r.map(v => v / length) : [0, 0, 1];
                 }
             }
-            return directional ? (directional.shadowed(id, n, p) ? 1 : 0) : (physical(n, p) < unshadowedIllumination(n, p) ? 1 : 0);
+            return directional.shadowed(id, n, p) ? 1 : 0;
         };
         const path = sampledTonePaths(bounds, sample, o.quality === 'preview' ? 2 : 1, [.5], true)[0];
         const result = regionFromPath(path);
@@ -3697,8 +4001,10 @@ function renderFastPainter(molecule, o) {
     const threshold = (limit) => 1 - 2 * Math.pow((1 - limit) / 2, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
     const fillFor = (element) => o.colorWash ? elementColor(element, o.washStrength, o.colorSaturation, o.colorScheme) : '#ffffff';
     // Geometry, styles AND title enter the namespace, including texture-only edits.
+    // The layered hatch selector is precise-only; it must not perturb fast IDs.
+    const { hatchMode: _preciseHatchMode, quantizeShading: _sharedSwitch, ...fastOptions } = o;
     let hash1 = 2166136261, hash2 = 5381;
-    for (const ch of JSON.stringify([molecule, o])) {
+    for (const ch of JSON.stringify([molecule, fastOptions])) {
         const n = ch.charCodeAt(0);
         hash1 = Math.imul(hash1 ^ n, 16777619);
         hash2 = Math.imul(hash2, 33) ^ n;
@@ -3888,17 +4194,246 @@ function renderFastPainter(molecule, o) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="${prefix}-title" ${stats}><title id="${prefix}-title">${escapeXml(molecule.name || 'Molecular engraving')}</title><defs>${definitions.join('')}</defs><rect width="100%" height="100%" fill="white"/>${layers.join('')}</svg>`;
 }
 
-// Idealized Cartesian geometries in angstrom (Å), not optimized or experimental.
-// Every hydrogen is explicit. Bonds are undirected connectivity only: one cylinder
-// per connected pair, with no aromatic/double-bond order or charge glyphs.
-const radians$1 = (degrees) => degrees * Math.PI / 180;
-const atom$2 = (element, position) => ({ element, position });
+function sphereFamilies(s, project, density, o) {
+    const paths = ['', '', ''];
+    function family(inputAxis, count, secondary) {
+        const axis = norm$1(inputAxis), e = norm$1(cross$2(axis, [1, 0, 0])), f = cross$2(axis, e);
+        for (let j = 1; j < count; j++) {
+            const h = -1 + 2 * j / count, r = Math.sqrt(1 - h * h);
+            const geometry = projectedCircle(project, add$3(s.c, mul$2(axis, h * s.r)), mul$2(e, r * s.r), mul$2(f, r * s.r));
+            const front = trigSpans(-axis[2] * h, -r * e[2], -r * f[2], 1e-12);
+            const index = secondary ? 2 : j % 2 === 0 ? 1 : 0;
+            // projectedCircle.path uses normalized tangents and <= pi/4 cubic arcs.
+            // Neither lighting nor occlusion is scanned or cut into this skeleton.
+            for (const [a, b] of front)
+                paths[index] += geometry.path(a, b);
+        }
+    }
+    family([.12, 1, .40], Math.max(2, Math.round(density * s.r / .48)), false);
+    if (o.crossHatch)
+        family([1, .22, -0.32], Math.max(2, Math.round(density * .8 * s.r / .48)), true);
+    return paths.map((path, i) => ({ path, limit: [.58, .88, .12][i], width: o.hatchWidth * (i === 2 ? .63 : .8) })).filter(f => f.path);
+}
+function cylinderFamilies(s, prepared, o) {
+    const density = o.density * prepared.scale / 60;
+    const e = norm$1(cross$2(s.u, Math.abs(s.u[2]) < .95 ? [0, 0, 1] : [0, 1, 0])), f = cross$2(s.u, e);
+    const count = Math.max(3, Math.round(density * .8 * s.r / .115));
+    let path = '';
+    for (let j = 0; j < count; j++) {
+        const angle = j / count * 2 * Math.PI, n = add$3(mul$2(e, Math.cos(angle)), mul$2(f, Math.sin(angle)));
+        if (n[2] <= 0)
+            continue;
+        const a = add$3(s.a, mul$2(n, s.r)), b = add$3(a, mul$2(s.u, s.length));
+        path += projectedLine(prepared.project, a, b).path(0, 1);
+    }
+    return path ? [{ path, limit: .65, width: o.hatchWidth * .68 }] : [];
+}
+/** Certified surface paths contain paired xy operands (M/L/C/Q, not SVG A).
+ * Their control hull is conservative, unlike a sampled boundary bounding box. */
+function visibleBounds(path, o) {
+    const values = (path.match(/[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/gi) || []).map(Number);
+    const box = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let i = 0; i + 1 < values.length; i += 2) {
+        box[0] = Math.min(box[0], values[i]);
+        box[2] = Math.max(box[2], values[i]);
+        box[1] = Math.min(box[1], values[i + 1]);
+        box[3] = Math.max(box[3], values[i + 1]);
+    }
+    box[0] = Math.max(0, box[0]);
+    box[1] = Math.max(0, box[1]);
+    box[2] = Math.min(o.width, box[2]);
+    box[3] = Math.min(o.height, box[3]);
+    return box.every(Number.isFinite) && box[2] > box[0] && box[3] > box[1] ? box : null;
+}
+function surfaceNormal(s, p) {
+    if (s.kind === 'sphere')
+        return p.map((v, i) => (v - s.c[i]) / s.r);
+    const q = p.map((v, i) => v - s.a[i]), t = dot$3(q, s.u);
+    if (t < 1e-7)
+        return mul$2(s.u, -1);
+    if (t > s.length - 1e-7)
+        return s.u.slice();
+    const radial = q.map((v, i) => v - t * s.u[i]), length = Math.hypot(...radial);
+    return length ? mul$2(radial, 1 / length) : [0, 0, 1];
+}
+/** Two independent 32-bit hashes keep deterministic, document-local SVG ids.
+ * Include the whole style payload (including any future title field), geometry,
+ * projection, and ownership paths so differently styled exports cannot alias. */
+function namespace(prepared, o, paths) {
+    let a = 2166136261, b = 5381;
+    function hash(text) {
+        for (let i = 0; i < text.length; i++) {
+            a = Math.imul(a ^ text.charCodeAt(i), 16777619);
+            b = Math.imul(b, 33) ^ text.charCodeAt(i);
+        }
+    }
+    // The shared switch has already selected this route; hatchMode encodes it.
+    // Excluding the alias preserves existing definition IDs and default exports.
+    const { quantizeShading: _sharedSwitch, ...style } = o;
+    hash(JSON.stringify([prepared.scene, prepared.scale, prepared.lightDirection, prepared.shadowBias, style,
+        prepared.project([0, 0, 0]), prepared.project([1, 1, 1])]));
+    for (const path of paths)
+        hash(path ?? 'null');
+    return `lh-${(a >>> 0).toString(36)}-${(b >>> 0).toString(36)}`;
+}
+/**
+ * Reuse fixed curved skeletons beneath analytic disjoint tone bands. Only
+ * artistic darkness/width is quantized to 16 levels; the caller's certified
+ * owner clip contains the FULL strokes and preserves scientific occlusion.
+ * Shadow discovery matches halftone: one local binary sampled contour per
+ * potentially shadowed source, never an atlas dependency or per-line ray grid.
+ */
+function buildLayeredHatching(prepared, o, visiblePaths) {
+    const result = { defs: '', bySurface: new Map(), skeletonPaths: 0, toneLayers: 0,
+        stats: { shadowBuilds: 0, shadowSamples: 0 } };
+    if (o.shadingMode !== 'hatch' || o.hatchWidth <= 0 || o.shadingSize === 0)
+        return result;
+    const prefix = namespace(prepared, o, visiblePaths), definitions = [];
+    const origin = prepared.project([0, 0, 0]);
+    // Projection, axes, density and stroke style are fixed within this render.
+    // Equal-radius spheres therefore share one origin-centered skeleton template.
+    const localProject = p => prepared.project(p).map((v, i) => v - origin[i]);
+    const sphereTemplates = new Map();
+    function defineSkeletons(families, id) {
+        return families.map((family, index) => {
+            const skeleton = `${id}-f${index}`;
+            definitions.push(`<path id="${skeleton}" fill="none" d="${family.path}"/>`);
+            result.skeletonPaths++;
+            return skeleton;
+        });
+    }
+    const physicalThreshold = (darkness) => 1 - 2 * Math.pow(darkness, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
+    const shadowThreshold = (threshold) => o.shadowStrength >= 1
+        ? (threshold > -1 ? Infinity : -Infinity) : (threshold + 1) / (1 - o.shadowStrength) - 1;
+    function clip(id, path) {
+        definitions.push(`<clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path clip-rule="evenodd" d="${path}"/></clipPath>`);
+        return id;
+    }
+    for (let sourceId = 0; sourceId < prepared.scene.length; sourceId++) {
+        const s = prepared.scene[sourceId], visiblePath = visiblePaths[sourceId];
+        if (!visiblePath)
+            continue;
+        const id = `${prefix}-s${sourceId}`;
+        let families, skeletons, placement = '';
+        if (s.kind === 'sphere') {
+            let template = sphereTemplates.get(s.r);
+            if (!template) {
+                const localFamilies = sphereFamilies({ ...s, c: [0, 0, 0] }, localProject, o.density * prepared.scale / 60, o);
+                template = { families: localFamilies, skeletons: defineSkeletons(localFamilies, `${prefix}-radius${sphereTemplates.size}`) };
+                sphereTemplates.set(s.r, template);
+            }
+            families = template.families;
+            skeletons = template.skeletons;
+            const center = prepared.project(s.c);
+            // Translate only the use, never its global owner/tone/gate clip groups.
+            placement = ` transform="translate(${center[0]} ${center[1]})"`;
+        }
+        else {
+            families = cylinderFamilies(s, prepared, o);
+            skeletons = defineSkeletons(families, id);
+        }
+        if (!families.length)
+            continue;
+        const owner = clip(`${id}-owner`, visiblePath);
+        // Reuse equal analytic paths, including empty/all-surface extremes. Gate
+        // clips are computed once per family, not once per family per tone level.
+        const thresholdPaths = new Map(), pathClips = new Map();
+        function tonePath(threshold) {
+            // Strictly sub-range thresholds must not admit a cylinder cap at -1.
+            if (threshold < -1)
+                return '';
+            const key = Math.min(1, threshold);
+            if (thresholdPaths.has(key))
+                return thresholdPaths.get(key);
+            const path = directionalTonePath(s, prepared.project, prepared.lightDirection, key);
+            thresholdPaths.set(key, path);
+            return path;
+        }
+        function pathClip(path) {
+            if (!path)
+                return null;
+            let name = pathClips.get(path);
+            if (!name) {
+                name = clip(`${id}-tone${pathClips.size}`, path);
+                pathClips.set(path, name);
+            }
+            return name;
+        }
+        function layers(shadow) {
+            const transform = shadow ? shadowThreshold : (t) => t;
+            const gates = families.map(f => pathClip(tonePath(transform(physicalThreshold((1 - f.limit) / 2)))));
+            const groups = [];
+            for (let level = 1; level <= TONE_LEVELS; level++) {
+                // Nested cumulative regions XOR to a disjoint band under evenodd.
+                // Paint every location once: repeated AA strokes otherwise darken ink.
+                const lower = tonePath(transform(physicalThreshold((level - .5) / TONE_LEVELS)));
+                const upper = level === TONE_LEVELS ? '' : tonePath(transform(physicalThreshold((level + .5) / TONE_LEVELS)));
+                if (!lower || lower === upper)
+                    continue;
+                const tone = pathClip(lower + upper);
+                if (!tone)
+                    continue;
+                const uses = families.map((family, index) => {
+                    const gate = gates[index];
+                    if (!gate)
+                        return '';
+                    const width = o.variableWidth ? engravingWidth(family.width, 1 - 2 * level / TONE_LEVELS) : family.width;
+                    const use = `<use href="#${skeletons[index]}"${placement} stroke-width="${width.toFixed(4)}"/>`;
+                    return gate === tone ? use : `<g clip-path="url(#${gate})">${use}</g>`;
+                }).join('');
+                if (!uses)
+                    continue;
+                groups.push(`<g data-tone-level="${level}" clip-path="url(#${tone})">${uses}</g>`);
+                result.toneLayers++;
+            }
+            return groups.join('');
+        }
+        let body = layers(false);
+        if (o.castShadows && o.shadowStrength > 0 && prepared.mayShadow(s)) {
+            const box = visibleBounds(visiblePath, o);
+            if (box) {
+                const directional = prepared.directionalShadows();
+                const mask = sampledTonePaths(box, (x, y) => {
+                    result.stats.shadowSamples++;
+                    const wx = (x - origin[0]) / prepared.scale, wy = (origin[1] - y) / prepared.scale;
+                    const z = depthAt(s, wx, wy);
+                    if (!Number.isFinite(z))
+                        return 0;
+                    const p = [wx, wy, z];
+                    return directional.shadowed(sourceId, surfaceNormal(s, p), p) ? 1 : 0;
+                }, o.quality === 'preview' ? 2 : 1, [.5], true)[0];
+                result.stats.shadowBuilds++;
+                if (mask) {
+                    // Shadow and unshadowed tone bands must not paint atop one another.
+                    // The mask is viewport-bounded; its evenodd complement stays global.
+                    const viewport = `M0 0L${o.width} 0L${o.width} ${o.height}L0 ${o.height}Z`;
+                    const unshadowed = clip(`${id}-unshadowed`, viewport + mask);
+                    const shadow = clip(`${id}-shadow`, mask), overlay = layers(true);
+                    body = (body ? `<g clip-path="url(#${unshadowed})">${body}</g>` : '') +
+                        (overlay ? `<g data-hatch-shadow="true" clip-path="url(#${shadow})">${overlay}</g>` : '');
+                }
+            }
+        }
+        if (body)
+            result.bySurface.set(s, `<g data-hatch-renderer="layered" data-tone-levels="${TONE_LEVELS}" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#${owner})">${body}</g>`);
+    }
+    if (definitions.length)
+        result.defs = `<defs data-hatch-renderer="layered" data-tone-levels="${TONE_LEVELS}" data-skeleton-paths="${result.skeletonPaths}" data-tone-layers="${result.toneLayers}" data-shadow-builds="${result.stats.shadowBuilds}" data-shadow-samples="${result.stats.shadowSamples}">${definitions.join('')}</defs>`;
+    return result;
+}
+
+// All built-in presets live here. Coordinates are in angstrom (Å).
+// Idealized/illustrative geometries, not optimized or experimental structures.
+// Bonds are explicit zero-based undirected connectivity, not bond-order glyphs.
+const atom = (element, x, y, z) => ({ element, position: [x, y, z] });
+const atomAt = (element, position) => ({ element, position });
+const radians = (degrees) => degrees * Math.PI / 180;
 const along = (origin, direction, length) => [
     origin[0] + length * direction[0],
     origin[1] + length * direction[1],
     origin[2] + length * direction[2],
 ];
-const polar = (degrees) => [Math.cos(radians$1(degrees)), Math.sin(radians$1(degrees)), 0];
+const polar = (degrees) => [Math.cos(radians(degrees)), Math.sin(radians(degrees)), 0];
 const tetrahedral = [
     [1, 0, 0],
     [-1 / 3, Math.sqrt(8 / 9), 0],
@@ -3908,271 +4443,19 @@ const tetrahedral = [
 // A unit direction on a cone around a unit axis; deterministic orthonormal frame.
 function cone(axis, cosine, azimuth) {
     const reference = Math.abs(axis[2]) < 0.9 ? [0, 0, 1] : [0, 1, 0];
-    const cross = [
-        axis[1] * reference[2] - axis[2] * reference[1],
-        axis[2] * reference[0] - axis[0] * reference[2],
-        axis[0] * reference[1] - axis[1] * reference[0],
-    ];
+    const cross = [axis[1] * reference[2] - axis[2] * reference[1],
+        axis[2] * reference[0] - axis[0] * reference[2], axis[0] * reference[1] - axis[1] * reference[0]];
     const norm = Math.hypot(...cross);
     const u = [cross[0] / norm, cross[1] / norm, cross[2] / norm];
-    const v = [axis[1] * u[2] - axis[2] * u[1],
-        axis[2] * u[0] - axis[0] * u[2], axis[0] * u[1] - axis[1] * u[0]];
+    const v = [axis[1] * u[2] - axis[2] * u[1], axis[2] * u[0] - axis[0] * u[2], axis[0] * u[1] - axis[1] * u[0]];
     const radial = Math.sqrt(1 - cosine * cosine);
-    const c = radial * Math.cos(radians$1(azimuth)), s = radial * Math.sin(radians$1(azimuth));
-    return [cosine * axis[0] + c * u[0] + s * v[0],
-        cosine * axis[1] + c * u[1] + s * v[1],
-        cosine * axis[2] + c * u[2] + s * v[2]];
+    const c = radial * Math.cos(radians(azimuth)), s = radial * Math.sin(radians(azimuth));
+    return [cosine * axis[0] + c * u[0] + s * v[0], cosine * axis[1] + c * u[1] + s * v[1], cosine * axis[2] + c * u[2] + s * v[2]];
 }
 function attachHydrogen(atoms, bonds, parent, direction, length) {
     bonds.push([parent, atoms.length]);
-    atoms.push(atom$2('H', along(atoms[parent].position, direction, length)));
+    atoms.push(atomAt('H', along(atoms[parent].position, direction, length)));
 }
-function phenol() {
-    const atoms = [0, 60, 120, 180, 240, 300]
-        .map(angle => atom$2('C', along([0, 0, 0], polar(angle), 1.397)));
-    const bonds = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0]];
-    // Carbon 0 has OH instead of H; all ring atoms and substituents are planar.
-    for (let i = 1; i < 6; i++)
-        attachHydrogen(atoms, bonds, i, polar(i * 60), 1.09);
-    const oxygen = atoms.length;
-    atoms.push(atom$2('O', along(atoms[0].position, [1, 0, 0], 1.36)));
-    bonds.push([0, oxygen]);
-    attachHydrogen(atoms, bonds, oxygen, polar(180 - 108.5), 0.96);
-    return { name: 'Phenol · C₆H₆O', atoms, bonds };
-}
-function isopropanol() {
-    const atoms = [atom$2('C', [0, 0, 0]), atom$2('O', [1.43, 0, 0])];
-    const bonds = [[0, 1]];
-    // Secondary carbon and methyl carbons have ideal tetrahedral bond angles.
-    for (const direction of [tetrahedral[1], tetrahedral[2]]) {
-        const carbon = atoms.length;
-        atoms.push(atom$2('C', along(atoms[0].position, direction, 1.52)));
-        bonds.push([0, carbon]);
-        for (const azimuth of [60, 180, 300]) {
-            attachHydrogen(atoms, bonds, carbon, cone(direction, 1 / 3, azimuth), 1.09);
-        }
-    }
-    attachHydrogen(atoms, bonds, 0, tetrahedral[3], 1.09);
-    attachHydrogen(atoms, bonds, 1, cone(tetrahedral[0], -Math.cos(radians$1(108.5)), 0), 0.96);
-    return { name: 'Isopropanol · C₃H₈O', atoms, bonds };
-}
-function sulfuricAcid() {
-    const atoms = [atom$2('S', [0, 0, 0])];
-    const bonds = [];
-    // Neutral HO-S(=O)2-OH: ideal tetrahedral SO4, not a sulfate ion.
-    // Short terminal S=O bonds and longer S-OH bonds still use single cylinders.
-    for (let i = 0; i < 4; i++) {
-        const oxygen = atoms.length;
-        atoms.push(atom$2('O', along(atoms[0].position, tetrahedral[i], i < 2 ? 1.43 : 1.57)));
-        bonds.push([0, oxygen]);
-        if (i >= 2) {
-            attachHydrogen(atoms, bonds, oxygen, cone(tetrahedral[i], -Math.cos(radians$1(108.5)), 180), 0.96);
-        }
-    }
-    return { name: 'Sulfuric acid · H₂SO₄', atoms, bonds };
-}
-function glycine() {
-    // Neutral NH2-CH2-COOH, not the solid-state NH3+/COO- zwitterion.
-    // Tetrahedral alpha carbon, pyramidal N (ideal 109.47°), planar 120° carboxyl C.
-    const atoms = [atom$2('C', [0, 0, 0]), atom$2('C', [1.52, 0, 0]),
-        atom$2('N', along([0, 0, 0], tetrahedral[1], 1.47))];
-    const bonds = [[0, 1], [0, 2]];
-    atoms.push(atom$2('O', along(atoms[1].position, polar(60), 1.21)));
-    atoms.push(atom$2('O', along(atoms[1].position, polar(-60), 1.36)));
-    bonds.push([1, 3], [1, 4]);
-    attachHydrogen(atoms, bonds, 0, tetrahedral[2], 1.09);
-    attachHydrogen(atoms, bonds, 0, tetrahedral[3], 1.09);
-    for (const azimuth of [60, 180]) {
-        attachHydrogen(atoms, bonds, 2, cone(tetrahedral[1], 1 / 3, azimuth), 1.01);
-    }
-    // C-O-H = 108.5°, with an outward-facing hydroxyl hydrogen.
-    attachHydrogen(atoms, bonds, 4, polar(-60 + 180 - 108.5), 0.96);
-    return { name: 'Glycine · C₂H₅NO₂', atoms, bonds };
-}
-const additionalExamples = {
-    phenol: phenol(),
-    isopropanol: isopropanol(),
-    sulfuricAcid: sulfuricAcid(),
-    glycine: glycine(),
-};
-
-const atom$1 = (element, x, y, z) => ({ element, position: [x, y, z] });
-// Illustrative idealized coordinates in angstrom, NOT experimental coordinates
-// or force-field-optimized conformers. All hydrogens are explicit atoms/bonds.
-// Coordinates were constructed with internal bond lengths/angles, then discrete
-// rigid-subtree torsions were selected to reduce close nonbonded contacts. No
-// physical coordinate scaling was used to fit a canvas. Rounded to 0.000001 Å.
-// Bonds are undirected zero-based CONNECTIVITY, not bond-order assignments.
-/** Alpha-D-glucopyranose in the 4C1 chair, not open-chain glucose.
- * Identity reference (not the source of these custom illustrative coordinates):
- * https://www.rcsb.org/ligand/GLC — (2S,3R,4S,5S,6R)-6-(hydroxymethyl)oxane-
- * 2,3,4,5-tetrol. Oxane positions 2..6 correspond to glucose C1..C5.
- *
- * Atom indices: 0..4 C1..C5; 5 ring O5; 6 C6; 7..10 hydroxyl O1..O4;
- * 11 hydroxyl O6; 12..16 H on C1..C5; 17,18 H on C6;
- * 19..23 H on O1,O2,O3,O4,O6, respectively.
- *
- * Ring C-C = 1.52 Å, C-O = 1.43 Å; chair heights alternate ±1.52/6 Å.
- * Ring O5 is moved radially inward to retain 1.43 Å on BOTH ring C-O bonds.
- * C1-OH is axial down; C2/C3/C4 OH and C5-C6 are equatorial. C6 is up,
- * trans to anomeric OH (alpha); absolute chirality is checked, not inferred
- * from an up/down drawing alone. Explicit descending CIP priority indices:
- * C1 [5,7,1,12] S; C2 [8,0,2,13] R; C3 [9,1,3,14] S;
- * C4 [10,4,2,15] S; C5 [5,3,6,16] R. For each tuple [a,b,c,d],
- * det(a-d,b-d,c-d) is positive for S, negative for R (right-handed xyz).
- * C4 is S in this ring even though open-chain glucose C4 is R: CIP priorities
- * change on cyclization. This is the D series, not its mirror image.
- */
-const glucose = {
-    name: 'α-D-Glucopyranose · C₆H₁₂O₆',
-    atoms: [
-        atom$1('C', 1.433070, 0.000000, -0.253333), // 0
-        atom$1('C', 0.716535, -1.241075, 0.253333), // 1
-        atom$1('C', -0.716535, -1.241075, -0.253333), // 2
-        atom$1('C', -1.43307, 0.000000, 0.253333), // 3
-        atom$1('C', -0.716535, 1.241075, -0.253333), // 4
-        atom$1('O', 0.607226, 1.051747, 0.253333), // 5
-        atom$1('C', -1.331088, 2.476610, 0.383988), // 6
-        atom$1('O', 1.403403, 0.017296, -1.682921), // 7
-        atom$1('O', 1.390643, -2.408665, -0.223333), // 8
-        atom$1('O', -1.390643, -2.408665, 0.223333), // 9
-        atom$1('O', -2.781287, 0.000000, -0.223333), // 10
-        atom$1('O', -1.167806, 2.412186, 1.803173), // 11
-        atom$1('H', 2.420725, 0.061348, 0.203693), // 12
-        atom$1('H', 0.716535, -1.241075, 1.343333), // 13
-        atom$1('H', -0.716535, -1.241075, -1.343333), // 14
-        atom$1('H', -1.43307, 0.000000, 1.343333), // 15
-        atom$1('H', -0.693811, 1.228083, -1.343019), // 16
-        atom$1('H', -2.393002, 2.520203, 0.142042), // 17
-        atom$1('H', -0.834333, 3.368131, 0.001203), // 18
-        atom$1('H', 0.486889, 0.020981, -1.968557), // 19
-        atom$1('H', 1.382507, -2.394573, -1.183195), // 20
-        atom$1('H', -1.382507, -2.394573, 1.183195), // 21
-        atom$1('H', -2.765014, 0.000000, -1.183195), // 22
-        atom$1('H', -0.684872, 1.610842, 2.018167), // 23
-    ],
-    bonds: [
-        [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], // pyranose ring
-        [0, 7], [0, 12], [1, 8], [1, 13], [2, 9], [2, 14], [3, 10], [3, 15],
-        [4, 6], [4, 16], [6, 11], [6, 17], [6, 18],
-        [7, 19], [8, 20], [9, 21], [10, 22], [11, 23],
-    ],
-};
-/** DHPC specifically: 1,2-dihexanoyl-sn-glycero-3-phosphocholine.
- * A short-chain phosphatidylcholine, not a representation of every phospholipid.
- * Formula C20H40NO8P: 70 atoms and 69 connectivity edges (acyclic).
- *
- * Heavy index graph: glycerol C0-C1-C2; sn2 O3, sn1 O4, sn3 O5;
- * ester carbonyl C6 (sn2), C7 (sn1); phosphate P8 with O5,O9,O10,O11.
- * O5 and O11 bridge to glycerol and choline; O9 and O10 are terminal.
- * O9 is conventionally P=O and O10 is O− (resonance not depicted).
- * Choline O11-C12-C13-N14+(C15)(C16)(C17), strictly NO N-H.
- * C6-C18-C19-C20-C21-C22 and C7-C23-C24-C25-C26-C27 are two
- * SIX-carbon acyl tails, including their carbonyl carbons. Carbonyl O28
- * is on C6; O29 on C7. Both esters have coplanar C(glycerol)-O-C(=O)-O.
- *
- * Hydrogen indices: C1:30; C0:31,32; C2:33,34; C12:35,36;
- * C13:37,38; C15:39..41; C16:42..44; C17:45..47;
- * C18:48,49; C19:50,51; C20:52,53; C21:54,55; C22:56..58;
- * C23:59,60; C24:61,62; C25:63,64; C26:65,66; C27:67..69.
- * sn-glycerol center C1 (index 1) has descending CIP [O3,C2,C0,H30]: R.
- *
- * Target lengths: C-C 1.52, C-H 1.09, alcohol C-O 1.43, ester C-O 1.34,
- * carbonyl C=O 1.21, N-C 1.48, P-O 1.50/1.52/1.60 Å. Carbon centers are
- * tetrahedral except planar trigonal carbonyls; P is idealized tetrahedral.
- * The molecule is a ZWITTERION: N14+ and O10− are NOT representable in the
- * current glyph API, nor are double bonds. Cylinders show connectivity only.
- * This snapshot is an illustrative conformer, not a membrane/bilayer model.
- */
-const phospholipid = {
-    name: 'DHPC · C₂₀H₄₀NO₈P',
-    atoms: [
-        atom$1('C', -1.241075, 0.877572, 0.000000), // 0
-        atom$1('C', 0.000000, 0.000000, 0.000000), // 1
-        atom$1('C', 1.241075, 0.877572, 0.000000), // 2
-        atom$1('O', 0.000000, -0.825611, -1.16759), // 3
-        atom$1('O', -2.07674, 0.521375, 1.104395), // 4
-        atom$1('O', 2.396839, 0.068685, 0.234115), // 5
-        atom$1('C', -0.836613, -1.871909, -1.198223), // 6
-        atom$1('C', -3.368414, 0.874631, 1.055521), // 7
-        atom$1('P', 3.046235, 0.005103, 1.695020), // 8
-        atom$1('O', 3.830617, 1.258296, 1.948498), // 9
-        atom$1('O', 1.944278, -0.121824, 2.734241), // 10
-        atom$1('O', 4.018911, -1.261613, 1.791632), // 11
-        atom$1('C', 3.479731, -2.584168, 1.720690), // 12
-        atom$1('C', 3.070677, -2.888423, 0.288732), // 13
-        atom$1('N', 2.624496, -4.296221, 0.191645), // 14
-        atom$1('C', 1.488394, -4.518378, 1.113772), // 15
-        atom$1('C', 2.197208, -4.583746, -1.195855), // 16
-        atom$1('C', 3.741703, -5.194338, 0.559929), // 17
-        atom$1('C', -1.748097, -2.15109, -0.014308), // 18
-        atom$1('C', -2.253739, -3.582488, -0.090639), // 19
-        atom$1('C', -2.995288, -3.926895, 1.190723), // 20
-        atom$1('C', -2.049083, -3.799817, 2.373493), // 21
-        atom$1('C', -2.279189, -2.466137, 3.065410), // 22
-        atom$1('C', -3.904448, 1.630860, -0.14913), // 23
-        atom$1('C', -4.432377, 0.641109, -1.174842), // 24
-        atom$1('C', -4.578315, 1.334458, -2.519598), // 25
-        atom$1('C', -3.336317, 1.080211, -3.358167), // 26
-        atom$1('C', -2.307629, 2.164549, -3.081738), // 27
-        atom$1('O', -0.866473, -2.594458, -2.168342), // 28
-        atom$1('O', -4.108064, 0.591618, 1.970354), // 29
-        atom$1('H', 0.000000, -0.629312, 0.889981), // 30
-        atom$1('H', -0.946672, 1.923232, 0.089567), // 31
-        atom$1('H', -1.788483, 0.732731, -0.931378), // 32
-        atom$1('H', 1.334808, 1.374326, -0.965686), // 33
-        atom$1('H', 1.156356, 1.626695, 0.787235), // 34
-        atom$1('H', 4.234006, -3.301831, 2.043381), // 35
-        atom$1('H', 2.607808, -2.656424, 2.370789), // 36
-        atom$1('H', 2.254802, -2.227668, -4271e-6), // 37
-        atom$1('H', 3.921825, -2.730536, -0.373627), // 38
-        atom$1('H', 0.794304, -5.232006, 0.669841), // 39
-        atom$1('H', 1.859849, -4.913015, 2.059490), // 40
-        atom$1('H', 0.974305, -3.57373, 1.291119), // 41
-        atom$1('H', 2.053759, -5.657483, -1.316729), // 42
-        atom$1('H', 1.260158, -4.066512, -1.402025), // 43
-        atom$1('H', 2.963016, -4.239, -1.890685), // 44
-        atom$1('H', 4.671484, -4.626042, 0.585374), // 45
-        atom$1('H', 3.552376, -5.625475, 1.542974), // 46
-        atom$1('H', 3.824059, -5.992947, -0.177323), // 47
-        atom$1('H', -1.192516, -2.010973, 0.912945), // 48
-        atom$1('H', -2.59471, -1.464946, -0.03783), // 49
-        atom$1('H', -2.929275, -3.684386, -0.939973), // 50
-        atom$1('H', -1.409033, -4.260077, -0.214915), // 51
-        atom$1('H', -3.833401, -3.242228, 1.320717), // 52
-        atom$1('H', -3.367474, -4.949667, 1.131429), // 53
-        atom$1('H', -2.235888, -4.611137, 3.077031), // 54
-        atom$1('H', -1.01874, -3.853759, 2.021950), // 55
-        atom$1('H', -3.000855, -2.595047, 3.872057), // 56
-        atom$1('H', -1.337095, -2.10223, 3.475448), // 57
-        atom$1('H', -2.664626, -1.744745, 2.344902), // 58
-        atom$1('H', -4.711417, 2.292086, 0.166592), // 59
-        atom$1('H', -3.103291, 2.221686, -0.593171), // 60
-        atom$1('H', -3.734972, -0.191272, -1.269017), // 61
-        atom$1('H', -5.403708, 0.266530, -0.851878), // 62
-        atom$1('H', -5.453208, 0.941827, -3.037771), // 63
-        atom$1('H', -4.698719, 2.406615, -2.364414), // 64
-        atom$1('H', -2.917036, 0.107539, -3.100849), // 65
-        atom$1('H', -3.602631, 1.092976, -4.415056), // 66
-        atom$1('H', -1.44883, 1.728946, -2.571039), // 67
-        atom$1('H', -1.984071, 2.607081, -4.023851), // 68
-        atom$1('H', -2.752309, 2.935206, -2.452097), // 69
-    ],
-    bonds: [
-        [1, 0], [1, 2], [1, 3], [1, 30], [0, 4], [0, 31], [0, 32], [2, 5], [2, 33], [2, 34],
-        [3, 6], [4, 7], [5, 8], [8, 9], [8, 10], [8, 11], [11, 12],
-        [12, 13], [12, 35], [12, 36], [13, 14], [13, 37], [13, 38],
-        [14, 15], [14, 16], [14, 17], [15, 39], [15, 40], [15, 41],
-        [16, 42], [16, 43], [16, 44], [17, 45], [17, 46], [17, 47],
-        [6, 28], [6, 18], [18, 19], [18, 48], [18, 49], [19, 20], [19, 50], [19, 51],
-        [20, 21], [20, 52], [20, 53], [21, 22], [21, 54], [21, 55], [22, 56], [22, 57], [22, 58],
-        [7, 29], [7, 23], [23, 24], [23, 59], [23, 60], [24, 25], [24, 61], [24, 62],
-        [25, 26], [25, 63], [25, 64], [26, 27], [26, 65], [26, 66], [27, 67], [27, 68], [27, 69],
-    ],
-};
-const complexExamples = { glucose, phospholipid };
-
-const atom = (element, x, y, z) => ({ element, position: [x, y, z] });
 // Idealized regular truncated icosahedron, not an optimized two-bond-length geometry.
 function fullerene() {
     const phi = (1 + Math.sqrt(5)) / 2, vertices = [];
@@ -4192,10 +4475,6 @@ function fullerene() {
                 bonds.push([i, j]);
     return { name: '富勒烯 · C₆₀', atoms: positions.map(p => atom('C', p[0], p[1], p[2])), bonds };
 }
-// New molecular geometries below are idealized, not optimized; lengths are in angstrom.
-// Bonds are explicit zero-based undirected connectivity, not bond-order assignments.
-// In particular, CO2 and benzene cylinders show connectivity only.
-const radians = (degrees) => degrees * Math.PI / 180;
 // Three tetrahedral directions opposite the +x direction (cos(angle) = -1/3).
 function methylHydrogens() {
     return [0, 120, 240].map(degrees => atom('H', -1.09 / 3, 1.09 * Math.sqrt(8 / 9) * Math.cos(radians(degrees)), 1.09 * Math.sqrt(8 / 9) * Math.sin(radians(degrees))));
@@ -4235,6 +4514,239 @@ function hydrogenPeroxide() {
             atom('H', .74 - axial, radial * Math.cos(torsion), radial * Math.sin(torsion))],
         bonds: [[0, 1], [0, 2], [1, 3]] };
 }
+// Every hydrogen is explicit; no aromatic/double-bond order or charge glyphs.
+function phenol() {
+    const atoms = [0, 60, 120, 180, 240, 300]
+        .map(angle => atomAt('C', along([0, 0, 0], polar(angle), 1.397)));
+    const bonds = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0]];
+    // Carbon 0 has OH instead of H; all ring atoms and substituents are planar.
+    for (let i = 1; i < 6; i++)
+        attachHydrogen(atoms, bonds, i, polar(i * 60), 1.09);
+    const oxygen = atoms.length;
+    atoms.push(atomAt('O', along(atoms[0].position, [1, 0, 0], 1.36)));
+    bonds.push([0, oxygen]);
+    attachHydrogen(atoms, bonds, oxygen, polar(180 - 108.5), 0.96);
+    return { name: 'Phenol · C₆H₆O', atoms, bonds };
+}
+function isopropanol() {
+    const atoms = [atomAt('C', [0, 0, 0]), atomAt('O', [1.43, 0, 0])];
+    const bonds = [[0, 1]];
+    // Secondary carbon and methyl carbons have ideal tetrahedral bond angles.
+    for (const direction of [tetrahedral[1], tetrahedral[2]]) {
+        const carbon = atoms.length;
+        atoms.push(atomAt('C', along(atoms[0].position, direction, 1.52)));
+        bonds.push([0, carbon]);
+        for (const azimuth of [60, 180, 300])
+            attachHydrogen(atoms, bonds, carbon, cone(direction, 1 / 3, azimuth), 1.09);
+    }
+    attachHydrogen(atoms, bonds, 0, tetrahedral[3], 1.09);
+    attachHydrogen(atoms, bonds, 1, cone(tetrahedral[0], -Math.cos(radians(108.5)), 0), 0.96);
+    return { name: 'Isopropanol · C₃H₈O', atoms, bonds };
+}
+function sulfuricAcid() {
+    const atoms = [atomAt('S', [0, 0, 0])];
+    const bonds = [];
+    // Neutral HO-S(=O)2-OH: ideal tetrahedral SO4, not a sulfate ion.
+    // Short terminal S=O bonds and longer S-OH bonds still use single cylinders.
+    for (let i = 0; i < 4; i++) {
+        const oxygen = atoms.length;
+        atoms.push(atomAt('O', along(atoms[0].position, tetrahedral[i], i < 2 ? 1.43 : 1.57)));
+        bonds.push([0, oxygen]);
+        if (i >= 2)
+            attachHydrogen(atoms, bonds, oxygen, cone(tetrahedral[i], -Math.cos(radians(108.5)), 180), 0.96);
+    }
+    return { name: 'Sulfuric acid · H₂SO₄', atoms, bonds };
+}
+function glycine() {
+    // Neutral NH2-CH2-COOH, not the solid-state NH3+/COO- zwitterion.
+    // Tetrahedral alpha carbon, pyramidal N (ideal 109.47°), planar 120° carboxyl C.
+    const atoms = [atomAt('C', [0, 0, 0]), atomAt('C', [1.52, 0, 0]),
+        atomAt('N', along([0, 0, 0], tetrahedral[1], 1.47))];
+    const bonds = [[0, 1], [0, 2]];
+    atoms.push(atomAt('O', along(atoms[1].position, polar(60), 1.21)));
+    atoms.push(atomAt('O', along(atoms[1].position, polar(-60), 1.36)));
+    bonds.push([1, 3], [1, 4]);
+    attachHydrogen(atoms, bonds, 0, tetrahedral[2], 1.09);
+    attachHydrogen(atoms, bonds, 0, tetrahedral[3], 1.09);
+    for (const azimuth of [60, 180])
+        attachHydrogen(atoms, bonds, 2, cone(tetrahedral[1], 1 / 3, azimuth), 1.01);
+    // C-O-H = 108.5°, with an outward-facing hydroxyl hydrogen.
+    attachHydrogen(atoms, bonds, 4, polar(-60 + 180 - 108.5), 0.96);
+    return { name: 'Glycine · C₂H₅NO₂', atoms, bonds };
+}
+// Illustrative idealized coordinates below, NOT experimental coordinates or
+// force-field-optimized conformers. All hydrogens are explicit atoms/bonds.
+// Coordinates were constructed with internal bond lengths/angles, then discrete
+// rigid-subtree torsions were selected to reduce close nonbonded contacts. No
+// physical coordinate scaling was used to fit a canvas. Rounded to 0.000001 Å.
+/** Alpha-D-glucopyranose in the 4C1 chair, not open-chain glucose.
+ * Identity reference (not the source of these custom illustrative coordinates):
+ * https://www.rcsb.org/ligand/GLC — (2S,3R,4S,5S,6R)-6-(hydroxymethyl)oxane-
+ * 2,3,4,5-tetrol. Oxane positions 2..6 correspond to glucose C1..C5.
+ *
+ * Atom indices: 0..4 C1..C5; 5 ring O5; 6 C6; 7..10 hydroxyl O1..O4;
+ * 11 hydroxyl O6; 12..16 H on C1..C5; 17,18 H on C6;
+ * 19..23 H on O1,O2,O3,O4,O6, respectively.
+ *
+ * Ring C-C = 1.52 Å, C-O = 1.43 Å; chair heights alternate ±1.52/6 Å.
+ * Ring O5 is moved radially inward to retain 1.43 Å on BOTH ring C-O bonds.
+ * C1-OH is axial down; C2/C3/C4 OH and C5-C6 are equatorial. C6 is up,
+ * trans to anomeric OH (alpha); absolute chirality is checked, not inferred
+ * from an up/down drawing alone. Explicit descending CIP priority indices:
+ * C1 [5,7,1,12] S; C2 [8,0,2,13] R; C3 [9,1,3,14] S;
+ * C4 [10,4,2,15] S; C5 [5,3,6,16] R. For each tuple [a,b,c,d],
+ * det(a-d,b-d,c-d) is positive for S, negative for R (right-handed xyz).
+ * C4 is S in this ring even though open-chain glucose C4 is R: CIP priorities
+ * change on cyclization. This is the D series, not its mirror image.
+ */
+const glucose = {
+    name: 'α-D-Glucopyranose · C₆H₁₂O₆',
+    atoms: [
+        atom('C', 1.433070, 0.000000, -0.253333), // 0
+        atom('C', 0.716535, -1.241075, 0.253333), // 1
+        atom('C', -0.716535, -1.241075, -0.253333), // 2
+        atom('C', -1.43307, 0.000000, 0.253333), // 3
+        atom('C', -0.716535, 1.241075, -0.253333), // 4
+        atom('O', 0.607226, 1.051747, 0.253333), // 5
+        atom('C', -1.331088, 2.476610, 0.383988), // 6
+        atom('O', 1.403403, 0.017296, -1.682921), // 7
+        atom('O', 1.390643, -2.408665, -0.223333), // 8
+        atom('O', -1.390643, -2.408665, 0.223333), // 9
+        atom('O', -2.781287, 0.000000, -0.223333), // 10
+        atom('O', -1.167806, 2.412186, 1.803173), // 11
+        atom('H', 2.420725, 0.061348, 0.203693), // 12
+        atom('H', 0.716535, -1.241075, 1.343333), // 13
+        atom('H', -0.716535, -1.241075, -1.343333), // 14
+        atom('H', -1.43307, 0.000000, 1.343333), // 15
+        atom('H', -0.693811, 1.228083, -1.343019), // 16
+        atom('H', -2.393002, 2.520203, 0.142042), // 17
+        atom('H', -0.834333, 3.368131, 0.001203), // 18
+        atom('H', 0.486889, 0.020981, -1.968557), // 19
+        atom('H', 1.382507, -2.394573, -1.183195), // 20
+        atom('H', -1.382507, -2.394573, 1.183195), // 21
+        atom('H', -2.765014, 0.000000, -1.183195), // 22
+        atom('H', -0.684872, 1.610842, 2.018167), // 23
+    ],
+    bonds: [
+        [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], // pyranose ring
+        [0, 7], [0, 12], [1, 8], [1, 13], [2, 9], [2, 14], [3, 10], [3, 15],
+        [4, 6], [4, 16], [6, 11], [6, 17], [6, 18],
+        [7, 19], [8, 20], [9, 21], [10, 22], [11, 23],
+    ],
+};
+/** DHPC specifically: 1,2-dihexanoyl-sn-glycero-3-phosphocholine.
+ * A short-chain phosphatidylcholine, not a representation of every phospholipid.
+ * Formula C20H40NO8P: 70 atoms and 69 connectivity edges (acyclic).
+ *
+ * Heavy index graph: glycerol C0-C1-C2; sn2 O3, sn1 O4, sn3 O5;
+ * ester carbonyl C6 (sn2), C7 (sn1); phosphate P8 with O5,O9,O10,O11.
+ * O5 and O11 bridge to glycerol and choline; O9 and O10 are terminal.
+ * O9 is conventionally P=O and O10 is O− (resonance not depicted).
+ * Choline O11-C12-C13-N14+(C15)(C16)(C17), strictly NO N-H.
+ * C6-C18-C19-C20-C21-C22 and C7-C23-C24-C25-C26-C27 are two
+ * SIX-carbon acyl tails, including their carbonyl carbons. Carbonyl O28
+ * is on C6; O29 on C7. Both esters have coplanar C(glycerol)-O-C(=O)-O.
+ *
+ * Hydrogen indices: C1:30; C0:31,32; C2:33,34; C12:35,36;
+ * C13:37,38; C15:39..41; C16:42..44; C17:45..47;
+ * C18:48,49; C19:50,51; C20:52,53; C21:54,55; C22:56..58;
+ * C23:59,60; C24:61,62; C25:63,64; C26:65,66; C27:67..69.
+ * sn-glycerol center C1 (index 1) has descending CIP [O3,C2,C0,H30]: R.
+ *
+ * Target lengths: C-C 1.52, C-H 1.09, alcohol C-O 1.43, ester C-O 1.34,
+ * carbonyl C=O 1.21, N-C 1.48, P-O 1.50/1.52/1.60 Å. Carbon centers are
+ * tetrahedral except planar trigonal carbonyls; P is idealized tetrahedral.
+ * The molecule is a ZWITTERION: N14+ and O10− are NOT representable in the
+ * current glyph API, nor are double bonds. Cylinders show connectivity only.
+ * This snapshot is an illustrative conformer, not a membrane/bilayer model.
+ */
+const phospholipid = {
+    name: 'DHPC · C₂₀H₄₀NO₈P',
+    atoms: [
+        atom('C', -1.241075, 0.877572, 0.000000), // 0
+        atom('C', 0.000000, 0.000000, 0.000000), // 1
+        atom('C', 1.241075, 0.877572, 0.000000), // 2
+        atom('O', 0.000000, -0.825611, -1.16759), // 3
+        atom('O', -2.07674, 0.521375, 1.104395), // 4
+        atom('O', 2.396839, 0.068685, 0.234115), // 5
+        atom('C', -0.836613, -1.871909, -1.198223), // 6
+        atom('C', -3.368414, 0.874631, 1.055521), // 7
+        atom('P', 3.046235, 0.005103, 1.695020), // 8
+        atom('O', 3.830617, 1.258296, 1.948498), // 9
+        atom('O', 1.944278, -0.121824, 2.734241), // 10
+        atom('O', 4.018911, -1.261613, 1.791632), // 11
+        atom('C', 3.479731, -2.584168, 1.720690), // 12
+        atom('C', 3.070677, -2.888423, 0.288732), // 13
+        atom('N', 2.624496, -4.296221, 0.191645), // 14
+        atom('C', 1.488394, -4.518378, 1.113772), // 15
+        atom('C', 2.197208, -4.583746, -1.195855), // 16
+        atom('C', 3.741703, -5.194338, 0.559929), // 17
+        atom('C', -1.748097, -2.15109, -0.014308), // 18
+        atom('C', -2.253739, -3.582488, -0.090639), // 19
+        atom('C', -2.995288, -3.926895, 1.190723), // 20
+        atom('C', -2.049083, -3.799817, 2.373493), // 21
+        atom('C', -2.279189, -2.466137, 3.065410), // 22
+        atom('C', -3.904448, 1.630860, -0.14913), // 23
+        atom('C', -4.432377, 0.641109, -1.174842), // 24
+        atom('C', -4.578315, 1.334458, -2.519598), // 25
+        atom('C', -3.336317, 1.080211, -3.358167), // 26
+        atom('C', -2.307629, 2.164549, -3.081738), // 27
+        atom('O', -0.866473, -2.594458, -2.168342), // 28
+        atom('O', -4.108064, 0.591618, 1.970354), // 29
+        atom('H', 0.000000, -0.629312, 0.889981), // 30
+        atom('H', -0.946672, 1.923232, 0.089567), // 31
+        atom('H', -1.788483, 0.732731, -0.931378), // 32
+        atom('H', 1.334808, 1.374326, -0.965686), // 33
+        atom('H', 1.156356, 1.626695, 0.787235), // 34
+        atom('H', 4.234006, -3.301831, 2.043381), // 35
+        atom('H', 2.607808, -2.656424, 2.370789), // 36
+        atom('H', 2.254802, -2.227668, -4271e-6), // 37
+        atom('H', 3.921825, -2.730536, -0.373627), // 38
+        atom('H', 0.794304, -5.232006, 0.669841), // 39
+        atom('H', 1.859849, -4.913015, 2.059490), // 40
+        atom('H', 0.974305, -3.57373, 1.291119), // 41
+        atom('H', 2.053759, -5.657483, -1.316729), // 42
+        atom('H', 1.260158, -4.066512, -1.402025), // 43
+        atom('H', 2.963016, -4.239, -1.890685), // 44
+        atom('H', 4.671484, -4.626042, 0.585374), // 45
+        atom('H', 3.552376, -5.625475, 1.542974), // 46
+        atom('H', 3.824059, -5.992947, -0.177323), // 47
+        atom('H', -1.192516, -2.010973, 0.912945), // 48
+        atom('H', -2.59471, -1.464946, -0.03783), // 49
+        atom('H', -2.929275, -3.684386, -0.939973), // 50
+        atom('H', -1.409033, -4.260077, -0.214915), // 51
+        atom('H', -3.833401, -3.242228, 1.320717), // 52
+        atom('H', -3.367474, -4.949667, 1.131429), // 53
+        atom('H', -2.235888, -4.611137, 3.077031), // 54
+        atom('H', -1.01874, -3.853759, 2.021950), // 55
+        atom('H', -3.000855, -2.595047, 3.872057), // 56
+        atom('H', -1.337095, -2.10223, 3.475448), // 57
+        atom('H', -2.664626, -1.744745, 2.344902), // 58
+        atom('H', -4.711417, 2.292086, 0.166592), // 59
+        atom('H', -3.103291, 2.221686, -0.593171), // 60
+        atom('H', -3.734972, -0.191272, -1.269017), // 61
+        atom('H', -5.403708, 0.266530, -0.851878), // 62
+        atom('H', -5.453208, 0.941827, -3.037771), // 63
+        atom('H', -4.698719, 2.406615, -2.364414), // 64
+        atom('H', -2.917036, 0.107539, -3.100849), // 65
+        atom('H', -3.602631, 1.092976, -4.415056), // 66
+        atom('H', -1.44883, 1.728946, -2.571039), // 67
+        atom('H', -1.984071, 2.607081, -4.023851), // 68
+        atom('H', -2.752309, 2.935206, -2.452097), // 69
+    ],
+    bonds: [
+        [1, 0], [1, 2], [1, 3], [1, 30], [0, 4], [0, 31], [0, 32], [2, 5], [2, 33], [2, 34],
+        [3, 6], [4, 7], [5, 8], [8, 9], [8, 10], [8, 11], [11, 12],
+        [12, 13], [12, 35], [12, 36], [13, 14], [13, 37], [13, 38],
+        [14, 15], [14, 16], [14, 17], [15, 39], [15, 40], [15, 41],
+        [16, 42], [16, 43], [16, 44], [17, 45], [17, 46], [17, 47],
+        [6, 28], [6, 18], [18, 19], [18, 48], [18, 49], [19, 20], [19, 50], [19, 51],
+        [20, 21], [20, 52], [20, 53], [21, 22], [21, 54], [21, 55], [22, 56], [22, 57], [22, 58],
+        [7, 29], [7, 23], [23, 24], [23, 59], [23, 60], [24, 25], [24, 61], [24, 62],
+        [25, 26], [25, 63], [25, 64], [26, 27], [26, 65], [26, 66], [27, 67], [27, 68], [27, 69],
+    ],
+};
+// Public order is stable; CO2 and benzene cylinders also show connectivity only.
 const examples = {
     sphere: { name: '单球 · 明暗研究', atoms: [atom('C', 0, 0, 0)], bonds: [] },
     pair: { name: '双球 · 遮挡研究', atoms: [atom('C', -0.85, -0.25, -0.3), atom('O', .85, .25, .3)], bonds: [[0, 1]] },
@@ -4247,8 +4759,12 @@ const examples = {
     methanol: methanol(),
     benzene: benzene(),
     hydrogenPeroxide: hydrogenPeroxide(),
-    ...additionalExamples,
-    ...complexExamples
+    phenol: phenol(),
+    isopropanol: isopropanol(),
+    sulfuricAcid: sulfuricAcid(),
+    glycine: glycine(),
+    glucose,
+    phospholipid,
 };
 
 const MAX_ATOMS = 2000;
@@ -4439,19 +4955,20 @@ function render(molecule, options = {}) {
     const boundaries = built && built.validate(elementColor) ? built : null;
     // Labels are part of their owner's paint layer, never a final overlay and
     // never clipped text. Certified visible fills preserve intersecting geometry.
-    const layerPaths = (o.labels || o.elementTextures) && boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null;
+    const wantsLayered = o.shadingMode === 'hatch' && o.hatchMode === 'layered';
+    const layerPaths = (o.labels || o.elementTextures || wantsLayered) && boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null;
+    // Never substitute approximate ownership for the layered full-stroke clips.
+    const layered = wantsLayered && layerPaths ? buildLayeredHatching(prepared, o, layerPaths) : null;
     const elements = o.elementTextures ? createElementTextures(spheres.map(s => s.element), o.elementTextureScale) : null;
     // Without certified paths, texture ownership has its own bounded numerical
     // fallback. Do not promote sampled paths to certified whole-label layers.
     const fallbackElements = elements && !layerPaths ? sampledElementTextures(scene, depthAt, project, scale, o.width, o.height, o.quality, elements) : '';
     const ownerEngraving = new Map(), ownerDots = new Map();
-    const regions = o.shadingMode !== 'halftone' && o.shadingSize !== 0 && boundaries?.dotRegions ? boundaries.dotRegions() : null;
+    const regions = !layered && (o.shadingMode !== 'halftone' || !o.quantizeShading) && o.shadingSize !== 0 && boundaries?.dotRegions ? boundaries.dotRegions() : null;
     if (regions?.surface)
         atlas = createSurfaceAtlas(prepared, regions, o);
     // Shadow boundaries are solved per surface, not rediscovered along each line.
     function tonalSpans(s, g, tone, limit, sharedShadow) {
-        if (o.lightType !== 'directional')
-            return { spans: undefined, breaks: undefined };
         const shadow = sharedShadow !== undefined ? sharedShadow : mayShadow(s) ? (atlas ? g.clip(atlas.shadow(s)) : null) : [];
         if (shadow === null)
             return { spans: undefined, breaks: undefined };
@@ -4483,18 +5000,19 @@ function render(molecule, options = {}) {
         function hatch(axis, count, secondary) {
             axis = norm$1(axis);
             const e = norm$1(cross$2(axis, [1, 0, 0])), f = cross$2(axis, e), light = lightFor(s);
+            const axisLight = dot$3(axis, lightDirection), eLight = dot$3(e, lightDirection), fLight = dot$3(f, lightDirection);
             const face = atlas?.visible(s);
             if (atlas && !face)
                 return;
             const screen = (a) => [a[0], -a[1], a[2]], c = project(s.c), radius = s.r * scale;
             const visibleFamily = face?.sphereFamily?.(c, radius, screen(axis), screen(e), screen(f));
-            const shadowFamily = o.lightType === 'directional' && atlas && mayShadow(s) ? atlas.shadow(s).sphereFamily?.(c, radius, screen(axis), screen(e), screen(f)) : undefined;
+            const shadowFamily = atlas && mayShadow(s) ? atlas.shadow(s).sphereFamily?.(c, radius, screen(axis), screen(e), screen(f)) : undefined;
             for (let j = 1; j < count; j++) {
                 const h = -1 + 2 * j / count, r = Math.sqrt(1 - h * h), limit = secondary ? .12 : (j % 2 === 0 ? .88 : .58);
                 const center = add$3(s.c, mul$2(axis, h * s.r)), u = mul$2(e, r * s.r), v = mul$2(f, r * s.r);
                 const geometry = projectedCircle(project, center, u, v);
                 const front = trigSpans(-axis[2] * h, -r * e[2], -r * f[2], 1e-12);
-                const tonal = tonalSpans(s, geometry, t => trigSpans(h * dot$3(axis, lightDirection), r * dot$3(e, lightDirection), r * dot$3(f, lightDirection), t), limit, shadowFamily?.(h));
+                const tonal = tonalSpans(s, geometry, t => trigSpans(h * axisLight, r * eLight, r * fLight, t), limit, shadowFamily?.(h));
                 const spans = tonal.spans ? intersectSpans(tonal.spans, front) : undefined;
                 const clip = () => {
                     let result = visibleFamily?.(h) ?? (face ? geometry.clip(face) : null);
@@ -4505,17 +5023,20 @@ function render(molecule, options = {}) {
                 curve(t => {
                     const a = t * Math.PI * 2, cos = Math.cos(a), sin = Math.sin(a);
                     const n = [axis[0] * h + (e[0] * cos + f[0] * sin) * r, axis[1] * h + (e[1] * cos + f[1] * sin) * r, axis[2] * h + (e[2] * cos + f[2] * sin) * r];
-                    return { p: [s.c[0] + n[0] * s.r, s.c[1] + n[1] * s.r, s.c[2] + n[2] * s.r], n };
+                    // Reuse trig, retaining the old projected expression and its angle
+                    // rounding even for exceptional very small parameter values.
+                    const xy = a === t * (2 * Math.PI) ? geometry.pointFromTrig(cos, sin) : geometry.point(t);
+                    return { p: [s.c[0] + n[0] * s.r, s.c[1] + n[1] * s.r, s.c[2] + n[2] * s.r], n, xy };
                 }, Math.max(120, Math.ceil(2 * Math.PI * s.r * scale * r / .7)), o.hatchWidth * (secondary ? .63 : .8), (n, p, lit) => n[2] >= -1e-12 && lit < limit, true, true, clip, { geometry, spans, breaks: tonal.breaks, illumination: light });
             }
         }
-        if (o.shadingMode === 'hatch' && o.hatchWidth > 0) {
+        if (!layered && o.shadingMode === 'hatch' && o.hatchWidth > 0) {
             hatch([.12, 1, .40], Math.max(2, Math.round(hatchDensity * s.r / .48)), false);
             if (o.crossHatch)
                 hatch([1, .22, -0.32], Math.max(2, Math.round(hatchDensity * .8 * s.r / .48)), true);
         }
         if (layerPaths)
-            ownerEngraving.set(s, paths.slice(start).join(''));
+            ownerEngraving.set(s, (layered?.bySurface.get(s) || '') + paths.slice(start).join(''));
     }
     for (const s of cylinders) {
         const start = paths.length;
@@ -4534,13 +5055,13 @@ function render(molecule, options = {}) {
             line(mul$2(edge, -1), o.outlineWidth * 1.1);
         }
         const count = Math.max(3, Math.round(hatchDensity * .8 * s.r / .115));
-        for (let j = 0; o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
+        for (let j = 0; !layered && o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
             const a = j / count * 2 * Math.PI, n = add$3(mul$2(e, Math.cos(a)), mul$2(f, Math.sin(a)));
             if (n[2] > 0)
                 line(n, o.hatchWidth * .68, true);
         }
         if (layerPaths)
-            ownerEngraving.set(s, paths.slice(start).join(''));
+            ownerEngraving.set(s, (layered?.bySurface.get(s) || '') + paths.slice(start).join(''));
     }
     let dots = '';
     if (o.shadingMode !== 'hatch' && o.dotSize > 0) {
@@ -4551,9 +5072,9 @@ function render(molecule, options = {}) {
             compactStipple: true,
             emitSurface: layerPaths ? (id, svg) => { ownerDots.set(id, (ownerDots.get(id) || '') + svg); } : undefined,
             paths: o.shadingMode === 'halftone' && boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null,
-            light: o.lightType === 'directional' ? lightDirection : undefined,
+            light: lightDirection,
             illumination: (source, n, p) => lightFor(source)(n, p),
-            ...(o.shadingMode === 'halftone' && o.lightType === 'directional' && o.castShadows && o.shadowStrength > 0 ? directionalShadows() : {})
+            ...(o.shadingMode === 'halftone' && o.castShadows && o.shadowStrength > 0 ? directionalShadows() : {})
         };
         dots = dotter.buildDots(scene, depthAt, project, scale, illumination, o, regions, hatchCoverage(scale, o), surfaces);
     }
@@ -4586,7 +5107,8 @@ function render(molecule, options = {}) {
             return `<g data-role="surface-layer" data-surface-id="${id}">${fill}${categorical}${ownerDots.get(id) || ''}${engraving(ownerEngraving.get(s) || '')}${ownerLabels.get(s) || ''}</g>`;
         }).join('');
     }
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title>${elements ? `<defs>${elements.definitions}</defs>` : ''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
+    const hatchInfo = wantsLayered ? ` data-hatch-mode="${layered ? 'layered' : 'continuous-fallback'}"${layered ? '' : ' data-hatch-fallback="uncertified-visible-regions"'}` : '';
+    return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title>${layered?.defs || ''}${elements ? `<defs>${elements.definitions}</defs>` : ''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }
 
 export { covalentRadii, covalentRadiusSource, depthAt, elementColor, elementPalette, elementTextureDefinition, elementTexturePattern, elementTextureSwatch, engravingWidth, examples, normalizeOrientation, orientationFromEulerXYZ, orientationToEulerXYZ, parseXYZ, render, rotateOrientation };

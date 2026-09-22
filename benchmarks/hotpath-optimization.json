@@ -1,0 +1,1596 @@
+{
+  "baselineCommit": "b351c7b",
+  "note": "Alternating before/after samples within each engine. Inspect all engines; a gain on QuickJS is not a guarantee of a gain everywhere.",
+  "runs": [
+    {
+      "label": "round1",
+      "engines": {
+        "node-jit": {
+          "engine": "node-jit",
+          "protocol": "Same process, independent bundles. One initial render and 3 warmups per version, then 6 timed pairs with alternating order. Median = mean of two middle values. Timed render() only; dependency selection and equality check outside timer. No lowered tolerances or samples.",
+          "rows": [
+            {
+              "id": "phenol-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 90.02730000000001,
+                "samplesMs": [
+                  184.31089999999995,
+                  133.8999,
+                  100.71510000000012,
+                  89.97070000000008,
+                  85.98990000000003,
+                  118.50290000000018
+                ],
+                "medianMs": 109.60900000000015,
+                "minMs": 85.98990000000003,
+                "maxMs": 184.31089999999995
+              },
+              "after": {
+                "firstMs": 73.66320000000002,
+                "samplesMs": [
+                  73.07209999999998,
+                  72.16790000000003,
+                  75.12810000000013,
+                  65.3327999999999,
+                  81.32159999999999,
+                  72.5634
+                ],
+                "medianMs": 72.81774999999999,
+                "minMs": 65.3327999999999,
+                "maxMs": 81.32159999999999
+              },
+              "speedup": 1.505251123524143,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 418.83400000000006,
+                "samplesMs": [
+                  622.7324999999992,
+                  395.7356,
+                  389.65980000000036,
+                  362.2554000000009,
+                  342.4285,
+                  470.1797999999999
+                ],
+                "medianMs": 392.69770000000017,
+                "minMs": 342.4285,
+                "maxMs": 622.7324999999992
+              },
+              "after": {
+                "firstMs": 350.05769999999984,
+                "samplesMs": [
+                  334.4863999999998,
+                  282.0666999999994,
+                  419.35140000000047,
+                  263.15099999999984,
+                  280.8043999999991,
+                  253.90920000000006
+                ],
+                "medianMs": 281.43554999999924,
+                "minMs": 253.90920000000006,
+                "maxMs": 419.35140000000047
+              },
+              "speedup": 1.3953379379399697,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-fast-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "fast",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 17.03740000000107,
+                "samplesMs": [
+                  9.30789999999979,
+                  8.587199999999939,
+                  8.216099999999642,
+                  7.662400000001071,
+                  8.428799999999683,
+                  7.627500000000509
+                ],
+                "medianMs": 8.322449999999662,
+                "minMs": 7.627500000000509,
+                "maxMs": 9.30789999999979
+              },
+              "after": {
+                "firstMs": 13.459499999999025,
+                "samplesMs": [
+                  6.814400000001115,
+                  6.934400000000096,
+                  5.8968000000004395,
+                  5.878699999999299,
+                  5.930099999999584,
+                  5.969900000000052
+                ],
+                "medianMs": 5.949999999999818,
+                "minMs": 5.878699999999299,
+                "maxMs": 6.934400000000096
+              },
+              "speedup": 1.398731092436961,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-elements",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": true,
+                "shadingSize": 0
+              },
+              "before": {
+                "firstMs": 99.91769999999997,
+                "samplesMs": [
+                  106.30049999999937,
+                  84.90400000000045,
+                  76.23099999999977,
+                  98.29540000000088,
+                  92.33410000000003,
+                  96.35879999999997
+                ],
+                "medianMs": 94.34645,
+                "minMs": 76.23099999999977,
+                "maxMs": 106.30049999999937
+              },
+              "after": {
+                "firstMs": 79.03909999999996,
+                "samplesMs": [
+                  102.65350000000035,
+                  88.04609999999957,
+                  85.19520000000011,
+                  73.39220000000023,
+                  61.368500000000495,
+                  87.08480000000054
+                ],
+                "medianMs": 86.14000000000033,
+                "minMs": 61.368500000000495,
+                "maxMs": 102.65350000000035
+              },
+              "speedup": 1.09526874854887,
+              "byteIdentical": true
+            }
+          ]
+        },
+        "node-jitless": {
+          "engine": "node-jitless",
+          "protocol": "Same process, independent bundles. One initial render and 3 warmups per version, then 6 timed pairs with alternating order. Median = mean of two middle values. Timed render() only; dependency selection and equality check outside timer. No lowered tolerances or samples.",
+          "rows": [
+            {
+              "id": "phenol-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 220.8657,
+                "samplesMs": [
+                  204.3454999999999,
+                  209.71939999999995,
+                  206.79410000000007,
+                  362.404,
+                  506.6654000000003,
+                  331.29209999999966
+                ],
+                "medianMs": 270.5057499999998,
+                "minMs": 204.3454999999999,
+                "maxMs": 506.6654000000003
+              },
+              "after": {
+                "firstMs": 264.44079999999997,
+                "samplesMs": [
+                  187.69270000000006,
+                  186.70630000000028,
+                  240.40520000000015,
+                  350.62829999999985,
+                  395.84810000000016,
+                  344.79190000000017
+                ],
+                "medianMs": 292.59855000000016,
+                "minMs": 186.70630000000028,
+                "maxMs": 395.84810000000016
+              },
+              "speedup": 0.924494499374654,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 2078.8095999999996,
+                "samplesMs": [
+                  1773.6749000000018,
+                  1825.2422000000006,
+                  1750.0481,
+                  1745.0973000000013,
+                  1865.733100000005,
+                  1670.8204000000042
+                ],
+                "medianMs": 1761.861500000001,
+                "minMs": 1670.8204000000042,
+                "maxMs": 1865.733100000005
+              },
+              "after": {
+                "firstMs": 2087.4371,
+                "samplesMs": [
+                  1636.3660999999993,
+                  1639.5570999999982,
+                  1696.2481000000007,
+                  1631.6201,
+                  1660.2860999999975,
+                  1697.5385999999999
+                ],
+                "medianMs": 1649.9215999999979,
+                "minMs": 1631.6201,
+                "maxMs": 1697.5385999999999
+              },
+              "speedup": 1.0678455873297272,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-fast-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "fast",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 25.298399999999674,
+                "samplesMs": [
+                  27.0541000000012,
+                  20.079899999996996,
+                  18.611799999998766,
+                  19.4375,
+                  21.591599999999744,
+                  29.290399999998044
+                ],
+                "medianMs": 20.83574999999837,
+                "minMs": 18.611799999998766,
+                "maxMs": 29.290399999998044
+              },
+              "after": {
+                "firstMs": 23.74539999999979,
+                "samplesMs": [
+                  24.11979999999312,
+                  18.892899999998917,
+                  18.796800000003714,
+                  17.954799999999523,
+                  25.960500000001048,
+                  27.98700000000099
+                ],
+                "medianMs": 21.50634999999602,
+                "minMs": 17.954799999999523,
+                "maxMs": 27.98700000000099
+              },
+              "speedup": 0.9688185117419844,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-elements",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": true,
+                "shadingSize": 0
+              },
+              "before": {
+                "firstMs": 582.7070999999996,
+                "samplesMs": [
+                  624.0323999999964,
+                  630.9524999999994,
+                  631.241200000004,
+                  668.190300000002,
+                  647.9551999999967,
+                  655.1857999999993
+                ],
+                "medianMs": 639.5982000000004,
+                "minMs": 624.0323999999964,
+                "maxMs": 668.190300000002
+              },
+              "after": {
+                "firstMs": 492.56320000000414,
+                "samplesMs": [
+                  543.1640999999945,
+                  553.101800000004,
+                  586.3209999999963,
+                  575.9858999999997,
+                  655.1627999999982,
+                  618.7234000000026
+                ],
+                "medianMs": 581.153449999998,
+                "minMs": 543.1640999999945,
+                "maxMs": 655.1627999999982
+              },
+              "speedup": 1.1005668124313854,
+              "byteIdentical": true
+            }
+          ]
+        },
+        "quickjs-ng": {
+          "engine": "quickjs-ng",
+          "protocol": "Same process, independent bundles. One initial render and 3 warmups per version, then 6 timed pairs with alternating order. Median = mean of two middle values. Timed render() only; dependency selection and equality check outside timer. No lowered tolerances or samples.",
+          "rows": [
+            {
+              "id": "phenol-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 556.0568999946117,
+                "samplesMs": [
+                  927.4582000076771,
+                  909.4812000095844,
+                  893.4866000115871,
+                  962.523600012064,
+                  1072.182700008154,
+                  947.8904000222683
+                ],
+                "medianMs": 937.6743000149727,
+                "minMs": 893.4866000115871,
+                "maxMs": 1072.182700008154
+              },
+              "after": {
+                "firstMs": 461.9442999958992,
+                "samplesMs": [
+                  821.135899990797,
+                  800.5164999961853,
+                  715.9604000151157,
+                  790.4574999809265,
+                  768.9226000010967,
+                  818.0188999772072
+                ],
+                "medianMs": 795.4869999885559,
+                "minMs": 715.9604000151157,
+                "maxMs": 821.135899990797
+              },
+              "speedup": 1.1787424559150084,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 4727.816899985075,
+                "samplesMs": [
+                  2695.1841000020504,
+                  2593.7738000154495,
+                  2757.818599998951,
+                  2787.7829999923706,
+                  2608.8637999892235,
+                  2672.143700003624
+                ],
+                "medianMs": 2683.663900002837,
+                "minMs": 2593.7738000154495,
+                "maxMs": 2787.7829999923706
+              },
+              "after": {
+                "firstMs": 4041.382699996233,
+                "samplesMs": [
+                  2289.675799995661,
+                  2308.630599975586,
+                  2309.1417999863625,
+                  2375.434700012207,
+                  2296.794099986553,
+                  2332.910599976778
+                ],
+                "medianMs": 2308.886199980974,
+                "minMs": 2289.675799995661,
+                "maxMs": 2375.434700012207
+              },
+              "speedup": 1.1623196933763782,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-fast-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "fast",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 40.663599997758865,
+                "samplesMs": [
+                  40.706900000572205,
+                  44.68479999899864,
+                  44.45960000157356,
+                  40.79670000076294,
+                  41.01980000734329,
+                  41.02590000629425
+                ],
+                "medianMs": 41.02285000681877,
+                "minMs": 40.706900000572205,
+                "maxMs": 44.68479999899864
+              },
+              "after": {
+                "firstMs": 32.04519999027252,
+                "samplesMs": [
+                  32.449099987745285,
+                  35.165199995040894,
+                  35.528499990701675,
+                  34.82209998369217,
+                  32.21459999680519,
+                  32.170500010252
+                ],
+                "medianMs": 33.63559998571873,
+                "minMs": 32.170500010252,
+                "maxMs": 35.528499990701675
+              },
+              "speedup": 1.2196259327687504,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-elements",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": true,
+                "shadingSize": 0
+              },
+              "before": {
+                "firstMs": 1013.0925000011921,
+                "samplesMs": [
+                  1006.8804000020027,
+                  1000.8127000033855,
+                  1006.3568000197411,
+                  1002.5304999947548,
+                  1033.1735999882221,
+                  1004.6360999941826
+                ],
+                "medianMs": 1005.4964500069618,
+                "minMs": 1000.8127000033855,
+                "maxMs": 1033.1735999882221
+              },
+              "after": {
+                "firstMs": 863.9650999903679,
+                "samplesMs": [
+                  873.4121000170708,
+                  880.5996000170708,
+                  881.868499994278,
+                  873.5716999769211,
+                  896.4404999911785,
+                  898.1274000108242
+                ],
+                "medianMs": 881.2340500056744,
+                "minMs": 873.4121000170708,
+                "maxMs": 898.1274000108242
+              },
+              "speedup": 1.1410095308964596,
+              "byteIdentical": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "latest",
+      "engines": {
+        "node-jit": {
+          "engine": "node-jit",
+          "protocol": "Same process, independent bundles. One initial render and 3 warmups per version, then 6 timed pairs with alternating order. Median = mean of two middle values. Timed render() only; dependency selection and equality check outside timer. No lowered tolerances or samples.",
+          "rows": [
+            {
+              "id": "phenol-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 94.64359999999999,
+                "samplesMs": [
+                  51.24249999999995,
+                  46.04060000000004,
+                  45.704399999999964,
+                  46.91860000000008,
+                  40.260299999999916,
+                  48.75759999999991
+                ],
+                "medianMs": 46.47960000000006,
+                "minMs": 40.260299999999916,
+                "maxMs": 51.24249999999995
+              },
+              "after": {
+                "firstMs": 79.74430000000001,
+                "samplesMs": [
+                  50.9434,
+                  37.1395,
+                  36.04390000000001,
+                  32.959299999999985,
+                  33.26929999999993,
+                  32.29180000000008
+                ],
+                "medianMs": 34.65659999999997,
+                "minMs": 32.29180000000008,
+                "maxMs": 50.9434
+              },
+              "speedup": 1.341147140804352,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 203.7297000000001,
+                "samplesMs": [
+                  227.77199999999993,
+                  179.51490000000013,
+                  188.6839,
+                  171.52120000000014,
+                  159.90390000000025,
+                  239.89739999999983
+                ],
+                "medianMs": 184.09940000000006,
+                "minMs": 159.90390000000025,
+                "maxMs": 239.89739999999983
+              },
+              "after": {
+                "firstMs": 217.4973,
+                "samplesMs": [
+                  157.04829999999993,
+                  126.20399999999972,
+                  189.31449999999995,
+                  140.48119999999972,
+                  184.55549999999948,
+                  154.82150000000001
+                ],
+                "medianMs": 155.93489999999997,
+                "minMs": 126.20399999999972,
+                "maxMs": 189.31449999999995
+              },
+              "speedup": 1.180617039546632,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-fast-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "fast",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 9.134299999999712,
+                "samplesMs": [
+                  4.047800000000279,
+                  3.563799999999901,
+                  3.155300000000352,
+                  3.541900000000169,
+                  3.170900000000074,
+                  3.4593999999997322
+                ],
+                "medianMs": 3.5006499999999505,
+                "minMs": 3.155300000000352,
+                "maxMs": 4.047800000000279
+              },
+              "after": {
+                "firstMs": 7.545600000000377,
+                "samplesMs": [
+                  4.089799999999741,
+                  3.4606000000003405,
+                  3.105899999999565,
+                  2.6469999999999345,
+                  2.7218000000002576,
+                  2.3729000000002998
+                ],
+                "medianMs": 2.9138499999999112,
+                "minMs": 2.3729000000002998,
+                "maxMs": 4.089799999999741
+              },
+              "speedup": 1.2013830499167963,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-elements",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": true,
+                "shadingSize": 0
+              },
+              "before": {
+                "firstMs": 58.52129999999943,
+                "samplesMs": [
+                  96.6247000000003,
+                  61.27610000000004,
+                  48.371799999999894,
+                  53.16160000000036,
+                  58.625200000000405,
+                  50.257300000000214
+                ],
+                "medianMs": 55.89340000000038,
+                "minMs": 48.371799999999894,
+                "maxMs": 96.6247000000003
+              },
+              "after": {
+                "firstMs": 46.84649999999965,
+                "samplesMs": [
+                  60.41659999999956,
+                  42.94940000000042,
+                  39.53150000000005,
+                  40.425500000000284,
+                  48.09639999999945,
+                  46.56700000000001
+                ],
+                "medianMs": 44.758200000000215,
+                "minMs": 39.53150000000005,
+                "maxMs": 60.41659999999956
+              },
+              "speedup": 1.2487856973694231,
+              "byteIdentical": true
+            }
+          ]
+        },
+        "node-jitless": {
+          "engine": "node-jitless",
+          "protocol": "Same process, independent bundles. One initial render and 3 warmups per version, then 6 timed pairs with alternating order. Median = mean of two middle values. Timed render() only; dependency selection and equality check outside timer. No lowered tolerances or samples.",
+          "rows": [
+            {
+              "id": "phenol-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 220.31380000000001,
+                "samplesMs": [
+                  188.69910000000004,
+                  192.0698000000002,
+                  202.1274000000003,
+                  220.5956000000001,
+                  194.31809999999996,
+                  215.24850000000015
+                ],
+                "medianMs": 198.22275000000013,
+                "minMs": 188.69910000000004,
+                "maxMs": 220.5956000000001
+              },
+              "after": {
+                "firstMs": 216.30990000000003,
+                "samplesMs": [
+                  183.6603,
+                  198.1615999999999,
+                  183.1469000000002,
+                  181.8098,
+                  195.09720000000016,
+                  188.8978000000002
+                ],
+                "medianMs": 186.2790500000001,
+                "minMs": 181.8098,
+                "maxMs": 198.1615999999999
+              },
+              "speedup": 1.0641172477527667,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 954.2313999999997,
+                "samplesMs": [
+                  957.6373000000003,
+                  962.9022999999997,
+                  963.0051000000003,
+                  993.8568000000014,
+                  969.1178999999975,
+                  980.4014999999999
+                ],
+                "medianMs": 966.0614999999989,
+                "minMs": 957.6373000000003,
+                "maxMs": 993.8568000000014
+              },
+              "after": {
+                "firstMs": 889.4380000000001,
+                "samplesMs": [
+                  946.1888999999992,
+                  910.4477999999999,
+                  935.9423999999999,
+                  904.152900000001,
+                  910.1696000000011,
+                  990.5990999999995
+                ],
+                "medianMs": 923.1950999999999,
+                "minMs": 904.152900000001,
+                "maxMs": 990.5990999999995
+              },
+              "speedup": 1.0464326554592838,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-fast-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "fast",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 13.373199999998178,
+                "samplesMs": [
+                  12.822299999999814,
+                  12.962600000002567,
+                  12.845400000001973,
+                  14.08390000000145,
+                  12.986199999999371,
+                  12.95890000000145
+                ],
+                "medianMs": 12.960750000002008,
+                "minMs": 12.822299999999814,
+                "maxMs": 14.08390000000145
+              },
+              "after": {
+                "firstMs": 13.970800000002782,
+                "samplesMs": [
+                  12.68210000000181,
+                  12.488399999998364,
+                  12.586200000001554,
+                  12.76090000000113,
+                  13.219600000000355,
+                  12.450199999999313
+                ],
+                "medianMs": 12.634150000001682,
+                "minMs": 12.450199999999313,
+                "maxMs": 13.219600000000355
+              },
+              "speedup": 1.0258505716649147,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-elements",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": true,
+                "shadingSize": 0
+              },
+              "before": {
+                "firstMs": 341.8545000000013,
+                "samplesMs": [
+                  330.39949999999953,
+                  366.095400000002,
+                  324.85629999999946,
+                  337.53289999999834,
+                  326.45700000000215,
+                  322.76390000000174
+                ],
+                "medianMs": 328.42825000000084,
+                "minMs": 322.76390000000174,
+                "maxMs": 366.095400000002
+              },
+              "after": {
+                "firstMs": 320.64949999999953,
+                "samplesMs": [
+                  318.5287000000026,
+                  346.8595999999998,
+                  338.35949999999866,
+                  345.7121999999981,
+                  325.79289999999673,
+                  322.0126999999993
+                ],
+                "medianMs": 332.0761999999977,
+                "minMs": 318.5287000000026,
+                "maxMs": 346.8595999999998
+              },
+              "speedup": 0.9890147201154528,
+              "byteIdentical": true
+            }
+          ]
+        },
+        "quickjs-ng": {
+          "engine": "quickjs-ng",
+          "protocol": "Same process, independent bundles. One initial render and 3 warmups per version, then 6 timed pairs with alternating order. Median = mean of two middle values. Timed render() only; dependency selection and equality check outside timer. No lowered tolerances or samples.",
+          "rows": [
+            {
+              "id": "phenol-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 532.5988999903202,
+                "samplesMs": [
+                  531.8418999910355,
+                  544.6759000122547,
+                  538.9987999796867,
+                  508.5595999956131,
+                  539.0550000071526,
+                  526.3505000174046
+                ],
+                "medianMs": 535.4203499853611,
+                "minMs": 508.5595999956131,
+                "maxMs": 544.6759000122547
+              },
+              "after": {
+                "firstMs": 462.8662999868393,
+                "samplesMs": [
+                  434.52149999141693,
+                  441.24779999256134,
+                  440.8875999748707,
+                  445.19459998607635,
+                  426.46189999580383,
+                  439.053200006485
+                ],
+                "medianMs": 439.97039999067783,
+                "minMs": 426.46189999580383,
+                "maxMs": 445.19459998607635
+              },
+              "speedup": 1.2169462991071802,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 2766.0063000023365,
+                "samplesMs": [
+                  2700.531599998474,
+                  2628.352599978447,
+                  2709.647000014782,
+                  2688.97650000453,
+                  2627.3353999853134,
+                  2668.835899978876
+                ],
+                "medianMs": 2678.906199991703,
+                "minMs": 2627.3353999853134,
+                "maxMs": 2709.647000014782
+              },
+              "after": {
+                "firstMs": 2401.889600008726,
+                "samplesMs": [
+                  2343.0690999925137,
+                  2345.9478000104427,
+                  2364.33780002594,
+                  2283.449200004339,
+                  2336.7797999978065,
+                  2303.3258000016212
+                ],
+                "medianMs": 2339.92444999516,
+                "minMs": 2283.449200004339,
+                "maxMs": 2364.33780002594
+              },
+              "speedup": 1.1448686730023458,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-fast-hatch",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "fast",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": false
+              },
+              "before": {
+                "firstMs": 42.33599999547005,
+                "samplesMs": [
+                  40.59630000591278,
+                  41.453599989414215,
+                  42.47029998898506,
+                  40.75040000677109,
+                  41.15869998931885,
+                  41.48230001330376
+                ],
+                "medianMs": 41.30614998936653,
+                "minMs": 40.59630000591278,
+                "maxMs": 42.47029998898506
+              },
+              "after": {
+                "firstMs": 35.6216000020504,
+                "samplesMs": [
+                  32.01450002193451,
+                  32.54170000553131,
+                  32.143200010061264,
+                  32.28640002012253,
+                  32.67399999499321,
+                  33.07619997859001
+                ],
+                "medianMs": 32.41405001282692,
+                "minMs": 32.01450002193451,
+                "maxMs": 33.07619997859001
+              },
+              "speedup": 1.2743285696486808,
+              "byteIdentical": true
+            },
+            {
+              "id": "c60-precise-elements",
+              "options": {
+                "width": 800,
+                "height": 700,
+                "scale": 50,
+                "quality": "preview",
+                "renderMode": "precise",
+                "shadingMode": "hatch",
+                "lightType": "directional",
+                "castShadows": false,
+                "colorWash": false,
+                "labels": false,
+                "elementTextures": true,
+                "shadingSize": 0
+              },
+              "before": {
+                "firstMs": 1031.2172999978065,
+                "samplesMs": [
+                  1015.6870999932289,
+                  1008.8899999856949,
+                  1026.6953999996185,
+                  1004.7107000052929,
+                  1009.2689999938011,
+                  1089.6124999821186
+                ],
+                "medianMs": 1012.478049993515,
+                "minMs": 1004.7107000052929,
+                "maxMs": 1089.6124999821186
+              },
+              "after": {
+                "firstMs": 871.3166999816895,
+                "samplesMs": [
+                  869.443599998951,
+                  879.4925999939442,
+                  901.7639000117779,
+                  885.2676999866962,
+                  909.9650000035763,
+                  943.4756999909878
+                ],
+                "medianMs": 893.5157999992371,
+                "minMs": 869.443599998951,
+                "maxMs": 943.4756999909878
+              },
+              "speedup": 1.1331395035145204,
+              "byteIdentical": true
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputChecks": [
+    {
+      "id": "phenol-precise-hatch",
+      "sha256": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820",
+      "outputs": {
+        "node-jit": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820",
+        "node-jitless": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820",
+        "quickjs-ng": "e09da407394bb777b3ab9268771bb952c8b0c11a965cbcaa0616ea1eb3581820"
+      },
+      "byteIdentical": true
+    },
+    {
+      "id": "c60-precise-hatch",
+      "sha256": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613",
+      "outputs": {
+        "node-jit": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613",
+        "node-jitless": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613",
+        "quickjs-ng": "51c23012b00bc3ab65e78d01e35011f21653be826f26ffbe65a8d2a4b16b2613"
+      },
+      "byteIdentical": true
+    },
+    {
+      "id": "c60-fast-hatch",
+      "sha256": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416",
+      "outputs": {
+        "node-jit": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416",
+        "node-jitless": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416",
+        "quickjs-ng": "59bb9f6c4f80d3d4812fafdd6a4891e99c0e6b0c2467f7754ffe9b44c68d5416"
+      },
+      "byteIdentical": true
+    },
+    {
+      "id": "c60-precise-elements",
+      "sha256": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47",
+      "outputs": {
+        "node-jit": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47",
+        "node-jitless": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47",
+        "quickjs-ng": "f11005a31b14e096022d5c3f2dbe7c88938d98f923a5f90ff53caf12d27b2c47"
+      },
+      "byteIdentical": true
+    }
+  ],
+  "parity": {
+    "baselineDir": "C:\\Users\\jairy\\Documents\\molplotter\\build\\engine-baseline",
+    "scenes": 108,
+    "note": "Exact UTF-8 SVG string equality across all presets in precise/fast and hatch/stipple/halftone, plus selected point/directional shadow export cases."
+  },
+  "tests": {
+    "note": "Selected geometry/lighting/texture/UI/module suites; failures rerun against committed baseline. Earlier unbounded full-suite attempt stopped in legacy test-dots.cjs. This is not a claim that every repository test passes.",
+    "rows": [
+      {
+        "file": "test-hotpath-math.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-hotpath-math.cjs.log"
+      },
+      {
+        "file": "test-approved-textures.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-approved-textures.cjs.log"
+      },
+      {
+        "file": "test-element-textures.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-element-textures.cjs.log"
+      },
+      {
+        "file": "test-element-textures-ui.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-element-textures-ui.cjs.log"
+      },
+      {
+        "file": "test-ortep-palette.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-ortep-palette.cjs.log"
+      },
+      {
+        "file": "test-ortep-ui.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-ortep-ui.cjs.log"
+      },
+      {
+        "file": "test-fast-ui.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-fast-ui.cjs.log"
+      },
+      {
+        "file": "test-radii-scale.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-radii-scale.cjs.log"
+      },
+      {
+        "file": "test-depth-fast.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-depth-fast.cjs.log"
+      },
+      {
+        "file": "test-hatch-intervals.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-hatch-intervals.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-hatch-intervals.cjs.log"
+        },
+        "failureSignature": [
+          "FAIL default-hydrogenPeroxide: whole-scene build fallback",
+          "FAIL default-isopropanol: whole-scene build fallback",
+          "FAIL default-glycine: whole-scene build fallback",
+          "FAIL default-glucose: whole-scene build fallback",
+          "FAIL default-phospholipid: whole-scene build fallback"
+        ],
+        "baselineFailureSignature": [
+          "FAIL default-hydrogenPeroxide: whole-scene build fallback",
+          "FAIL default-isopropanol: whole-scene build fallback",
+          "FAIL default-glycine: whole-scene build fallback",
+          "FAIL default-glucose: whole-scene build fallback",
+          "FAIL default-phospholipid: whole-scene build fallback"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-hatch-renderer.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-hatch-renderer.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-hatch-renderer.cjs.log"
+        },
+        "failureSignature": [
+          "AssertionError [ERR_ASSERTION]: one curve fallback does not disable the rest"
+        ],
+        "baselineFailureSignature": [
+          "AssertionError [ERR_ASSERTION]: one curve fallback does not disable the rest"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-hatch-optimization.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-hatch-optimization.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-hatch-optimization.cjs.log"
+        },
+        "failureSignature": [
+          "AssertionError [ERR_ASSERTION]: preserve mean hatch ink including tips"
+        ],
+        "baselineFailureSignature": [
+          "AssertionError [ERR_ASSERTION]: preserve mean hatch ink including tips"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-region-clipping.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-region-clipping.cjs.log"
+      },
+      {
+        "file": "test-shared-regions.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-shared-regions.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-shared-regions.cjs.log"
+        },
+        "failureSignature": [
+          "AssertionError [ERR_ASSERTION]: sphere: every unshadowed disk retains its exact serialized position and radius"
+        ],
+        "baselineFailureSignature": [
+          "AssertionError [ERR_ASSERTION]: sphere: every unshadowed disk retains its exact serialized position and radius"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-surface-lighting.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-surface-lighting.cjs.log"
+      },
+      {
+        "file": "test-surface-shadows.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-surface-shadows.cjs.log"
+      },
+      {
+        "file": "test-surface-tones.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-surface-tones.cjs.log"
+      },
+      {
+        "file": "test-pattern-halftone.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-pattern-halftone.cjs.log"
+      },
+      {
+        "file": "test-label-depth.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-label-depth.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-label-depth.cjs.log"
+        },
+        "failureSignature": [
+          "AssertionError [ERR_ASSERTION]: sphere/hatch: no-label SVG unchanged"
+        ],
+        "baselineFailureSignature": [
+          "AssertionError [ERR_ASSERTION]: sphere/hatch: no-label SVG unchanged"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-orientation.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-orientation.cjs.log"
+      },
+      {
+        "file": "test-orientation-ui.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-orientation-ui.cjs.log"
+      },
+      {
+        "file": "test-gizmo.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-gizmo.cjs.log"
+      },
+      {
+        "file": "test-typescript.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-typescript.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-typescript.cjs.log"
+        },
+        "failureSignature": [
+          "AssertionError [ERR_ASSERTION]: CommonJS public exports"
+        ],
+        "baselineFailureSignature": [
+          "AssertionError [ERR_ASSERTION]: CommonJS public exports"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-boundary-rotations.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-boundary-rotations.cjs.log"
+      },
+      {
+        "file": "test-c60-rotations.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-c60-rotations.cjs.log"
+      },
+      {
+        "file": "test-dot-rotations.cjs",
+        "status": 0,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-dot-rotations.cjs.log"
+      },
+      {
+        "file": "test-analytic-boundaries.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-analytic-boundaries.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-analytic-boundaries.cjs.log"
+        },
+        "failureSignature": [
+          "FAIL default hydrogenPeroxide: hydrogenPeroxide unexpectedly fell back",
+          "FAIL default isopropanol: isopropanol unexpectedly fell back",
+          "FAIL default glycine: glycine unexpectedly fell back",
+          "FAIL default glucose: glucose unexpectedly fell back",
+          "FAIL default phospholipid: phospholipid unexpectedly fell back",
+          "FAIL shared sphere outlines stay visible silhouettes, never contact arcs: The expression evaluated to a falsy value:",
+          "FAIL analytic fill never invokes grid fallback: analytic example invoked grid fallback",
+          "FAIL classic browser script loading: browser example invoked grid fallback"
+        ],
+        "baselineFailureSignature": [
+          "FAIL default hydrogenPeroxide: hydrogenPeroxide unexpectedly fell back",
+          "FAIL default isopropanol: isopropanol unexpectedly fell back",
+          "FAIL default glycine: glycine unexpectedly fell back",
+          "FAIL default glucose: glucose unexpectedly fell back",
+          "FAIL default phospholipid: phospholipid unexpectedly fell back",
+          "FAIL shared sphere outlines stay visible silhouettes, never contact arcs: The expression evaluated to a falsy value:",
+          "FAIL analytic fill never invokes grid fallback: analytic example invoked grid fallback",
+          "FAIL classic browser script loading: browser example invoked grid fallback"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-c60.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-c60.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-c60.cjs.log"
+        },
+        "failureSignature": [
+          "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:"
+        ],
+        "baselineFailureSignature": [
+          "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:"
+        ],
+        "baselineAlsoFails": true
+      },
+      {
+        "file": "test-dot-regions.cjs",
+        "status": 1,
+        "timedOut": false,
+        "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\current-test-dot-regions.cjs.log",
+        "baseline": {
+          "status": 1,
+          "timedOut": false,
+          "log": "C:\\Users\\jairy\\Documents\\molplotter\\build\\optimization-test-logs\\baseline-test-dot-regions.cjs.log"
+        },
+        "failureSignature": [
+          "FAIL default sphere: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default pair: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default water: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default ethanol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default c60: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default methane: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default ammonia: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default carbonDioxide: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default methanol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default benzene: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default hydrogenPeroxide: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default phenol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default isopropanol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default sulfuricAcid: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default glycine: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default glucose: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default phospholipid: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL 40 deterministic ethanol rotations: report every fallback and verify every successful region: renderer must pass optional regions",
+          "FAIL crossed exposed rods must reject cache; renderer null fallback is correct: renderer must pass optional regions",
+          "FAIL ordinary shared-endpoint rods: inspect success or explicitly report conservative fallback: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions"
+        ],
+        "baselineFailureSignature": [
+          "FAIL default sphere: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default pair: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default water: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default ethanol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default c60: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default methane: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default ammonia: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default carbonDioxide: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default methanol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default benzene: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default hydrogenPeroxide: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default phenol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default isopropanol: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default sulfuricAcid: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default glycine: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default glucose: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL default phospholipid: accelerated / geometry / legacy: renderer must pass optional regions",
+          "FAIL 40 deterministic ethanol rotations: report every fallback and verify every successful region: renderer must pass optional regions",
+          "FAIL crossed exposed rods must reject cache; renderer null fallback is correct: renderer must pass optional regions",
+          "FAIL ordinary shared-endpoint rods: inspect success or explicitly report conservative fallback: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions",
+          "AssertionError [ERR_ASSERTION]: renderer must pass optional regions"
+        ],
+        "baselineAlsoFails": true
+      }
+    ]
+  }
+}

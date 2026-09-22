@@ -18,8 +18,7 @@ export function createSurfaceAtlas(prepared:PreparedScene,regions:DotRegions,o:N
     const face=visible(s);
     if(!face||!prepared.mayShadow(s)){shadowCache.set(s,empty);return empty;}
     const b=face.bounds,bounds:[number,number,number,number]=[Math.max(-8,b[0]),Math.max(-8,b[1]),Math.min(o.width+8,b[2]),Math.min(o.height+8,b[3])];
-    const physical=prepared.lightingFor(s);
-    const directional=o.lightType==='directional'?prepared.directionalShadows():null,id=ids.get(s)!;
+    const directional=prepared.directionalShadows(),id=ids.get(s)!;
     const sample=(x:number,y:number):number=>{
       stats.shadowSamples++;
       const wx=(x-origin[0])/scale,wy=(origin[1]-y)/scale,z=depthAt(s,wx,wy);
@@ -32,7 +31,7 @@ export function createSurfaceAtlas(prepared:PreparedScene,regions:DotRegions,o:N
         else if(t>s.length-1e-7)n=s.u.slice();
         else{const r=q.map((v,i)=>v-t*s.u[i]),length=Math.hypot(...r);n=length?r.map(v=>v/length):[0,0,1];}
       }
-      return directional?(directional.shadowed(id,n,p)?1:0):(physical(n,p)<unshadowedIllumination(n,p)?1:0);
+      return directional.shadowed(id,n,p)?1:0;
     };
     const path=sampledTonePaths(bounds,sample,o.quality==='preview'?2:1,[.5],true)[0];
     const result=regionFromPath(path);shadowCache.set(s,result);stats.shadowBuilds++;return result;

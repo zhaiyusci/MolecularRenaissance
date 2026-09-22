@@ -84,8 +84,9 @@ async function main(){
   const attrs=s=>Object.fromEntries([...s.matchAll(/([\w:-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
   const tags=(svg,role)=>[...svg.matchAll(/<[\w:-]+\b[^>]*>/g)].map(m=>attrs(m[0])).filter(a=>a['data-role']===role);
   const definitions=svg=>[...svg.matchAll(/<pattern\b[^>]*>[\s\S]*?<\/pattern>/g)].map(m=>m[0]).filter(mark=>mark.includes('data-role="element-pattern"'));
-  // Fast mode namespaces intentionally hash ALL options, even invisible palette choices.
-  const stableIds=svg=>svg.replace(/fast-painter-[a-f0-9]+-[a-f0-9]+/g,'fast-painter-ID');
+  // Option-derived namespaces include invisible palette choices. Preserve every
+  // path, definition and style while replacing only one validated layered prefix.
+  const stableIds=svg=>{const ids=[...new Set(svg.match(/\blh-[a-z0-9]+-[a-z0-9]+(?=-)/g)||[])];assert(ids.length<=1);if(ids.length)svg=svg.split(ids[0]).join('lh-NAMESPACE');return svg.replace(/fast-painter-[a-f0-9]+-[a-f0-9]+/g,'fast-painter-ID');};
   const elements=[...symbols,'Db','Xx'];
   const molecule={atoms:elements.map((element,i)=>({element,radius:.55,position:[(i%4)*2.5,Math.floor(i/4)*2.5,0]})),bonds:[[1,2]]};
   const base={width:360,height:240,scale:30,yaw:0,pitch:0,colorScheme:'ortep',colorWash:true,washStrength:1,colorSaturation:1,shadingSize:.5,shadingDensity:.5,labels:false,elementTextures:true};
