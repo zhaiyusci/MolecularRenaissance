@@ -83,10 +83,21 @@ for(const [,svg] of body)for(const c of marks(svg))assert(Math.abs(c.y-90)-c.r>=
 // The pre-existing uncertified numerical footprint fallback remains available.
 const fallback=buildDots(scene,depthAt,p=>[16+12*p[0],16-12*p[1]],12,()=>0,{...options,quantizeShading:false,width:32,height:32,dotSpacing:5});
 for(const c of marks(fallback))assert(Math.hypot(c.x-16,c.y-16)+c.r<=12+.003);
-// Stipple stream must be exactly unchanged, not merely visually similar.
+// Continuous stipple must stay byte-identical; the explicit 16-level switch is a
+// deliberate tone quantization on the same flat path, never a repeated texture tile.
 const stipple={shadingMode:'stipple',dotSpacing:5,dotSize:1,width:180,height:180};
 assert.equal(dots({...stipple,quantizeShading:false}),dots(stipple));
-assert.equal(dots({...stipple,quantizeShading:true}),dots(stipple));
+const quantized=dots({...stipple,quantizeShading:true});
+assert.notEqual(quantized,dots(stipple),'explicit 16-level stippling changes tone');
+assert(!quantized.includes('<pattern')&&!quantized.includes('<clipPath'),'quantized stipple stays flat: no tiles, no owner clips');
+const compact=dots({...stipple,quantizeShading:true},regions,{compactStipple:true});
+const levels=[...compact.matchAll(/data-birth-level="(\d+)"/g)].map(m=>+m[1]);
+assert(levels.length>=8,'quantized stipple serializes one flat batch per level');
+assert(levels.every(l=>Number.isInteger(l)&&l>=1&&l<=16)&&new Set(levels).size<=16,'birth levels stay inside the shared tone palette');
+for(const p of compact.matchAll(/<path data-stipple-radius="([^"]+)"[^>]*stroke-width="([^"]+)"/g))assert.equal(+p[2],2*+p[1],'quantized batches keep exact round-cap disk radii');
+const marksOf=svg=>(svg.match(/h0/g)||[]).length;
+const continuousMarks=marksOf(dots({...stipple,quantizeShading:false},regions,{compactStipple:true}));
+assert(Math.abs(marksOf(compact)-continuousMarks)/continuousMarks<.15,'nearest-band quantization preserves mean tone');
 for(const q of [null,0,1,'false',{},[]])assert.throws(()=>dots({quantizeShading:q}),/quantizeShading/);
 if(!process.argv.includes('--dots-only')){
   const model={atoms:[{element:'C',position:[0,0,0],radius:1}],bonds:[]};
@@ -94,8 +105,12 @@ if(!process.argv.includes('--dots-only')){
   for(const shadingMode of ['hatch','halftone','stipple']){
     const make=o=>render(model,{...base,shadingMode,...o});
     assert.equal(make({}),make({quantizeShading:true}),shadingMode+': default true');
-    if(shadingMode==='stipple')assert.equal(make({}),make({quantizeShading:false}));
-    else assert.notEqual(make({}),make({quantizeShading:false}),shadingMode+': off changes shading');
+    assert.notEqual(make({}),make({quantizeShading:false}),shadingMode+': off changes shading');
+    if(shadingMode==='stipple'){
+      assert.match(make({}),/data-stipple-mode="quantized"/);
+      assert(!make({}).includes('<pattern'),'quantized stipple emits flat marks, not tiles');
+      assert(!make({quantizeShading:false}).includes('data-stipple-mode="quantized"'));
+    }
   }
   assert.equal(render(model,{...base,quantizeShading:false}),render(model,{...base,hatchMode:'continuous'}),'off hatching uses exact legacy continuous renderer');
   assert.equal(render(model,{...base,shadingMode:'halftone',hatchMode:'continuous'}),render(model,{...base,shadingMode:'halftone'}),'legacy hatch alias cannot disable default halftone quantization');

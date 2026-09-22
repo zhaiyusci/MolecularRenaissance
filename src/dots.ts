@@ -4,6 +4,10 @@ import { buildSurfacePatterns, sampledTonePaths, projectedSilhouette, halftoneRa
 import { directionalTonePath } from './surface-tones.js';
 import { TONE_LEVELS } from './tone-levels.js';
 interface Hit { id: number; s: Primitive; p: Vector; clearance?: number; }
+/** One equal-radius round-cap batch. `level` is 0 for continuous tone. */
+interface StippleBatch { r:number; level:number; points:string[] }
+/** Flat, shareable serialization: no tile, no clip, one path per level. */
+const batchPath=(b:StippleBatch)=>`<path data-stipple-radius="${b.r.toFixed(3)}"${b.level?` data-birth-level="${b.level}"`:''} fill="none" stroke="#161616" stroke-width="${(2*b.r).toFixed(3)}" stroke-linecap="round" d="${b.points.join('')}"/>`;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 function hash(x:number,y:number,salt:number){
   let h=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^Math.imul(salt,1274126177);
@@ -13,6 +17,9 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
   const o={shadingMode:'stipple',dotSpacing:2.5,dotSize:.5,dotContrast:1.2,...options};
   if(o.quantizeShading!==undefined&&typeof o.quantizeShading!=='boolean')throw new Error('Invalid quantizeShading');
   const continuousHalftone=o.shadingMode==='halftone'&&o.quantizeShading===false;
+  // Sixteen-level stippling is explicit here; an omitted switch keeps the legacy
+  // continuous stream byte-identical for direct low-level callers.
+  const quantizedStipple=o.shadingMode==='stipple'&&o.quantizeShading===true;
   if(!['stipple','halftone'].includes(o.shadingMode))throw new Error('Invalid dot mode');
   if(!Number.isFinite(o.dotSpacing)||o.dotSpacing<.3||o.dotSpacing>19||!Number.isFinite(o.dotSize)||o.dotSize<0||o.dotSize>4||!Number.isFinite(o.dotContrast)||o.dotContrast<.5||o.dotContrast>2.5)throw new Error('Invalid dot settings');
   if(!(scale>0)||!Number.isFinite(scale))throw new Error('Invalid scale');
@@ -194,14 +201,15 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
         layers.push({sourceId:id,clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step)});
       }
     }
-    return buildSurfacePatterns({bounds,pitch:g*Math.SQRT2/5,silhouette:projectedSilhouette(scene,project,scale),layers,
+    const renderPatterns=surfaces?.renderPatterns||buildSurfacePatterns;
+    return renderPatterns({bounds,pitch:g*Math.SQRT2/5,silhouette:projectedSilhouette(scene,project,scale),layers,
       method:surfaces?.paths?(surfaces.light?(surfaces.shadowed?'analytic-local-shadows':'analytic'):'surface-sampled'):'local-fallback'},surfaces?.emitSurface);
   }
-  const circles:string[]=[],batches=surfaces?.compactStipple?new Map<number,string[]>():null;
+  const circles:string[]=[],batches=surfaces?.compactStipple?new Map<number,StippleBatch>():null;
   const emitSurface=surfaces?.emitSurface;
-  const owners=new Map<number,{circles:string[];batches:Map<number,string[]>|null}>();
+  const owners=new Map<number,{circles:string[];batches:Map<number,StippleBatch>|null}>();
   let markCount=0;
-  function emit(x:number,y:number,certifiedCell=false,cellOwner=-1){
+  function emit(x:number,y:number,certifiedCell=false,cellOwner=-1,level=0){
     if(x<minX||y<minY||x>maxX||y>maxY)return;
     const h=certifiedCell?null:hit(x,y);if(!certifiedCell&&!h)return;
     let radius=o.dotSize;
@@ -216,12 +224,15 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
     if(emitSurface){
       const owner=certifiedCell?cellOwner:h!.id;
       let target=owners.get(owner);
-      if(!target){target={circles:[],batches:batches?new Map<number,string[]>():null};owners.set(owner,target);}
+      if(!target){target={circles:[],batches:batches?new Map<number,StippleBatch>():null};owners.set(owner,target);}
       targetCircles=target.circles;targetBatches=target.batches;
     }
     if(targetBatches){
-      let batch=targetBatches.get(radius);if(!batch){batch=[];targetBatches.set(radius,batch);}
-      batch.push(`M${x.toFixed(3)} ${y.toFixed(3)}h0`);
+      // Key on the quantized radius AND the birth level: a quantized render still
+      // serializes flat round-cap paths, one per level, never a repeated tile.
+      const key=level*10000+Math.round(radius*1000);
+      let batch=targetBatches.get(key);if(!batch){batch={r:radius,level,points:[]};targetBatches.set(key,batch);}
+      batch.points.push(`M${x.toFixed(3)} ${y.toFixed(3)}h0`);
     }else targetCircles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"/>`);
   }
   if(o.shadingMode==='stipple'&&toneGain>0){
@@ -235,13 +246,19 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       const certifiedCell=!!regions&&h.clearance!>=cellRadius-1e-12;
       // Equal-radius Poisson marks. Account for overlap using
       // coverage = 1-exp(-numberDensity * diskArea), rather than adding areas.
-      const ink=Math.min(.995,coverage(h));if(ink<=0)continue;
+      const rawInk=Math.min(.995,coverage(h));if(rawInk<=0)continue;
+      // Sixteen-level stippling snaps local tone to the shared 16-band palette with
+      // the same nearest-band rule halftone uses. Level 0 leaves paper untouched, so
+      // quantization stays unbiased and cross-style mean coverage still agrees.
+      const level=quantizedStipple?Math.round(rawInk*TONE_LEVELS):0;
+      if(quantizedStipple&&level===0)continue;
+      const ink=quantizedStipple?Math.min(.995,level/TONE_LEVELS):rawInk;
       const mean=-Math.log1p(-ink)*g*g/(Math.PI*o.dotSize*o.dotSize);
       if(mean>1000)throw new Error('Stipple density too high; increase dot size');
       const stop=Math.exp(-mean);let product=1,count=0;
       while((product*=1-hash(i,j,100+count))>stop)count++;
       for(let k=0;k<count;k++){
-        emit((i+hash(i,j,10000+2*k))*g,(j+hash(i,j,10001+2*k))*g,certifiedCell,h.id);
+        emit((i+hash(i,j,10000+2*k))*g,(j+hash(i,j,10001+2*k))*g,certifiedCell,h.id,level);
         if(markCount>1000000)throw new Error('Too many stipple marks; use a coarser texture');
       }
     }
@@ -250,11 +267,11 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
   // serialization/DOM nodes, not positions: there is no tile or repeated motif.
   if(emitSurface){
     for(const [id,target] of owners){
-      if(target.batches)for(const [r,points] of target.batches)target.circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2*r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+      if(target.batches)for(const batch of target.batches.values())target.circles.push(batchPath(batch));
       emitSurface(id,`<g data-role="dots" data-mode="stipple" fill="#161616" stroke="none">${target.circles.join('')}</g>`);
     }
     return '';
   }
-  if(batches)for(const [r,points] of batches)circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2*r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+  if(batches)for(const batch of batches.values())circles.push(batchPath(batch));
   return `<g data-role="dots" data-mode="${o.shadingMode}" fill="#161616" stroke="none">${circles.join('')}</g>`;
 }

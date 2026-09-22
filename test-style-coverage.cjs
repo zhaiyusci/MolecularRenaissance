@@ -158,14 +158,15 @@ function coverage(svg,box,mask=()=>true){
 }
 if(require.main===module){
 const scene=[{kind:'sphere',c:[0,0,0],r:1}];
-for(const mode of ['stipple','halftone'])for(const target of [.1,.35,.65]){
+for(const mode of ['stipple','halftone'])for(const quantizeShading of [false,true])for(const target of [.1,.35,.65]){
   const svg=buildDots(scene,()=>0,p=>[p[0]*60,-p[1]*60],60,()=>0,
-    {shadingMode:mode,dotSpacing:2.5,dotSize:.5},
+    {shadingMode:mode,dotSpacing:2.5,dotSize:.5,quantizeShading},
     {query:(x,y,r)=>({id:0,clearance:r})},()=>target);
-  if(mode==='halftone')assertPatternStructure(svg);
+  if(mode==='halftone'&&quantizeShading)assertPatternStructure(svg);
   const actual=coverage(svg,[-40,-40,40,40]);
-  console.log(`${mode} target=${target.toFixed(3)} actual=${actual.toFixed(3)}`);
-  const tolerance=mode==='halftone'?1/32+.008:.025;
+  console.log(`${mode} q=${quantizeShading?'on ':'off'} target=${target.toFixed(3)} actual=${actual.toFixed(3)}`);
+  // A quantized screen may sit up to half a band from its target, never a whole one.
+  const tolerance=mode==='halftone'||quantizeShading?1/32+.008:.025;
   assert(Math.abs(actual-target)<tolerance,'dot union coverage should follow its target (including 16-level quantization)');
 }
 (async()=>{

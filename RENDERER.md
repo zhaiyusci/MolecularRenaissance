@@ -57,9 +57,9 @@ const svg = render(examples.c60, { colorWash: true });
 
 ## 16级明暗与兼容选项
 
-`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线与规则网点。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻忽略此选项，不量化为16级。
+`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线、规则网点与点刻。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻在 `true` 时把局部明暗量化为共享的 16 档密度；圆点半径保持 `dotSize` 不变，只有点数随档位变化。两种模式都输出扁平、按「半径 + 出生档位」分批的圆头零长子路径，不含 pattern 瓦片也不含逐原子 clip，渲染器因此始终保留已认证的点区域加速；量化态另以 `data-stipple-mode="quantized"` 标记。共享纹理图集曾是本开关的实现，现已弃用并保留为实验模块 `src/stipple-atlas.ts`：逐原子裁剪的瓦片在浏览器里比它替换掉的扁平标记贵得多，且会让点区域加速失效。
 
-GUI 控件现名 **16级明暗**（英文 **16-level shading**，旧名16级排线）；默认与重置均开启。关闭光影、使用快速模式或点刻时禁用但保留两种勾选偏好，精确规则网点时可用。界面仅为精确排线／规则网点发送该布尔值；快速／点刻省略，不再发送 `hatchMode`。
+GUI 控件现名 **16级明暗**（英文 **16-level shading**，旧名16级排线）；默认与重置均开启。仅在关闭光影或使用快速模式时禁用，切换风格保留两种勾选偏好；精确排线、规则网点与点刻均可用。界面为所有精确纹理发送该布尔值；快速模式省略，不再发送 `hatchMode`。
 
 旧 `hatchMode: 'layered' | 'continuous'` 仍是仅作用于排线样式的兼容别名，分别对应 `true`／`false`，不改变网点算法；排线中同时显式提供两项且不一致时，报错 `Conflicting quantizeShading and hatchMode`。非布尔 `quantizeShading` 报错 `Invalid quantizeShading`。快速模式显式提供任一布尔值均报错 `16-level shading switch requires precise rendering`；请省略或使用 `undefined`，例如 `{ renderMode: 'fast', castShadows: false }`。旧的显式 fast＋layered 错误 `Layered hatching requires precise rendering` 仍保留，快速模式默认排线仍为 continuous。
 

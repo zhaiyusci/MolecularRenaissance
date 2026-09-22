@@ -130,14 +130,14 @@ render(molecule, {elementTextures: true, elementTextureScale: 1,
 
 ## 纹理粗细与明暗归一
 
-下文基于 pattern 的规则网点说明指 `quantizeShading: true`（精确模式默认）。设为 `false` 时，在45°规则网格上逐点输出连续半径；边缘仍收缩完整圆点，因此边界覆盖率不同于裁切 pattern，并有逐点输出成本与数量限制。此开关不量化点刻。
+下文基于 pattern 的规则网点说明指 `quantizeShading: true`（精确模式默认）。设为 `false` 时，在45°规则网格上逐点输出连续半径；边缘仍收缩完整圆点，因此边界覆盖率不同于裁切 pattern，并有逐点输出成本与数量限制。精确点刻中，`true` 把局部明暗量化为同一套 16 档、圆点半径保持 `dotSize` 不变，只改变点数；`false` 保留原连续密度点刻。两者都输出扁平、按「半径 + 档位」分批的圆头子路径，既无纹理瓦片也无逐原子裁剪。
 
 - `textureScale`（界面「纹理粗细」）范围 0.2–2.5，三种风格的界面默认值都是 1；点刻的内部基准为原先的 0.6，规则网点为原先的 3.0，排线不变。联合调整间距和点径／线宽，尽量保持平均覆盖率。轮廓线宽独立。
 - `shadingBrightness` 范围 −1–1，默认 0，正值变亮；`shadingContrast` 调整明暗响应。二者都不改变元素底色。
 - 点刻／网点继续使用既有连续线宽排线覆盖率模型的采样平均值作整体增益校准；不会因16级排线改为默认而改变，也不是对新分级SVG进行像素积分。局部明暗只取决于光照与对比度，不复制排线的方向、投影挤密或启停阈值，以免制造假光照分区。排线不通过灰色墨水或透明度做补偿。
 - 点刻使用等径随机点，通过点数达到目标覆盖率，并用 `1−exp(−点数密度×点面积)` 补偿圆点重叠。规则网点使用最多 16 个 SVG `<pattern>`，通过反解圆盘在方格中的并集面积调整各档半径，包含暗部相邻圆盘的重叠。
 - 网点按明暗分档生成矢量裁切路径：平行光使用表面等明暗曲线，复杂阴影才做局部采样；所有档位网格同相位、统一旋转 45°。由累积明暗区域叠加黑色图案；元素底色透过网点间隙显示，不使用透明度、图像、滤镜或灰色渐变。圆点节点只随使用的明暗档数变化，不随网点数量增长，也不再触发逐点输出的数量上限。
-- 这是覆盖率模型的近似匹配，不是每张输出图的精确积分校正；细小表面、轮廓裁切、连续排线的端部收尖、分级线宽的量化及随机采样仍可能导致差异。网点另有 16 档量化误差（目标覆盖率最多约 ±1/32）及明暗场的采样误差；点刻仍逐点输出，极细设置可能产生较大的 SVG。
+- 这是覆盖率模型的近似匹配，不是每张输出图的精确积分校正；细小表面、轮廓裁切、连续排线的端部收尖、分级线宽的量化及随机采样仍可能导致差异。网点另有 16 档量化误差（目标覆盖率最多约 ±1/32）及明暗场的采样误差；原点刻算法（`quantizeShading: false`）仍逐点输出，极细设置可能产生较大的 SVG。
 - `node test-style-coverage.cjs` 做纯数值并集面积检查，不启动浏览器，比较三种风格的平均覆盖率并计入 pattern 分档误差。`node test-pattern-halftone.cjs` 检查图案相位、ID、纯矢量结构，以及 C₆₀ 在 0.2／1.0／2.5 档均可生成；圆点节点数由分档数而非网点数量决定。这些检查不是对所有模型和参数的误差保证。
 
 ## 元素上色
@@ -248,7 +248,7 @@ const svg = render(examples.ethanol, {
   shadingSize: 1,       // 0–1.5；UI 0–150%，0 关闭明暗纹理
   shadingContrast: 1.2, // 0.5–2.5，三模式均生效
   outlineWidth: 0.8,     // 默认 0.8，UI 0–4；独立轮廓线宽
-  quantizeShading: true, // 精确排线／规则网点默认；false 使用连续明暗
+  quantizeShading: true, // 所有精确纹理默认；false 使用原连续明暗算法
   variableWidth: true,   // 亮细暗粗（16级）；false 使用等宽 stroke
   lightAzimuth: -29 * Math.PI / 180,
   lightElevation: 32 * Math.PI / 180,
@@ -313,7 +313,7 @@ const molecule = {
 
 - 正交相机位于 +Z 一侧，沿 −Z 看向模型（前方是较大的 Z）；可调相机空间光源，独立于分子旋转。API 参数 `lightAzimuth` 和 `lightElevation` 均为弧度，默认 −29°、32°。方位 0° 为正前方、90° 为右侧、−90° 为左侧、±180° 为背后；仰角正值向上。界面使用角度，重置会还原光源。
 - 仅支持平行光。精确模式支持 `castShadows` 和 `shadowStrength`；快速覆盖要求 `castShadows: false`。旧公共选项 `lightType`、`lightDistance`、`lightAttenuation` 显式提供时均报错 `Removed lighting option: ${key}; only directional lighting is supported`，包括 `lightType: 'directional'`。迁移时删除这些键，不再提供类型、距离或衰减替代选项。
-- 精确渲染共享选项 `quantizeShading` 默认 `true`（省略或 `undefined`）。当前控件名为 **16级明暗**（英文 **16-level shading**；历史名16级排线），同时控制排线与规则网点，默认勾选，重置恢复勾选。光影关闭、快速模式或点刻时禁用，但保留勾选或未勾选的偏好；精确规则网点时仍可切换。界面只为精确排线／规则网点发送布尔值，快速／点刻省略，不再发送 `hatchMode`。分级排线以16个互斥明暗带裁剪固定曲面骨架，同半径球共享定义；线宽分档、裁断处不收尖。设为 `false` 时，排线使用旧连续收尖算法，规则网点改为45°规则网格上的逐点连续半径圆点，边缘收缩以容纳完整标记，而非裁切 pattern；不承诺与分档 pattern 逐像素一致。点刻忽略量化开关。无法认证排线可见区域时仍标记 `data-hatch-mode="continuous-fallback"`。详见[实现与历史测量](LAYERED-HATCHING.md)。
+- 精确渲染共享选项 `quantizeShading` 默认 `true`（省略或 `undefined`）。当前控件名为 **16级明暗**（英文 **16-level shading**；历史名16级排线），同时控制排线、规则网点与点刻，默认勾选，重置恢复勾选。仅在光影关闭或快速模式时禁用，切换风格保留勾选或未勾选的偏好。界面为所有精确纹理发送布尔值，快速模式省略，不再发送 `hatchMode`。分级排线以16个互斥明暗带裁剪固定曲面骨架，同半径球共享定义；线宽分档、裁断处不收尖。设为 `false` 时，排线使用旧连续收尖算法，规则网点改为45°规则网格上的逐点连续半径圆点，边缘收缩以容纳完整标记，而非裁切 pattern；不承诺与分档 pattern 逐像素一致。点刻在 `true` 时把局部明暗量化为共享的 16 档密度，圆点半径保持 `dotSize` 不变、只有点数随档位变化，输出扁平、按「半径 + 出生档位」分批的圆头零长子路径；`false` 时使用原连续密度算法。两者都不含纹理瓦片或逐原子裁剪，无需额外复选框或实验开关。无法认证排线可见区域时仍标记 `data-hatch-mode="continuous-fallback"`。详见[实现与历史测量](LAYERED-HATCHING.md)。
 - 旧 `hatchMode: 'layered' | 'continuous'` 保留为仅用于排线的 true／false 兼容别名，不控制规则网点。排线中同时显式提供两项且不一致时报错 `Conflicting quantizeShading and hatchMode`；非布尔值报错 `Invalid quantizeShading`。快速模式显式提供任一布尔值都报错 `16-level shading switch requires precise rendering`，应省略或使用 `undefined`。快速默认排线仍为 continuous，显式 fast＋layered 仍保留 `Layered hatching requires precise rendering` 错误。历史测量和默认效果批准记录不代表本次共享开关的新性能或完整验证结果。
 - 保留的连续模式中，`variableWidth` 默认为 `true`：排线以封闭实心 SVG 路径输出，亮部细、暗部粗，端部收尖；轮廓维持可读性，不收尖。关闭界面开关或传入 `false` 后回到等宽 `stroke`，仍由 `hatchWidth` 控制排线基础线宽（兼容旧 `lineWidth` 回退）。
 - 球面与倾斜平面相交生成真实三维小圆，投影成弧线；根据表面法线与光照的点积截取亮暗区域。暗部可叠加第二组排线。

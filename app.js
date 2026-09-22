@@ -300,7 +300,7 @@
     byId('shadow-strength-value').textContent = shadowStrength.value + '%';
     var isHatch = shadingMode.value === 'hatch';
     // Disable without clearing the user's preference when it cannot be used.
-    quantizedShading.disabled = !shadingEnabled.checked || shadingMode.value === 'stipple' || fastOverlay.checked;
+    quantizedShading.disabled = !shadingEnabled.checked || fastOverlay.checked;
     [crossHatch, variableWidth].forEach(function (input) {
       input.disabled = !shadingEnabled.checked || !isHatch;
     });
@@ -363,7 +363,7 @@
         labelBold: labelBold.checked,
         labelItalic: labelItalic.checked
       };
-      if (!fastOverlay.checked && (shadingMode.value === 'hatch' || shadingMode.value === 'halftone')) {
+      if (!fastOverlay.checked) {
         options.quantizeShading = quantizedShading.checked;
       }
       // The master switch suppresses shading in BOTH preview and export snapshots.

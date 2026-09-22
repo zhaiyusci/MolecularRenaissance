@@ -52,6 +52,11 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   const boundaries=built&&built.validate(elementColor)?built:null;
   // Labels are part of their owner's paint layer, never a final overlay and
   // never clipped text. Certified visible fills preserve intersecting geometry.
+  // Sixteen-level stippling quantizes dot density on the flat, visibility-filtered
+  // mark path below. A shared texture tile was tried and rejected: a per-atom
+  // clipped tile costs the browser far more to rasterize than the flat marks it
+  // replaced, and it defeated the certified dot-region acceleration entirely.
+  const wantsQuantizedStipple=o.shadingMode==='stipple'&&!!o.quantizeShading;
   const wantsLayered=o.shadingMode==='hatch'&&o.hatchMode==='layered';
   const layerPaths=(o.labels||o.elementTextures||wantsLayered)&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
   // Never substitute approximate ownership for the layered full-stroke clips.
@@ -184,5 +189,6 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     }).join('');
   }
   const hatchInfo=wantsLayered?` data-hatch-mode="${layered?'layered':'continuous-fallback'}"${layered?'':' data-hatch-fallback="uncertified-visible-regions"'}`:'';
-  return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title>${layered?.defs||''}${elements?`<defs>${elements.definitions}</defs>`:''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
+  const stippleInfo=wantsQuantizedStipple?' data-stipple-mode="quantized"':'';
+  return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo}${stippleInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title>${layered?.defs||''}${elements?`<defs>${elements.definitions}</defs>`:''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }

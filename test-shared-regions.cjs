@@ -83,8 +83,10 @@ async function main(){
       console.log('Shadowed hatch window coverage:',{name,before:a,after:b});
     }
     for(const name of ['sphere','ethanol','c60']){
+      // The historical engine predates tone quantization, so this position/radius
+      // guard compares the continuous stream; the quantized default is checked below.
       const options={shadingMode:'stipple',castShadows:false,quality:'preview',textureScale:1};
-      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],options);
+      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],{...options,quantizeShading:false});
       const oldDisks=disks(old),newDisks=disks(next);assert(oldDisks.length>1000);
       if(name==='sphere')for(const disk of newDisks){
         const [x,y,r]=disk.split(',').map(Number);
@@ -92,6 +94,11 @@ async function main(){
       }
       assert.deepEqual(newDisks,oldDisks,`${name}: every unshadowed disk retains its exact serialized position and radius`);
       assert(next.length<old.length*.6,'batching removes per-mark XML overhead');
+      // The default switch quantizes tone on the same flat path, and may only add ink.
+      const quantized=current.render(current.examples[name],{...options,quantizeShading:true});
+      assert.match(quantized,/data-birth-level="\d+"/,`${name}: default stipple serializes tone levels`);
+      assert(!quantized.includes('<pattern')&&!quantized.includes('<clipPath'),`${name}: quantized stipple stays flat`);
+      assert(Math.abs(disks(quantized).length-newDisks.length)/newDisks.length<.15,`${name}: nearest-band quantization preserves mean tone`);
     }
   }
   console.table(reports);console.log('Shared-region integration checks passed');

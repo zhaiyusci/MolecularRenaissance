@@ -16,16 +16,16 @@ for(const fast of [false,true,false]){
   check('fast-overlay',fast);
   for(const mode of ['hatch','stipple','halftone','hatch']){
     elements['shading-mode'].value=mode;elements['shading-mode'].listeners.change();flush();
-    const expected=mode!=='stipple'&&!fast?preference:undefined;
+    const expected=!fast?preference:undefined;
     assert.equal(calls.at(-1).quantizeShading,expected);
-    assert.equal(elements['quantized-shading'].disabled,mode==='stipple'||fast);
+    assert.equal(elements['quantized-shading'].disabled,fast);
     assert.equal(elements['quantized-shading'].checked,preference,'style and fast switches retain either preference');
     elements.download.listeners.click();assert.equal(calls.at(-1).quality,'export');assert.equal(calls.at(-1).quantizeShading,expected);
     check('shading-enabled',false);
     assert(elements['quantized-shading'].disabled);assert.equal(elements['quantized-shading'].checked,preference);
     assert.equal(calls.at(-1).shadingSize,0);assert.equal(calls.at(-1).quantizeShading,expected);
     check('shading-enabled',true);
-    assert.equal(elements['quantized-shading'].disabled,mode==='stipple'||fast);
+    assert.equal(elements['quantized-shading'].disabled,fast);
   }
   assert.equal(calls.at(-1).castShadows,!fast,'hatch preference does not change shadow restoration');
 }
@@ -99,6 +99,7 @@ assert.match(html,/\.help:focus-within \.help-tooltip/);
 check('shading-enabled',false);elements.reset.listeners.click();flush();
 assert(elements['shading-enabled'].checked);assert(elements['label-hydrogens'].checked);
 assert(!elements['fast-overlay'].checked);assert.equal(calls.at(-1).renderMode,'precise');assert.equal(calls.at(-1).castShadows,true);
-assert(ui.calls.filter(call=>call.options.renderMode==='fast'||call.options.shadingMode==='stipple').every(call=>!Object.hasOwn(call.options,'quantizeShading')),'unsupported modes omit the switch');
+assert(ui.calls.filter(call=>call.options.renderMode==='fast').every(call=>!Object.hasOwn(call.options,'quantizeShading')),'fast mode omits the switch');
+assert(ui.calls.filter(call=>call.options.renderMode==='precise').every(call=>typeof call.options.quantizeShading==='boolean'),'all precise textures forward the switch');
 for(const option of ['hatchMode','lightType','lightDistance','lightAttenuation'])assert(ui.calls.every(call=>!Object.hasOwn(call.options,option)));
 console.log('UI checks passed: fast mode, shading master switch, all textures, parameter restoration, unshaded SVG export, compact help and reset.');

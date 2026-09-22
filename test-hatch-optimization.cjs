@@ -58,8 +58,10 @@ const {coverage}=require('./test-style-coverage.cjs');
     // geometry remains exact; sampled shadow-region error has its own tests.
     const {disks}=require('./test-shared-regions.cjs');
     for(const name of ['sphere','ethanol','c60']){
+      // The historical engine predates tone quantization, so compare the continuous
+      // stream; the quantized default has its own coverage parity in test-style-coverage.
       const options={...plain,shadingMode:'stipple',castShadows:false};
-      assert.deepEqual(disks(current.render(current.examples[name],options)),disks(before.render(before.examples[name],options)),`${name}: non-repeating disk coordinates and radii are identical`);
+      assert.deepEqual(disks(current.render(current.examples[name],{...options,quantizeShading:false})),disks(before.render(before.examples[name],options)),`${name}: non-repeating disk coordinates and radii are identical`);
     }
     console.log('Hatch baseline comparison:',reports);
   }

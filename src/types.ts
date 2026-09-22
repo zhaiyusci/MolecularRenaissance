@@ -41,10 +41,13 @@ export interface RenderOptions {
    * continuous in fast mode. Explicit continuous retains the legacy ribbons;
    * uncertified visible-region geometry also uses the continuous path. */
   hatchMode?: HatchMode;
-  /** Shared precise-mode hatch/halftone tone quantization, default true.
-   * False uses continuous hatch widths or individual continuous-radius screen
-   * dots. Does not alter stippling. Explicit values require precise mode;
-   * a conflicting explicit hatchMode is rejected for hatch shading. */
+  /** Shared precise-mode hatch/halftone/stipple tone quantization, default true.
+   * True snaps stippling density to the same 16 shared tone levels while leaving
+   * the dot radius fixed; stipple marks stay flat, radius-and-level batched round
+   * caps, with no texture tile and no per-owner clip. False uses continuous hatch
+   * widths, continuous-radius halftone dots, or the original continuous-density
+   * stipple. Explicit values require precise mode; a conflicting explicit
+   * hatchMode is rejected for hatch shading. */
   quantizeShading?: boolean;
   /** Joint spacing and mark-size scale, 0.2–2.5; larger means coarser at similar mean coverage. */
   textureScale?: number;
@@ -105,6 +108,9 @@ export interface SurfaceToneContext {
   paths: readonly (string|null)[] | null;
   /** Batch equal-radius dots into round zero-length subpaths, without repetition. */
   compactStipple?:boolean;
+  /** Internal experimental screen sink; omitted by the production renderer.
+   * Receives shared tone regions, not per-mark lighting or visibility queries. */
+  renderPatterns?: typeof import('./halftone.js').buildSurfacePatterns;
   /** Emit complete texture bodies by scene primitive index; return only shared setup. */
   emitSurface?: (id:number,svg:string)=>void;
   /** Surface-aware tone illumination, including the caller's brightness shift. */

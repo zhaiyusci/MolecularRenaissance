@@ -64,7 +64,10 @@ const digest=svg=>crypto.createHash('sha256').update(svg).digest('hex');
  const before=await historicalRenderer('pre-labels');
  for(const name of ['sphere','ethanol','c60'])for(const shadingMode of ['hatch','stipple','halftone']){
   const options={labels:false,shadingMode,castShadows:true,colorWash:true,quality:'preview'};
-  assert.equal(digest(cjs.render(cjs.examples[name],{...options,hatchMode:'continuous'})),digest(before.render(before.examples[name],options)),`${name}/${shadingMode}: pinned historical no-label parity`);
+  // Stipple tone quantization is a deliberate post-baseline change: pin the
+  // continuous stream here and leave the quantized default to test-style-coverage.
+  const legacy={...options,hatchMode:'continuous',...(shadingMode==='stipple'?{quantizeShading:false}:{})};
+  assert.equal(digest(cjs.render(cjs.examples[name],legacy)),digest(before.render(before.examples[name],options)),`${name}/${shadingMode}: pinned historical no-label parity`);
  }
  // Test package self-resolution and the shipped declaration graph as an actual
  // strict consumer, with neither DOM nor Node ambient type libraries installed.

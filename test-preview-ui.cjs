@@ -78,7 +78,7 @@ assert.equal(document.querySelector('[data-i18n="static.quantizedShading"]').tex
 ui.locale('en');
 assert.equal(document.querySelector('[data-i18n="static.quantizedShading"]').textContent,'16-level shading');
 ui.locale('zh-CN');
-for(const mode of ['hatch','halftone']){
+for(const mode of ['hatch','stipple','halftone']){
  change('shading-mode',mode,'change');flush();
  assert(!elements['quantized-shading'].disabled);
  for(const preference of [false,true,false]){
@@ -171,6 +171,8 @@ check('shading-enabled',false);flush();pointer('scale','pointerdown');flush();po
 assert.equal(calls.at(-1).options.shadingSize,0,'release preserves intentionally disabled shading');assert.equal(calls.at(-1).options.textureScale,.8);verifyDownload();
 pointer('scale','pointerdown');flush();elements.reset.listeners.click();flush();restored(1);
 assert(elements['quantized-shading'].checked);assert.equal(calls.at(-1).options.quantizeShading,true);
+change('shading-mode','stipple','change');flush();
+assert(!elements['quantized-shading'].disabled);assert.equal(calls.at(-1).options.quantizeShading,true);verifyDownload();
 assert(calls.every(call=>!Object.hasOwn(call.options,'hatchMode')));
 nearQuaternion(calls.at(-1).options.orientation,initialOrientation());
 assert.equal(elements['rotation-step'],undefined);

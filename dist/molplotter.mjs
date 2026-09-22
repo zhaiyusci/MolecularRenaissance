@@ -2967,6 +2967,8 @@ function directionalTonePath(s, project, light, threshold) {
     return out;
 }
 
+/** Flat, shareable serialization: no tile, no clip, one path per level. */
+const batchPath = (b) => `<path data-stipple-radius="${b.r.toFixed(3)}"${b.level ? ` data-birth-level="${b.level}"` : ''} fill="none" stroke="#161616" stroke-width="${(2 * b.r).toFixed(3)}" stroke-linecap="round" d="${b.points.join('')}"/>`;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 function hash$1(x, y, salt) {
     let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(salt, 1274126177);
@@ -2978,6 +2980,9 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
     if (o.quantizeShading !== undefined && typeof o.quantizeShading !== 'boolean')
         throw new Error('Invalid quantizeShading');
     const continuousHalftone = o.shadingMode === 'halftone' && o.quantizeShading === false;
+    // Sixteen-level stippling is explicit here; an omitted switch keeps the legacy
+    // continuous stream byte-identical for direct low-level callers.
+    const quantizedStipple = o.shadingMode === 'stipple' && o.quantizeShading === true;
     if (!['stipple', 'halftone'].includes(o.shadingMode))
         throw new Error('Invalid dot mode');
     if (!Number.isFinite(o.dotSpacing) || o.dotSpacing < .3 || o.dotSpacing > 19 || !Number.isFinite(o.dotSize) || o.dotSize < 0 || o.dotSize > 4 || !Number.isFinite(o.dotContrast) || o.dotContrast < .5 || o.dotContrast > 2.5)
@@ -3231,14 +3236,15 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
                 layers.push({ sourceId: id, clip: visiblePath, bounds: box, tones: sampledTonePaths(box, (x, y) => { const h = onSurface(x, y); return h ? coverage(h) : null; }, step) });
             }
         }
-        return buildSurfacePatterns({ bounds, pitch: g * Math.SQRT2 / 5, silhouette: projectedSilhouette(scene, project, scale), layers,
+        const renderPatterns = surfaces?.renderPatterns || buildSurfacePatterns;
+        return renderPatterns({ bounds, pitch: g * Math.SQRT2 / 5, silhouette: projectedSilhouette(scene, project, scale), layers,
             method: surfaces?.paths ? (surfaces.light ? (surfaces.shadowed ? 'analytic-local-shadows' : 'analytic') : 'surface-sampled') : 'local-fallback' }, surfaces?.emitSurface);
     }
     const circles = [], batches = surfaces?.compactStipple ? new Map() : null;
     const emitSurface = surfaces?.emitSurface;
     const owners = new Map();
     let markCount = 0;
-    function emit(x, y, certifiedCell = false, cellOwner = -1) {
+    function emit(x, y, certifiedCell = false, cellOwner = -1, level = 0) {
         if (x < minX || y < minY || x > maxX || y > maxY)
             return;
         const h = certifiedCell ? null : hit(x, y);
@@ -3266,12 +3272,15 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
             targetBatches = target.batches;
         }
         if (targetBatches) {
-            let batch = targetBatches.get(radius);
+            // Key on the quantized radius AND the birth level: a quantized render still
+            // serializes flat round-cap paths, one per level, never a repeated tile.
+            const key = level * 10000 + Math.round(radius * 1000);
+            let batch = targetBatches.get(key);
             if (!batch) {
-                batch = [];
-                targetBatches.set(radius, batch);
+                batch = { r: radius, level, points: [] };
+                targetBatches.set(key, batch);
             }
-            batch.push(`M${x.toFixed(3)} ${y.toFixed(3)}h0`);
+            batch.points.push(`M${x.toFixed(3)} ${y.toFixed(3)}h0`);
         }
         else
             targetCircles.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${radius.toFixed(3)}"/>`);
@@ -3291,9 +3300,16 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
                 const certifiedCell = !!regions && h.clearance >= cellRadius - 1e-12;
                 // Equal-radius Poisson marks. Account for overlap using
                 // coverage = 1-exp(-numberDensity * diskArea), rather than adding areas.
-                const ink = Math.min(.995, coverage(h));
-                if (ink <= 0)
+                const rawInk = Math.min(.995, coverage(h));
+                if (rawInk <= 0)
                     continue;
+                // Sixteen-level stippling snaps local tone to the shared 16-band palette with
+                // the same nearest-band rule halftone uses. Level 0 leaves paper untouched, so
+                // quantization stays unbiased and cross-style mean coverage still agrees.
+                const level = quantizedStipple ? Math.round(rawInk * TONE_LEVELS) : 0;
+                if (quantizedStipple && level === 0)
+                    continue;
+                const ink = quantizedStipple ? Math.min(.995, level / TONE_LEVELS) : rawInk;
                 const mean = -Math.log1p(-ink) * g * g / (Math.PI * o.dotSize * o.dotSize);
                 if (mean > 1000)
                     throw new Error('Stipple density too high; increase dot size');
@@ -3302,7 +3318,7 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
                 while ((product *= 1 - hash$1(i, j, 100 + count)) > stop)
                     count++;
                 for (let k = 0; k < count; k++) {
-                    emit((i + hash$1(i, j, 10000 + 2 * k)) * g, (j + hash$1(i, j, 10001 + 2 * k)) * g, certifiedCell, h.id);
+                    emit((i + hash$1(i, j, 10000 + 2 * k)) * g, (j + hash$1(i, j, 10001 + 2 * k)) * g, certifiedCell, h.id, level);
                     if (markCount > 1000000)
                         throw new Error('Too many stipple marks; use a coarser texture');
                 }
@@ -3313,15 +3329,15 @@ function buildDots(scene, depthAt, project, scale, illumination, options, region
     if (emitSurface) {
         for (const [id, target] of owners) {
             if (target.batches)
-                for (const [r, points] of target.batches)
-                    target.circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2 * r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+                for (const batch of target.batches.values())
+                    target.circles.push(batchPath(batch));
             emitSurface(id, `<g data-role="dots" data-mode="stipple" fill="#161616" stroke="none">${target.circles.join('')}</g>`);
         }
         return '';
     }
     if (batches)
-        for (const [r, points] of batches)
-            circles.push(`<path data-stipple-radius="${r.toFixed(3)}" fill="none" stroke="#161616" stroke-width="${(2 * r).toFixed(3)}" stroke-linecap="round" d="${points.join('')}"/>`);
+        for (const batch of batches.values())
+            circles.push(batchPath(batch));
     return `<g data-role="dots" data-mode="${o.shadingMode}" fill="#161616" stroke="none">${circles.join('')}</g>`;
 }
 
@@ -4955,6 +4971,11 @@ function render(molecule, options = {}) {
     const boundaries = built && built.validate(elementColor) ? built : null;
     // Labels are part of their owner's paint layer, never a final overlay and
     // never clipped text. Certified visible fills preserve intersecting geometry.
+    // Sixteen-level stippling quantizes dot density on the flat, visibility-filtered
+    // mark path below. A shared texture tile was tried and rejected: a per-atom
+    // clipped tile costs the browser far more to rasterize than the flat marks it
+    // replaced, and it defeated the certified dot-region acceleration entirely.
+    const wantsQuantizedStipple = o.shadingMode === 'stipple' && !!o.quantizeShading;
     const wantsLayered = o.shadingMode === 'hatch' && o.hatchMode === 'layered';
     const layerPaths = (o.labels || o.elementTextures || wantsLayered) && boundaries?.surfacePaths ? boundaries.surfacePaths(false) : null;
     // Never substitute approximate ownership for the layered full-stroke clips.
@@ -5108,7 +5129,8 @@ function render(molecule, options = {}) {
         }).join('');
     }
     const hatchInfo = wantsLayered ? ` data-hatch-mode="${layered ? 'layered' : 'continuous-fallback'}"${layered ? '' : ' data-hatch-fallback="uncertified-visible-regions"'}` : '';
-    return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title>${layered?.defs || ''}${elements ? `<defs>${elements.definitions}</defs>` : ''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
+    const stippleInfo = wantsQuantizedStipple ? ' data-stipple-mode="quantized"' : '';
+    return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo}${stippleInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${escapeXml(molecule.name || 'Molecular engraving')}</title>${layered?.defs || ''}${elements ? `<defs>${elements.definitions}</defs>` : ''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }
 
 export { covalentRadii, covalentRadiusSource, depthAt, elementColor, elementPalette, elementTextureDefinition, elementTexturePattern, elementTextureSwatch, engravingWidth, examples, normalizeOrientation, orientationFromEulerXYZ, orientationToEulerXYZ, parseXYZ, render, rotateOrientation };
