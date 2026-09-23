@@ -50,7 +50,8 @@ const allDisks=svg=>[...svg.matchAll(/<g data-role="dots"[\s\S]*?<\/g>/g)].flatM
     cases++;
   }
   for(const shadingMode of ['hatch','stipple','halftone']){
-    const options={labels:true,labelSize:24,shadingMode,quality:'preview',colorWash:true,castShadows:true};
+    // allDisks() reads flat round-cap stipple mark batches, so request that delivery.
+    const options={labels:true,labelSize:24,shadingMode,quality:'preview',colorWash:true,castShadows:true,stippleFill:'marks'};
     const svg=current.render(current.examples.c60,options),parsed=layers(svg);
     assert(parsed.texts.length>10&&parsed.out.length>20,'C60 labels use owner layers');
     if(shadingMode==='stipple')assert.deepEqual(allDisks(svg),allDisks(current.render(current.examples.c60,{...options,labels:false})),'layering preserves every stipple disk');

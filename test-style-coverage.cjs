@@ -176,7 +176,9 @@ for(const mode of ['stipple','halftone'])for(const quantizeShading of [false,tru
   for(const shadingMode of ['hatch','stipple','halftone']){
     // The calibration oracle expands paths/patterns, not layered <use>/clip trees.
     // Retain the original continuous-ink calibration; layered bands have their own independent oracle.
-    const svg=render(model,{hatchMode:'continuous',width:200,height:200,quality:'preview',textureScale:1,shadingMode});
+    // This vector-ink oracle cannot read ink inside a raster tile, so the flat mark
+    // delivery is requested; the raster tone is verified at the tile level by test-stipple-bitmap.cjs.
+    const svg=render(model,{hatchMode:'continuous',width:200,height:200,quality:'preview',textureScale:1,shadingMode,stippleFill:'marks'});
     // Rendered SVGs also contain atom/outline artwork, so only validate the
     // screen fragment structurally in the direct buildDots cases above.
     // Normalize over the visible disk, not a cropped interior: the smooth

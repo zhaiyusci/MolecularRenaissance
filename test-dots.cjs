@@ -236,7 +236,8 @@ test('default hatch unchanged by explicit defaults / dot settings; no circles',(
 });
 for(const mode of modes) {
   test(`${mode}: renderer finite/deterministic, outline only, zero switches, wash invariance`,()=>{
-    const options={shadingMode:mode},t=performance.now(),svg=draw(examples.ethanol,options),ms=performance.now()-t;
+    // circles()/layer() read flat round-cap stipple disks, so request that delivery.
+    const options={shadingMode:mode,stippleFill:'marks'},t=performance.now(),svg=draw(examples.ethanol,options),ms=performance.now()-t;
     const marks=mode==='stipple'?circles(svg):patterns(svg);assert(marks.length>(mode==='stipple'?30:0));
     stats.push({case:`ethanol/${mode}`,marks:marks.length,ms:+ms.toFixed(2),bytes:svg.length});
     assert.equal(svg,draw(examples.ethanol,options));

@@ -6,7 +6,9 @@ const base={shadingDensity:1,shadingSize:1,shadingContrast:1.2};
 // Explicit physical scale bounds texture work without changing control ranges.
 // The path-only marks oracle measures continuous ink; layered band/owner
 // membership and style controls are independently checked in test-layered-hatching.
-const frame={hatchMode:'continuous',width:260,height:220,scale:28,quality:'preview'};
+// marks() cannot read ink inside a raster tile, so the flat mark delivery is
+// requested explicitly; the raster tone is verified at the tile level by test-stipple-bitmap.cjs.
+const frame={hatchMode:'continuous',width:260,height:220,scale:28,quality:'preview',stippleFill:'marks'};
 function groups(svg,role){
  const out=[];
  for(const start of svg.matchAll(new RegExp(`<g data-role="${role}"[^>]*>`,'g'))){

@@ -97,7 +97,9 @@ async function main(){
       assert.deepEqual(newDisks,oldDisks,`${name}: every unshadowed disk retains its exact serialized position and radius`);
       assert(next.length<old.length*.6,'batching removes per-mark XML overhead');
       // The default switch quantizes tone on the same flat path, and may only add ink.
-      const quantized=current.render(current.examples[name],{...options,quantizeShading:true,atomRadiusScale:1});
+      // The flat mark delivery is requested explicitly: disks() reads round-cap mark
+      // batches and cannot see ink baked into raster tiles.
+      const quantized=current.render(current.examples[name],{...options,quantizeShading:true,atomRadiusScale:1,stippleFill:'marks'});
       assert.match(quantized,/data-birth-level="\d+"/,`${name}: quantized stipple serializes tone levels`);
       assert(!quantized.includes('<pattern')&&!quantized.includes('<clipPath'),`${name}: quantized stipple stays flat`);
       assert(Math.abs(disks(quantized).length-newDisks.length)/newDisks.length<.15,`${name}: nearest-band quantization preserves mean tone`);

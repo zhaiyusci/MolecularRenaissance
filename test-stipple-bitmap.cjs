@@ -81,7 +81,8 @@ const base={quality:'preview',renderMode:'precise',width:900,height:700,scale:60
 const count=(svg,re)=>(svg.match(re)||[]).length;
 for(const name of ['sphere','ethanol','c60']){
   const model=api.examples[name];
-  const marks=api.render(model,{...base,quantizeShading:true});
+  // The first render tests the flat mark delivery explicitly; the bitmap legs name theirs too.
+  const marks=api.render(model,{...base,quantizeShading:true,stippleFill:'marks'});
   assert.equal(count(marks,/<image /g),0,name+': marks delivery has no bitmap');
   assert.match(marks,/data-stipple-mode="quantized"/,name+': marks mode is declared');
   assert.match(marks,/data-birth-level="\d+"/,name+': marks carry birth levels');
@@ -90,7 +91,7 @@ for(const name of ['sphere','ethanol','c60']){
   assert.match(bitmap,/data-stipple-mode="bitmap"/,name+': bitmap mode is declared');
   const images=count(bitmap,/<image /g);
   assert(images>0,name+': bitmap paints image tiles');
-  assert.equal(count(bitmap,/<pattern [^>]*data-fill="bitmap"/g),images,name+': every tile pattern is marked bitmap');
+  assert.equal(count(bitmap,/<pattern [^>]*data-tile="bitmap"/g),images,name+': every tile pattern is marked bitmap');
   for(const m of bitmap.matchAll(/<image [^>]*href="([^"]*)"/g))assert.match(m[1],/^data:image\/png;base64,/,'tiles are inline PNG data URIs');
   // One transform for every owner, so a browser rasterizes each tile once.
   const transforms=new Set([...bitmap.matchAll(/patternTransform="([^"]*)"/g)].map(m=>m[1]));
@@ -98,15 +99,41 @@ for(const name of ['sphere','ethanol','c60']){
   // No per-owner transform and no vector mark batches on the bitmap path.
   assert.equal(count(bitmap,/<g transform="translate\(/g),0,name+': no per-owner pattern transform');
   assert.equal(count(bitmap,/data-stipple-radius/g),0,name+': no vector mark batches');
-  // The baked tile payload is a fixed cost, so the bitmap only wins once the flat
-  // mark set outgrows it. At the 0.75 atom radius default the spheres are smaller,
-  // so the crossover moved out: only C60-scale models come out clearly ahead.
-  assert(bitmap.length<marks.length*2.5,name+': bitmap stays within its fixed tile payload');
-  if(name==='c60')
-    assert(bitmap.length<marks.length*.8,name+': bitmap is clearly smaller once the mark set is large');
+  // The baked tile payload is a fixed cost, so the delivery that wins depends on how
+  // many marks the current density asks for, not on which molecule this is. At the
+  // default density the flat mark set is still small for these models, so the bitmap
+  // pays a few times its payload; the density sweep below is where it pulls ahead.
+  assert(bitmap.length<marks.length*2.5,name+': bitmap stays within its fixed tile payload at the default density');
   assert.equal(api.render(model,{...base,quantizeShading:true,stippleFill:'bitmap'}),bitmap,name+': deterministic');
   // Untiling levels that carry no tone must not emit a tile.
   assert(images<=16,name+': at most one tile per level');
+}
+// Density decides the delivery, not molecule size. Finer texture means more marks,
+// and the flat path is unbounded: its own guards start throwing while the bitmap
+// stays flat. This is the property that a default-density-only check missed.
+{
+  const fine={...base,quantizeShading:true,textureScale:.3};
+  for(const name of ['sphere','water','ethanol','glucose']){
+    const model=api.examples[name];
+    const bitmap=api.render(model,{...fine,stippleFill:'bitmap'});
+    let marks=null;
+    try{ marks=api.render(model,{...fine,stippleFill:'marks'}); }catch(e){ marks=null; }
+    if(marks)assert(bitmap.length<marks.length*.5,`${name}: bitmap is far smaller once the density is fine (got ${(bitmap.length/marks.length).toFixed(2)}x)`);
+    assert(bitmap.length<4*1048576,`${name}: bitmap stays bounded at fine density`);
+  }
+  // Larger models exceed the flat path's own budget at this density; the bitmap must
+  // still render, and its size must not track the mark count that broke the flat one.
+  for(const name of ['c60','phospholipid']){
+    const model=api.examples[name];
+    assert.throws(()=>api.render(model,{...fine,stippleFill:'marks'}),/Too many stipple marks|Dot screen too large/,`${name}: the flat mark path is the one that runs out of budget`);
+    const bitmap=api.render(model,{...fine,stippleFill:'bitmap'});
+    assert(bitmap.includes('<image')&&bitmap.length<4*1048576,`${name}: bitmap still renders and stays bounded`);
+  }
+  // Coarse densities reverse the trade, so the switch has to be two-sided.
+  const coarse={...base,quantizeShading:true,textureScale:2.5};
+  const coarseMarks=api.render(api.examples.water,{...coarse,stippleFill:'marks'});
+  const coarseBitmap=api.render(api.examples.water,{...coarse,stippleFill:'bitmap'});
+  assert(coarseBitmap.length>coarseMarks.length*2,'coarse density favours the flat marks, so the choice is not one-way');
 }
 assert.throws(()=>api.render(api.examples.sphere,{...base,stippleFill:'png'}),/Invalid stippleFill/,'unknown delivery rejected');
 // Fast mode never uses the atlas; the option must be inert rather than throwing.

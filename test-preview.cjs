@@ -15,7 +15,8 @@ function engraving(svg){
 }
 const originalFit=wash.fitContour;
 for(const shadingMode of ['hatch','stipple','halftone'])for(const colorWash of [false,true]){
- const options={shadingMode,colorWash,labels:true,labelMatchFill:true};
+ // The disk oracle compares flat round-cap stipple marks, so request that delivery explicitly.
+ const options={shadingMode,colorWash,labels:true,labelMatchFill:true,stippleFill:'marks'};
  const exported=render(examples.ethanol,options);
  assert.equal(render(examples.ethanol,{...options,quality:'export'}),exported,'default remains export quality');
  let preview;

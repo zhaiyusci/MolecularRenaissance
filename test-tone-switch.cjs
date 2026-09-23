@@ -107,8 +107,12 @@ if(!process.argv.includes('--dots-only')){
     assert.equal(make({}),make({quantizeShading:true}),shadingMode+': default true');
     assert.notEqual(make({}),make({quantizeShading:false}),shadingMode+': off changes shading');
     if(shadingMode==='stipple'){
-      assert.match(make({}),/data-stipple-mode="quantized"/);
-      assert(!make({}).includes('<pattern'),'quantized stipple emits flat marks, not tiles');
+      // The shipped default delivers stipple ink as baked bitmap tiles; the flat
+      // quantized mark delivery is still available and declared when requested.
+      assert.match(make({}),/data-stipple-mode="bitmap"/);
+      const flat=make({stippleFill:'marks'});
+      assert.match(flat,/data-stipple-mode="quantized"/);
+      assert(!flat.includes('<pattern'),'quantized stipple emits flat marks, not tiles');
       assert(!make({quantizeShading:false}).includes('data-stipple-mode="quantized"'));
     }
   }

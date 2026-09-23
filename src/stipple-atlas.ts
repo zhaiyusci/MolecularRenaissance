@@ -177,7 +177,7 @@ export function buildSharedStipple(
       }
       cachedPatternContent.set(cacheKey, content);
     }
-    defs.push(`<pattern id="${id}" data-birth-level="${level}" data-fill="${tiles ? 'bitmap' : 'vector'}" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" patternTransform="scale(${radius})" x="0" y="0" width="${SIZE}" height="${SIZE}" overflow="hidden">${content}</pattern>`);
+    defs.push(`<pattern id="${id}" data-birth-level="${level}" data-tile="${tiles ? 'bitmap' : 'vector'}" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" patternTransform="scale(${radius})" x="0" y="0" width="${SIZE}" height="${SIZE}" overflow="hidden">${content}</pattern>`);
     definitions.set(level, id);
     return id;
   };

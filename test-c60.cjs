@@ -43,7 +43,8 @@ const incidences=new Map();for(const f of faces)for(let i=0;i<f.length;i++){
 assert.equal(incidences.size,90);assert.ok([...incidences.values()].every(x=>x===2));
 console.log('PASS C60: 60 carbons, 90 equal-length edges, degree 3, 12 pentagons, 20 hexagons, connected closed cage');
 for(const shadingMode of ['hatch','stipple','halftone'])for(const quality of ['preview','export']){
- const start=performance.now(),svg=render(m,{shadingMode,quality,colorWash:true});
+ // The disk/coverage oracles below measure flat stipple marks, so this leg requests that delivery.
+ const start=performance.now(),svg=render(m,{shadingMode,quality,colorWash:true,stippleFill:'marks'});
  assert.ok(svg.includes('C₆₀')&&(svg.includes('mol-wash')||svg.includes('data-role="surface-fill"')));assert.ok(!/NaN|Infinity|undefined/.test(svg));
  const artwork=svg.replace(/<defs\b[^>]*>[\s\S]*?<\/defs>/g,'');
  if(shadingMode==='stipple')assert.ok(disks(svg).length>1000,'actual nonzero-radius stipple disks, including round-cap batches');

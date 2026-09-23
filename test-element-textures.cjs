@@ -9,7 +9,13 @@ const normalize=s=>s.replace(/\bid="[^"]*"/g,'id="ID"');
 const definitions=svg=>[...svg.matchAll(/<pattern\b[^>]*>[\s\S]*?<\/pattern>/g)].map(m=>m[0]).filter(s=>s.includes('data-role="element-pattern"')).map(normalize).sort();
 const model={atoms:['H','C','N','O','P','S'].map((element,i)=>({element,position:[(i%3)*3,Math.floor(i/3)*3,0]})),bonds:[[0,1],[1,2]]};
 const base={width:500,height:400,scale:30,shadingSize:0,outlineWidth:0,colorWash:false,labels:false};
-function vectorOnly(svg){assert.doesNotMatch(svg,/<(?:image|filter|foreignObject|script)\b|(?:href|src)="(?:https?:|data:)|NaN|Infinity/);const ids=[...svg.matchAll(/\sid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);for(const m of svg.matchAll(/url\(#([^)]*)\)/g))assert(ids.includes(m[1]),'resolved pattern/clip reference');}
+function vectorOnly(svg){
+ // The bitmap stipple delivery deliberately inlines a 1-bit PNG per tone level. That
+ // raster is intentional, self-contained (no network fetch) and bounded (at most 16
+ // small tiles), so keep only the portability/safety guard: no script, no external URL,
+ // no filter/foreignObject.
+ assert.doesNotMatch(svg,/<(?:filter|foreignObject|script)\b|(?:href|src)="https?:|NaN|Infinity/);
+ const ids=[...svg.matchAll(/\sid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);for(const m of svg.matchAll(/url\(#([^)]*)\)/g))assert(ids.includes(m[1]),'resolved pattern/clip reference');}
 assert.equal(typeof pattern,'function');assert.equal(typeof definition,'function');assert.equal(typeof swatch,'function');
 assert.deepEqual(['H','C','N','O','P','S'].map(pattern),['blank','crosshatch','horizontal-lines','diagonal-hatch','vertical-lines','dots']);
 const elements=Object.keys(api.covalentRadii);assert.equal(elements.length,96,'H–Cm radius table');

@@ -148,7 +148,9 @@ function capture(molecule, options={}) {
   };
   dots.buildDots=function(...args) { assert.equal(args.length,9,'buildDots ABI: regions, referenceCoverage, surfaces'); result=args;return ''; };
   try {
-    renderer.render(molecule,{shadingMode:'stipple',outlineWidth:0,...options});
+    // The certified dot-region accelerator belongs to the flat mark delivery: the
+    // bitmap delivery deliberately renders without it, so request marks explicitly.
+    renderer.render(molecule,{shadingMode:'stipple',outlineWidth:0,stippleFill:'marks',...options});
     assert(result,'renderer failed to call buildDots');
     assert.equal(constructionDepth,0,'dot-region construction called shared depth callback');
     assert(creates<=1,'dot regions constructed more than once');
@@ -441,7 +443,8 @@ test('browser VM loads dot-regions.js before boundaries/dots/renderer and accele
   const original=context.MolDots.buildDots;let received=null;
   context.MolDots.buildDots=function(...args){received=args[6];return original(...args);};
   try {
-    const options={shadingMode:'stipple',outlineWidth:0,width:320,height:280};
+    // Region acceleration is a property of the flat mark delivery, so request it.
+    const options={shadingMode:'stipple',outlineWidth:0,width:320,height:280,stippleFill:'marks'};
     const svg=context.MolEngraver.render(context.MolEngraver.examples.ethanol,options);
     assert(received,'browser renderer silently lost region acceleration');
     assert.equal(svg,renderer.render(renderer.examples.ethanol,options),'browser/CommonJS mismatch');
