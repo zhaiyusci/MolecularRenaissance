@@ -131,7 +131,12 @@ function contains(loops,x,y){let inside=false;for(const loop of loops)for(let i=
   }
   assert.equal(pairOwners.size,2);assert.deepStrictEqual([...pairOwners.get(0)].sort(),[...pairOwners.get(1)].sort(),'both owners reference the same definitions');
   const c60=certified(api.examples.c60,pairOptions),c60Svg=validateLayered(api.render(api.examples.c60,pairOptions),c60.paths);
-  assert.equal(c60Svg.skeletons.length,3,'C60 reuses the three carbon-sphere family definitions');
+  // Smaller spheres expose the bonds, so C60 also defines one skeleton per visible
+  // bond at the 0.75 default. The claim here is carbon-sphere sharing, so count the
+  // radius-keyed sphere families rather than every skeleton.
+  const c60SphereFamilies=c60Svg.skeletons.filter(node=>/-radius\d+-f\d+$/.test(node.attrs.id||''));
+  assert.equal(c60SphereFamilies.length,3,'C60 reuses the three carbon-sphere family definitions');
+  assert(c60Svg.skeletons.length>=c60SphereFamilies.length);
   const fixed=direct({variableWidth:false}),fixedUses=validateLayered(fixed.svg,fixed.paths).uses,fixedWidths={};
   for(const use of fixedUses)(fixedWidths[use.attrs.href]??=new Set()).add(use.attrs['stroke-width']);
   assert(Object.values(fixedWidths).every(s=>s.size===1),'fixed width remains fixed across all levels');

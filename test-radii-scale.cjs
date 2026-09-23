@@ -18,10 +18,12 @@ assert.ok(Object.isFrozen(r.covalentRadii));
 for(const [element,radius] of Object.entries(expected)){
  const model={atoms:[{element,position:[0,0,0]}],bonds:[]};
  for(const options of [{},{width:200,height:200},{width:1800,height:1200},{yaw:1.2,pitch:.7},{scale:95}]){
-  const c=capture(model,options);assert.equal(c.scene[0].r,radius);assert.equal(c.scale,options.scale??60);
+  const c=capture(model,{...options,atomRadiusScale:1});assert.equal(c.scene[0].r,radius);assert.equal(c.scale,options.scale??60);
   close(c.project([radius,0,0])[0]-c.project([0,0,0])[0],radius*c.scale);
  }
 }
+// Omitting the multiplier applies the 0.75 default to the table radius.
+assert.equal(capture({atoms:[{element:'C',position:[0,0,0]}],bonds:[]},{}).scene[0].r,expected.C*.75,'default multiplier is 0.75');
 for(const model of [...Object.values(r.examples),{atoms:[{element:'C',position:[-1000,0,0]},{element:'H',position:[1000,0,0]}],bonds:[]}]){
  for(const size of [200,900,1600]){
   const c=capture(model,{width:size,height:size});assert.equal(c.scale,60);
@@ -42,7 +44,7 @@ for(const renderMode of ['precise','fast'])for(const quality of ['preview','expo
 }
 // Radius display scaling is independent of coordinate/bond geometry and camera scale.
 for(const model of Object.values(r.examples))for(const view of [{},{yaw:1.2,pitch:.4,width:1200,height:800}]){
- const base=capture(model,view);
+ const base=capture(model,{...view,atomRadiusScale:1});
  for(const factor of [.2,.5,.8,1,1.5,2]){
   const scaled=capture(model,{...view,atomRadiusScale:factor});assert.equal(scaled.scale,base.scale);
   for(let i=0;i<base.scene.length;i++){
@@ -53,9 +55,12 @@ for(const model of Object.values(r.examples))for(const view of [{},{yaw:1.2,pitc
  }
 }
 const override={atoms:[{element:'C',position:[0,0,0],radius:.73},{element:'F',position:[3,0,0],radius:.57}],bonds:[]};
-assert.deepEqual(capture(override).scene.map(s=>s.r),[.73,.57]);
+// Explicit atom.radius is honored; pin the multiplier where the point is the
+// override itself, then state where the 0.75 default reaches.
+assert.deepEqual(capture(override,{atomRadiusScale:1}).scene.map(s=>s.r),[.73,.57]);
 assert.deepEqual(capture(override,{atomRadiusScale:.5}).scene.map(s=>s.r),[.365,.285]);
-assert.equal(capture({atoms:[{element:'F',position:[0,0,0]}],bonds:[]}).scene[0].r,.57);
+assert.deepEqual(capture(override).scene.map(s=>s.r),[.73*.75,.57*.75],'the default multiplier also scales explicit radii');
+assert.equal(capture({atoms:[{element:'F',position:[0,0,0]}],bonds:[]},{}).scene[0].r,.57*.75);
 assert.throws(()=>capture({atoms:[{element:'Xx',position:[0,0,0]}],bonds:[]}),/No covalent radius/);
 for(const value of [0,-1,NaN,Infinity,'60',null]){
  assert.throws(()=>capture(r.examples.sphere,{scale:value}),/Invalid scale/);
@@ -63,7 +68,7 @@ for(const value of [0,-1,NaN,Infinity,'60',null]){
  assert.throws(()=>capture({atoms:[{element:'C',position:[0,0,0],radius:value}],bonds:[]}),/Invalid atom radius/);
 }
 // Units and geometry are not rescaled to manufacture nonintersecting spheres.
-const c60=capture(r.examples.c60,{yaw:0,pitch:0});
+const c60=capture(r.examples.c60,{yaw:0,pitch:0,atomRadiusScale:1});
 for(const [a,c] of r.examples.c60.bonds){
  const d=Math.hypot(...c60.scene[a].c.map((v,i)=>v-c60.scene[c].c[i]));
  close(d,1.42);assert.equal(c60.scene[a].r,.76);assert.ok(d<2*.76);

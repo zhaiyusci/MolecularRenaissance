@@ -36,7 +36,11 @@
     "build": "node scripts/build.mjs",
     "build:tiles": "node scripts/build-stipple-tiles.mjs",
     "pretest": "npm run build",
-    "test": "node scripts/test.mjs"
+    "test": "node scripts/test.mjs",
+    "pretest:heavy": "npm run build",
+    "test:heavy": "node scripts/test.mjs --heavy",
+    "pretest:all": "npm run build",
+    "test:all": "node scripts/test.mjs --all"
   },
   "devDependencies": {
     "rollup": "^4.59.0",

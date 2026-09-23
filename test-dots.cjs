@@ -9,7 +9,11 @@ const { buildDots } = require('./dots.js');
 const {marks:artwork,coverage}=require('./test-style-coverage.cjs');
 const modes = ['stipple', 'halftone'];
 const renderOptions={width:260,height:220,scale:22,quality:'preview'};
-const draw=(m,o={})=>render(m,{...renderOptions,...o});
+// renders is the file-wide renderer invocation count; ORACLE_PROBES (below) the
+// file-wide independent ownership-probe count. Both are capped at the end.
+let renders=0;
+const draw=(m,o={})=>{renders++;return render(m,{...renderOptions,...o});};
+const countBuildDots=(...args)=>{renders++;return buildDots(...args);};
 const stats = [], failures = [];
 let passed = 0;
 const started = performance.now();
@@ -44,10 +48,13 @@ function circles(svg) {
 }
 function patterns(svg){
   assert(!/NaN|Infinity|undefined/.test(svg),'finite halftone');
-  const out=[...svg.matchAll(/<pattern\b([^>]*)>([\s\S]*?)<\/pattern>/g)].map(m=>({a:attrs(m[1]),disks:[...m[2].matchAll(/<circle\b[^>]*\/>/g)].map(c=>attrs(c[0]))}));
+  const out=[...svg.matchAll(/<pattern\b([^>]*)>([\s\S]*?)<\/pattern>/g)].map(m=>({a:attrs(m[1]),body:m[2],disks:[...m[2].matchAll(/<circle\b[^>]*\/>/g)].map(c=>attrs(c[0]))}));
   assert(out.length>0&&out.length<=16,'bounded tone definitions');
   const ids=new Set(out.map(p=>p.a.id));let previous=0;
-  for(const {a,disks} of out){
+  for(const {a,body,disks} of out){
+    // Black-ink inheritance: pattern content keeps the shared ink, never a
+    // theme/currentColor fallback the surface clip would silently drop.
+    const g=/<g\b[^>]*>/.exec(body);assert(g&&attrs(g[0]).fill==='#161616','pattern dots inherit the black ink');
     assert.equal(a.patternTransform,'rotate(45)');assert.equal(a.patternUnits,'userSpaceOnUse');
     const pitch=+a.width;assert(pitch>0&&pitch===+a.height);assert(disks.length>0);
     const r=+disks[0].r;assert(r>=previous);previous=r;
@@ -67,55 +74,140 @@ const unit = a=>a.map(v=>v/Math.hypot(...a));
 const sphere = (c,r)=>({kind:'sphere',c,r});
 const cylinder = (a,b,r)=>({kind:'cylinder',a,u:unit(sub(b,a)),length:Math.hypot(...sub(b,a)),r});
 // Independent ray/closed-solid oracle. Intersect side and end planes and select
-// the nearest camera-facing surface, not the primitive with the greatest center z.
-function surface(s,x,y) {
+// the nearest camera-facing surface (greatest z, first primitive wins ties), not
+// the primitive with the greatest center z. Scalar and allocation-free: the same
+// operation order and the same Math.hypot as the former array form, minus the
+// per-probe arrays, closures and sort that dominated this file's runtime.
+// Winner scratch of the last surfaceHit() call. Normals are derived only for the
+// ~1e3 lighting callbacks, never for the ~4.6e7 footprint probes.
+let _z=0,_side=0,_rx=0,_ry=0,_rz=0,_sg=1,_dz=0;
+function surfaceHit(s,x,y) {
   if (s.kind==='sphere') {
     const dx=x-s.c[0],dy=y-s.c[1],q=s.r*s.r-dx*dx-dy*dy;
-    if(q<0)return null;
-    const dz=Math.sqrt(q);
-    return {p:[x,y,s.c[2]+dz], n:[dx/s.r,dy/s.r,dz/s.r]};
+    if(q<0)return false;
+    _dz=Math.sqrt(q);_z=s.c[2]+_dz;
+    return true;
   }
-  const origin=[x,y,0],v=sub(origin,s.a), ray=[0,0,1],ax=dot(v,s.u),az=s.u[2];
-  const vp=v.map((w,i)=>w-ax*s.u[i]),dp=ray.map((w,i)=>w-az*s.u[i]);
-  const A=dot(dp,dp), B=2*dot(vp,dp), C=dot(vp,vp)-s.r*s.r, candidates=[];
-  if(A>1e-12 && B*B-4*A*C>=0) {
-    for(const z of [(-B-Math.sqrt(B*B-4*A*C))/(2*A),(-B+Math.sqrt(B*B-4*A*C))/(2*A)]) {
-      const t=ax+z*az;
-      if(t>=0&&t<=s.length) {
-        const p=[x,y,z],rad=sub(p,s.a).map((w,i)=>w-t*s.u[i]);
-        candidates.push({p,n:unit(rad)});
+  const a0=s.a[0],a1=s.a[1],a2=s.a[2],ux=s.u[0],uy=s.u[1],uz=s.u[2],r=s.r,length=s.length;
+  const vx=x-a0,vy=y-a1,vz=-a2,ax=vx*ux+vy*uy+vz*uz,az=uz;
+  const vpx=vx-ax*ux,vpy=vy-ax*uy,vpz=vz-ax*uz;
+  const dpx=-az*ux,dpy=-az*uy,dpz=1-az*uz;
+  const A=dpx*dpx+dpy*dpy+dpz*dpz, B=2*(vpx*dpx+vpy*dpy+vpz*dpz), C=vpx*vpx+vpy*vpy+vpz*vpz-r*r;
+  const disc=B*B-4*A*C;
+  let found=false,bz=0,bSide=0,brx=0,bry=0,brz=0,bsg=1;
+  if(A>1e-12 && disc>=0) {
+    const root=Math.sqrt(disc);
+    for(let i=0;i<2;i++) {
+      const z=((i?-B+root:-B-root))/(2*A), t=ax+z*az;
+      if(t>=0&&t<=length) {
+        const rx=x-a0-t*ux,ry=y-a1-t*uy,rz=z-a2-t*uz;
+        if(!found||z>bz){found=true;bz=z;bSide=1;brx=rx;bry=ry;brz=rz;}
       }
     }
   }
-  if(Math.abs(az)>1e-12)for(const t of [0,s.length]) {
-    const z=(t-ax)/az,p=[x,y,z],rad=sub(p,s.a).map((w,i)=>w-t*s.u[i]);
-    if(dot(rad,rad)<=s.r*s.r+1e-12)candidates.push({p,n:s.u.map(w=>w*(t===0?-1:1))});
+  if(Math.abs(az)>1e-12)for(let i=0;i<2;i++) {
+    const t=i?length:0, z=(t-ax)/az, rx=x-a0-t*ux,ry=y-a1-t*uy,rz=z-a2-t*uz;
+    if(rx*rx+ry*ry+rz*rz<=r*r+1e-12) {
+      const sg=t===0?-1:1;
+      if(!found||z>bz){found=true;bz=z;bSide=0;bsg=sg;}
+    }
   }
-  return candidates.sort((a,b)=>b.p[2]-a.p[2])[0]||null;
+  if(found){_z=bz;_side=bSide;_rx=brx;_ry=bry;_rz=brz;_sg=bsg;}
+  return found;
+}
+function winnerNormal(s,x,y) {
+  if(s.kind==='sphere')return [(x-s.c[0])/s.r,(y-s.c[1])/s.r,_dz/s.r];
+  if(_side){const h=Math.hypot(_rx,_ry,_rz);return [_rx/h,_ry/h,_rz/h];}
+  return [_sg*s.u[0],_sg*s.u[1],_sg*s.u[2]];
+}
+// Exact xy prefilter: a ray along +z can only hit a primitive whose xy footprint
+// contains the probe (for the rod, the xy distance to the axis segment is a
+// lower bound on the 3D perpendicular distance), so probes outside it skip the
+// expensive cylinder solve. Tiny slack keeps the rejection strictly conservative.
+let _pfScene=null,_pf=null,ORACLE_PROBES=0;
+function prefilters(scene) {
+  _pfScene=scene;
+  _pf=scene.map(s=>s.kind==='sphere'
+    ? {s:1,cx:s.c[0],cy:s.c[1],q:s.r*s.r}
+    : {s:0,ax:s.a[0],ay:s.a[1],bx:s.a[0]+s.u[0]*s.length,by:s.a[1]+s.u[1]*s.length,r2:s.r*s.r});
+  return _pf;
+}
+function insidePref(p,x,y) {
+  if(p.s){const dx=x-p.cx,dy=y-p.cy;return dx*dx+dy*dy<=p.q*(1+1e-12)+1e-12;}
+  const ex=p.bx-p.ax,ey=p.by-p.ay,l2=ex*ex+ey*ey;
+  let t=l2>0?((x-p.ax)*ex+(y-p.ay)*ey)/l2:0;
+  t=t<0?0:t>1?1:t;
+  const dx=x-(p.ax+t*ex),dy=y-(p.ay+t*ey);
+  return dx*dx+dy*dy<=p.r2*(1+1e-12)+1e-12;
+}
+// Pixel-space ownership query: converts to model space exactly like the former
+// per-primitive call did, then selects the nearest camera-facing primitive.
+function ownerId(scene,x,y) {
+  if(scene!==_pfScene)prefilters(scene);
+  ORACLE_PROBES++;
+  const wx=(x-origin[0])/scale, wy=(origin[1]-y)/scale;
+  let id=-1,bz=0;
+  for(let i=0;i<_pf.length;i++) {
+    if(!insidePref(_pf[i],wx,wy))continue;
+    if(surfaceHit(scene[i],wx,wy)&&(id<0||_z>bz)){bz=_z;id=i;}
+  }
+  return id;
+}
+function owner(scene,x,y) {
+  const id=ownerId(scene,x,y);
+  if(id<0)return null;
+  const wx=(x-origin[0])/scale, wy=(origin[1]-y)/scale;
+  surfaceHit(scene[id],wx,wy); // repopulate the winner's scratch for its normal
+  return {p:[wx,wy,_z],n:winnerNormal(scene[id],wx,wy),id};
 }
 // Explicit small physical projection bounds numerical fallback work; tests
 // still exercise all five distinct solids, not a skipped slow-case subset.
 const scale=22, origin=[83.27,71.19];
 const project=p=>[origin[0]+scale*p[0],origin[1]-scale*p[1]];
-function owner(scene,x,y) {
-  let best=null;
-  scene.forEach((s,id)=> {
-    const h=surface(s,(x-origin[0])/scale,(origin[1]-y)/scale);
-    if(h&&(!best||h.p[2]>best.p[2]))best={...h,id};
-  });
-  return best;
-}
-const dirs=Array.from({length:16},(_,i)=>[Math.cos(i*Math.PI/8),Math.sin(i*Math.PI/8)]);
-const denseDirs=Array.from({length:64},(_,i)=>[Math.cos((i+.5)*Math.PI/32),Math.sin((i+.5)*Math.PI/32)]);
-const oracleDirs=Array.from({length:256},(_,i)=>[Math.cos((i+.5)*2*Math.PI/256),Math.sin((i+.5)*2*Math.PI/256)]);
+// Footprint direction tables, stored flat (x0,y0,x1,y1,...) because the probe
+// loop below is the hottest code in this file.
+const flatDirs=(n,angle)=>{const f=new Float64Array(2*n);for(let i=0;i<n;i++){f[2*i]=Math.cos(angle(i));f[2*i+1]=Math.sin(angle(i));}return f;};
+const dirs=flatDirs(16,i=>i*Math.PI/8);
+const denseDirs=flatDirs(64,i=>(i+.5)*Math.PI/32);
+const oracleDirs=flatDirs(256,i=>(i+.5)*2*Math.PI/256);
+// Whole-disk footprint test: every probe at half and full radius must stay on
+// the same owner. The xy prefilter is inlined here (kept in sync with
+// insidePref) because this loop issues ~4.5e7 probes per run.
 function fits(scene,c,r,id,directions=dirs) {
-  return [.5,1].every(k=>directions.every(([dx,dy])=>owner(scene,c.x+dx*r*k,c.y+dy*r*k)?.id===id));
+  if(scene!==_pfScene)prefilters(scene);
+  const pf=_pf,n=directions.length,prims=pf.length;
+  let probes=0;
+  for(let ki=0;ki<2;ki++) {
+    const k=ki===0?.5:1;
+    for(let i=0;i<n;i+=2) {
+      const wx=(c.x+directions[i]*r*k-origin[0])/scale, wy=(origin[1]-(c.y+directions[i+1]*r*k))/scale;
+      probes++;
+      let found=-1,bz=0;
+      for(let j=0;j<prims;j++) {
+        const p=pf[j];
+        if(p.s){const dx=wx-p.cx,dy=wy-p.cy;if(dx*dx+dy*dy>p.q*(1+1e-12)+1e-12)continue;}
+        else{
+          const ex=p.bx-p.ax,ey=p.by-p.ay,l2=ex*ex+ey*ey;
+          let t=l2>0?((wx-p.ax)*ex+(wy-p.ay)*ey)/l2:0;
+          t=t<0?0:t>1?1:t;
+          const dx=wx-(p.ax+t*ex),dy=wy-(p.ay+t*ey);
+          if(dx*dx+dy*dy>p.r2*(1+1e-12)+1e-12)continue;
+        }
+        if(surfaceHit(scene[j],wx,wy)&&(found<0||_z>bz)){bz=_z;found=j;}
+      }
+      if(found!==id){ORACLE_PROBES+=probes;return false;}
+    }
+  }
+  ORACLE_PROBES+=probes;
+  return true;
 }
-function expectedRadius(scene,c,id,raw) {
+function expectedRadius(scene,c,id,raw,probe=true) {
   let r=raw;
   // Independent staggered 256-direction oracle, not the production fallback
-  // stencil. Same serialization tolerance is retained by the caller.
-  if(!fits(scene,c,r,id,oracleDirs)) {
+  // stencil. Same serialization tolerance is retained by the caller. The probe
+  // can only LOWER the bound below its closed-form value, so callers that have
+  // already established the closed-form bound cannot fail may skip it entirely.
+  if(probe&&!fits(scene,c,r,id,oracleDirs)) {
     let lo=0,hi=r;
     for(let i=0;i<12;i++){const mid=(lo+hi)/2;if(fits(scene,c,mid,id,oracleDirs))lo=mid;else hi=mid;}
     r=lo;
@@ -123,6 +215,7 @@ function expectedRadius(scene,c,id,raw) {
   return Math.floor(Math.min(raw/1.03,Math.max(0,r*Math.cos(Math.PI/16)-.003*Math.min(1,raw/1.03)))*1000)/1000;
 }
 function direct(scene,mode,illum=()=>-.5,options={}) {
+  renders++;
   return buildDots(scene,depthAt,project,scale,illum,{shadingMode:mode,...options});
 }
 const big=[sphere([0,0,0],2)];
@@ -130,7 +223,8 @@ const big=[sphere([0,0,0],2)];
 test('browser UMD exports same deterministic API',()=>{
   const context={}; vm.runInNewContext(fs.readFileSync(require.resolve('./dots.js'),'utf8'),context);
   assert.equal(typeof context.MolDots.buildDots,'function');
-  for(const mode of modes)assert.equal(context.MolDots.buildDots(big,depthAt,project,scale,()=>-.5,{shadingMode:mode}),direct(big,mode));
+  // The VM-loaded UMD copy is the thing under test here; count it, never replace it.
+  for(const mode of modes){renders++;assert.equal(context.MolDots.buildDots(big,depthAt,project,scale,()=>-.5,{shadingMode:mode}),direct(big,mode));}
 });
 test('default hatch unchanged by explicit defaults / dot settings; no circles',()=>{
   const implicit=draw(examples.pair),explicit=draw(examples.pair,{shadingMode:'hatch',dotSpacing:5,dotSize:1,dotContrast:1.2});
@@ -147,7 +241,18 @@ for(const mode of modes) {
     stats.push({case:`ethanol/${mode}`,marks:marks.length,ms:+ms.toFixed(2),bytes:svg.length});
     assert.equal(svg,draw(examples.ethanol,options));
     assert.match(layer(svg,'dots'),new RegExp(`^<g data-role="dots" data-mode="${mode}"`));
-    if(mode==='stipple')assert(layer(svg,'dots').includes('fill="#161616"'));
+    if(mode==='stipple'){
+      assert(layer(svg,'dots').includes('fill="#161616"'));
+      // Mark visibility and radius grouping: compact batching keys on the level
+      // AND the contracted radius, so batched paths must expose per-mark radii
+      // down to the policy floor (0.03 * min(1,dotSize)). Silently dropping the
+      // smallest boundary marks, or collapsing every radius under one stroke
+      // width, both show up here.
+      const batched=[...layer(svg,'dots').matchAll(/data-stipple-radius="([\d.]+)"/g)].map(m=>+m[1]);
+      assert(batched.length>30,'compact stipple batches present');
+      assert(Math.min(...batched)<.05,`small contracted marks survive (min radius ${Math.min(...batched)})`);
+      assert(new Set(batched).size>8,`batched radii keep per-mark radius grouping (${new Set(batched).size} distinct)`);
+    }
     const outline=layer(svg,'engraving'); assert(outline.includes('<path'));
     assert.equal(outline,layer(draw(examples.ethanol,{shadingMode:'hatch',hatchMode:'continuous',hatchWidth:0}),'engraving'));
     assert.equal(outline,layer(draw(examples.ethanol,{...options,hatchWidth:4,density:60,crossHatch:false}),'engraving'));
@@ -260,7 +365,12 @@ for(const [name,scene] of Object.entries(scenes))for(const mode of modes) {
         const h=owner(scene,c.x,c.y);assert(h,'disk center in background');owners.add(h.id);
         // Keep the original serialization budget and 64 staggered directions.
         assert(fits(scene,c,Math.max(0,c.r-.005),h.id,denseDirs),`disk crosses owner/background at ${JSON.stringify(c)}`);
-        const expected=expectedRadius(scene,c,h.id,options.dotSize*1.03);
+        // expectedRadius() only ever LOWERS its bound below the closed form
+        // min(raw/1.03, ...) <= dotSize, and the assertion below grants exactly
+        // .005 of slack. A disk still at the nominal radius therefore satisfies
+        // it for either value, so the 256-direction bisection -- the most
+        // expensive sweep in this file -- runs only for disks that contracted.
+        const expected=expectedRadius(scene,c,h.id,options.dotSize*1.03,c.r<options.dotSize-.005);
         assert(c.r<=options.dotSize&&c.r>=expected-.005-1e-9,`radius ${c.r} over-shrunk below independently safe ${expected} at ${JSON.stringify(c)}`);
         // Different angular stencils may conservatively contract different
         // amounts. A larger radius is acceptable only if its FINAL physical
@@ -328,12 +438,22 @@ test('unknown modes, nonnumeric/out-of-range options and invalid scale rejected'
     }
     for(const mode of modes)assert.throws(()=>direct(big,mode,()=>0,{[key]:value}));
   }
-  for(const s of [0,-1,NaN,Infinity])assert.throws(()=>buildDots(big,depthAt,project,s,()=>0,{shadingMode:'stipple'}));
+  for(const s of [0,-1,NaN,Infinity])assert.throws(()=>countBuildDots(big,depthAt,project,s,()=>0,{shadingMode:'stipple'}));
   assert.throws(()=>direct(big,'stipple',()=>-.5,{dotSpacing:19,dotSize:.001}),/Stipple density too high/,'legal settings still enforce bounded Poisson count');
-  assert.throws(()=>buildDots(big,depthAt,p=>[p[0]*1e6,p[1]*1e6],1e6,()=>0,{shadingMode:'stipple'}),/Dot screen too large/,'oversized candidate grids fail before iteration');
+  assert.throws(()=>countBuildDots(big,depthAt,p=>[p[0]*1e6,p[1]*1e6],1e6,()=>0,{shadingMode:'stipple'}),/Dot screen too large/,'oversized candidate grids fail before iteration');
+});
+// Work caps for the whole file, in the units that actually drive its runtime.
+// Both budgets sit just above the measured totals after the redundant oracle
+// sweeps were removed (see the expectedRadius() call above and the scalar
+// oracle): a cap that has to be raised means a combinatorial sweep came back.
+const RENDER_BUDGET = 240;              // 226 renderer/buildDots invocations measured
+const ORACLE_PROBE_BUDGET = 48000000;   // 45834697 independent ownership probes measured
+test('work caps: total renders and independent ownership probes stay bounded',()=>{
+  assert(renders<=RENDER_BUDGET,`render budget exceeded: ${renders} > ${RENDER_BUDGET}`);
+  assert(ORACLE_PROBES<=ORACLE_PROBE_BUDGET,`ownership probe budget exceeded: ${ORACLE_PROBES} > ${ORACLE_PROBE_BUDGET}`);
 });
 console.log('\nCOUNTS / PERFORMANCE (informational, no machine-specific time limits)');
 console.table(stats);
-console.log(`\n${passed} passed, ${failures.length} failed; total ${(performance.now()-started).toFixed(1)} ms`);
+console.log(`\n${passed} passed, ${failures.length} failed; ${renders} renders, ${ORACLE_PROBES} ownership probes; total ${(performance.now()-started).toFixed(1)} ms`);
 console.log('Hatch compatibility is checked against explicit current defaults; no historical SVG snapshot is available.');
 if(failures.length){for(const f of failures)console.error(`\n${f.name}\n${f.error}`);process.exitCode=1;}

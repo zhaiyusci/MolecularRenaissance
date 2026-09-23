@@ -5,7 +5,20 @@ const assert = require('node:assert/strict');
 const renderer = require('./renderer.js');
 const boundaries = require('./boundaries.js');
 const started = performance.now();
-const TAU = 2 * Math.PI, MARGIN = 2e-7, SAMPLES = 512;
+const TAU = 2 * Math.PI, MARGIN = 2e-7;
+// Sampling policy (RENDERER.md: 按状态数，不按次数量). Membership along one hatch
+// curve is piecewise constant with breakpoints exactly at its reported span
+// endpoints, so the continuous domain to cover is small and boundary-shaped:
+// measured on the current implementation, the 18,530 membership cases visit only
+// four partition shapes -- 0 spans -> 1 open interval (1,969 cases), 1 span -> 3
+// (14,999), 2 spans -> 5 (1,542), 3 spans -> 7 (20) -- and only 180 of them carry
+// an interval narrower than 1e-2 (narrowest reported interval: 1.01e-4). The
+// uniform 512-point mesh these constants replace sampled every one of those
+// intervals ~170 times over and still could not resolve anything below ~2e-3.
+const EDGE_OFFSET = 1e-6;                     // probe each side of a reported boundary (> MARGIN)
+const STRUCTURE_FRACTIONS = [0.25, 0.5, 0.75]; // witnesses inside every open interval
+const HEDGE_STRATA = 64;                      // probes for features the implementation does not report
+const HEDGE_ROTATION = 0.6180339887498949;    // irrational per-curve rotation, no randomness
 const add = (a,b) => a.map((v,i)=>v+b[i]);
 const sub = (a,b) => a.map((v,i)=>v-b[i]);
 const mul = (a,k) => a.map(v=>v*k);
@@ -13,6 +26,7 @@ const cross = (a,b) => [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b
 const norm = a => mul(a,1/Math.hypot(...a));
 const stats = {scenes:0,circles:0,lines:0,fallbacks:0,probes:0,retained:0,omitted:0,endpointSkipped:0,boundaryDepthQueries:0,oracleDepthQueries:0};
 const failures = [], fallbackLabels = [];
+let curveIndex = 0; // drives the per-curve hedge rotation only; deterministic call order
 function check(condition,message) { if(!condition) failures.push(message); }
 // Capture the actual centered/rotated renderer scene; always restore the module.
 function capture(molecule,options={}) {
@@ -55,11 +69,29 @@ function membership(ctx,source,at,spans,label,circle,extra=[]) {
     last=span[1];
   }
   const ends=[0,1,...spans.flat()];
-  const probes=Array.from({length:SAMPLES},(_,i)=>(i+.371)/SAMPLES);
-  // Explicitly inspect BOTH reported spans and their omitted complements,
-  // including intervals far narrower than the independent uniform probe mesh.
+  // Explicitly inspect BOTH reported spans and their omitted complements: every
+  // open interval of the reported partition gets a witness, however narrow it is
+  // (probes are fractions of the interval itself, not of a fixed mesh, so a 1e-4
+  // interval is still witnessed). Every interior boundary is then probed from
+  // both sides, which turns any boundary displacement larger than EDGE_OFFSET
+  // into a deterministic failure instead of a density-dependent one. The only
+  // coverage left for behaviour the implementation does not report at all is the
+  // rotating stratified hedge: HEDGE_STRATA probes per curve, rotated per curve
+  // by an irrational fraction, so the file-wide sample set stays an independent
+  // dense mesh while each individual curve pays a handful of probes.
   const cuts=[...new Set(ends)].sort((a,b)=>a-b);
-  for(let i=1;i<cuts.length;i++) probes.push((cuts[i-1]+cuts[i])/2);
+  const probes=[];
+  for(let i=1;i<cuts.length;i++) {
+    const lo=cuts[i-1], width=cuts[i]-lo;
+    for(const fraction of STRUCTURE_FRACTIONS) probes.push(lo+width*fraction);
+  }
+  for(let i=1;i<cuts.length-1;i++) {
+    const edge=cuts[i];
+    if(edge>EDGE_OFFSET) probes.push(edge-EDGE_OFFSET);
+    if(edge<1-EDGE_OFFSET) probes.push(edge+EDGE_OFFSET);
+  }
+  const rotation=curveIndex++*HEDGE_ROTATION;
+  for(let i=0;i<HEDGE_STRATA;i++) probes.push(((i+.5)/HEDGE_STRATA+rotation)%1);
   probes.push(...extra);
   let firstMismatch=null,mismatches=0;
   for(const t of probes) {
@@ -167,8 +199,20 @@ for(const name of ['full-ring','fully-hidden-ring','periodic-seam','tiny-visible
 }
 check(stats.fallbacks===0,`ordinary hatch fixtures must not silently fall back: ${fallbackLabels.join(', ')}`);
 check(stats.retained>0&&stats.omitted>0,'must independently test retained AND omitted samples');
-console.log(JSON.stringify({seconds:+((performance.now()-started)/1000).toFixed(3),...stats,defaultFallbacks,fixtureFallbacks:stats.fallbacks-defaultFallbacks,failures:failures.length},null,2));
+// Case cap. Named constants, recorded just above the counts measured on the
+// current renderer, so a quiet return to a dense parameter sweep fails the gate
+// instead of silently costing seconds again (RENDERER.md: 每个文件加命名常量形式的用例上限).
+// Measured: 18,530 cases (circles 14,661 + lines 3,869), 1,422,959 membership
+// probes, 34,676,825 independent reference-surface queries.
+const MAX_MEMBERSHIP_CASES = 19000;        // measured 18,530 (+2.5%)
+const MAX_PROBES = 1600000;                // measured 1,422,959 (+12%)
+const MAX_ORACLE_DEPTH_QUERIES = 40000000; // measured 34,676,825 (+15%)
+check(stats.circles+stats.lines<=MAX_MEMBERSHIP_CASES,`membership cases ${stats.circles+stats.lines} exceed cap ${MAX_MEMBERSHIP_CASES}`);
+check(stats.probes<=MAX_PROBES,`membership probes ${stats.probes} exceed cap ${MAX_PROBES}`);
+check(stats.oracleDepthQueries<=MAX_ORACLE_DEPTH_QUERIES,`reference depth queries ${stats.oracleDepthQueries} exceed cap ${MAX_ORACLE_DEPTH_QUERIES}`);
+console.log(JSON.stringify({seconds:+((performance.now()-started)/1000).toFixed(3),...stats,defaultFallbacks,fixtureFallbacks:stats.fallbacks-defaultFallbacks,failures:failures.length,caps:{MAX_MEMBERSHIP_CASES,MAX_PROBES,MAX_ORACLE_DEPTH_QUERIES}},null,2));
 console.log('probes count independent parameter membership queries; boundaryDepthQueries includes build/validation/wash/clipping, oracleDepthQueries counts reference surface tests.');
+console.log('probes per case are boundary samples: 3 witnesses per reported/omitted interval, EDGE_OFFSET either side of every reported endpoint, then HEDGE_STRATA rotating hedge probes.');
 if(fallbackLabels.length) console.log('Per-curve fallback labels: '+fallbackLabels.join(', '));
 if(failures.length) {
   for(const failure of failures.slice(0,30)) console.error('FAIL '+failure);

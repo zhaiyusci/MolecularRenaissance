@@ -76,17 +76,19 @@ async function main(){
     const {coverage}=require('./test-style-coverage.cjs');
     for(const name of ['ethanol','c60']){
       // Historical ribbon coverage uses a path-only oracle, not layered use/clip expansion.
+      // The historical engine predates the 0.75 atom radius default, so pin it.
       const options={hatchMode:'continuous',shadingMode:'hatch',castShadows:true,quality:'preview',textureScale:1};
-      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],options);
+      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],{...options,atomRadiusScale:1});
       const a=coverage(old,[200,100,700,600]),b=coverage(next,[200,100,700,600]);
       assert(Math.abs(a-b)<.01,`${name}: shadowed hatch ink stays within one percentage point in the same window`);
       console.log('Shadowed hatch window coverage:',{name,before:a,after:b});
     }
     for(const name of ['sphere','ethanol','c60']){
-      // The historical engine predates tone quantization, so this position/radius
-      // guard compares the continuous stream; the quantized default is checked below.
+      // The historical engine predates tone quantization and the 0.75 radius
+      // default, so this position/radius guard pins both; the quantized default is
+      // checked below on the same pinned geometry.
       const options={shadingMode:'stipple',castShadows:false,quality:'preview',textureScale:1};
-      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],{...options,quantizeShading:false});
+      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],{...options,quantizeShading:false,atomRadiusScale:1});
       const oldDisks=disks(old),newDisks=disks(next);assert(oldDisks.length>1000);
       if(name==='sphere')for(const disk of newDisks){
         const [x,y,r]=disk.split(',').map(Number);
@@ -95,8 +97,8 @@ async function main(){
       assert.deepEqual(newDisks,oldDisks,`${name}: every unshadowed disk retains its exact serialized position and radius`);
       assert(next.length<old.length*.6,'batching removes per-mark XML overhead');
       // The default switch quantizes tone on the same flat path, and may only add ink.
-      const quantized=current.render(current.examples[name],{...options,quantizeShading:true});
-      assert.match(quantized,/data-birth-level="\d+"/,`${name}: default stipple serializes tone levels`);
+      const quantized=current.render(current.examples[name],{...options,quantizeShading:true,atomRadiusScale:1});
+      assert.match(quantized,/data-birth-level="\d+"/,`${name}: quantized stipple serializes tone levels`);
       assert(!quantized.includes('<pattern')&&!quantized.includes('<clipPath'),`${name}: quantized stipple stays flat`);
       assert(Math.abs(disks(quantized).length-newDisks.length)/newDisks.length<.15,`${name}: nearest-band quantization preserves mean tone`);
     }

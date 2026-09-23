@@ -4,7 +4,7 @@ import { normalizeOrientation } from './orientation.js';
 export type NormalizedOptions = Required<Omit<RenderOptions,'shadingDensity'|'shadingSize'|'orientation'>> & Pick<RenderOptions,'shadingDensity'|'shadingSize'|'orientation'>;
 const defaults: NormalizedOptions = {
   renderMode:'precise',
-  width:900,height:700,scale:60,atomRadiusScale:1,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
+  width:900,height:700,scale:60,atomRadiusScale:.75,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
   castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
   variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',hatchMode:'layered',quantizeShading:true,stippleFill:'marks',textureScale:1,elementTextures:false,elementTextureScale:1,shadingBrightness:0,shadingContrast:1.2,
   dotSpacing:2.5,dotSize:.5,dotContrast:1.2,crossHatch:true,colorWash:false,colorScheme:'jmol',washStrength:1,

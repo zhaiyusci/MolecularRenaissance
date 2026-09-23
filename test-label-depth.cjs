@@ -59,10 +59,10 @@ const allDisks=svg=>[...svg.matchAll(/<g data-role="dots"[\s\S]*?<\/g>/g)].flatM
     const before=await historicalRenderer('pre-labels');
     for(const name of ['sphere','ethanol','c60'])for(const shadingMode of ['hatch','stipple','halftone']){
       const options={labels:false,shadingMode,castShadows:true,colorWash:true,quality:'preview'};
-      // The pinned engine predates stipple tone quantization, so stipple is compared
-      // on its continuous stream; hatch keeps the legacy continuous alias and
-      // halftone keeps its default pattern screen.
-      const legacy={...options,hatchMode:'continuous',...(shadingMode==='stipple'?{quantizeShading:false}:{})};
+      // The pinned engine predates stipple tone quantization and the 0.75 atom
+      // radius default, so both are pinned; hatch keeps the legacy continuous
+      // alias and halftone keeps its default pattern screen.
+      const legacy={...options,hatchMode:'continuous',atomRadiusScale:1,...(shadingMode==='stipple'?{quantizeShading:false}:{})};
       assert.equal(current.render(current.examples[name],legacy),before.render(before.examples[name],options),`${name}/${shadingMode}: no-label SVG unchanged`);
     }
   }

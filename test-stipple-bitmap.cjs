@@ -99,11 +99,11 @@ for(const name of ['sphere','ethanol','c60']){
   assert.equal(count(bitmap,/<g transform="translate\(/g),0,name+': no per-owner pattern transform');
   assert.equal(count(bitmap,/data-stipple-radius/g),0,name+': no vector mark batches');
   // The baked tile payload is a fixed cost, so the bitmap only wins once the flat
-  // mark set outgrows it: roughly a wash on the smallest models, clearly smaller
-  // from ethanol upward.
-  assert(bitmap.length<marks.length*1.6,name+': bitmap stays within its fixed tile payload');
-  if(['glucose','c60','phospholipid'].includes(name))
-    assert(bitmap.length<marks.length*.7,name+': bitmap is clearly smaller once the mark set is large');
+  // mark set outgrows it. At the 0.75 atom radius default the spheres are smaller,
+  // so the crossover moved out: only C60-scale models come out clearly ahead.
+  assert(bitmap.length<marks.length*2.5,name+': bitmap stays within its fixed tile payload');
+  if(name==='c60')
+    assert(bitmap.length<marks.length*.8,name+': bitmap is clearly smaller once the mark set is large');
   assert.equal(api.render(model,{...base,quantizeShading:true,stippleFill:'bitmap'}),bitmap,name+': deterministic');
   // Untiling levels that carry no tone must not emit a tile.
   assert(images<=16,name+': at most one tile per level');
