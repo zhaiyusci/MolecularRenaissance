@@ -6,7 +6,7 @@ import { projectedCircle, projectedLine, trigSpans } from './hatch-curves.js';
 import { directionalTonePath } from './surface-tones.js';
 import { sampledTonePaths } from './halftone.js';
 import { engravingWidth } from './strokes.js';
-import { TONE_LEVELS } from './tone-levels.js';
+import { directLimitForDarkness, facingLimitForDirect } from './lighting-transfer.js';
 
 // Fixed disjoint darkness bands; this is not exact legacy engraving.
 type Bounds = [number, number, number, number];
@@ -90,7 +90,8 @@ function namespace(prepared: PreparedScene, o: NormalizedOptions, paths: readonl
   }
   // The shared switch has already selected this route; hatchMode encodes it.
   // Excluding the alias preserves existing definition IDs and default exports.
-  const { quantizeShading: _sharedSwitch, ...style } = o;
+  const { quantizeShading: _sharedSwitch, shadingLevels, ...legacyStyle } = o;
+  const style = { ...legacyStyle, ...(shadingLevels === 16 ? {} : { shadingLevels }) };
   hash(JSON.stringify([prepared.scene, prepared.scale, prepared.lightDirection, prepared.shadowBias, style,
     prepared.project([0, 0, 0]), prepared.project([1, 1, 1])]));
   for (const path of paths) hash(path ?? 'null');
@@ -99,7 +100,7 @@ function namespace(prepared: PreparedScene, o: NormalizedOptions, paths: readonl
 
 /**
  * Reuse fixed curved skeletons beneath analytic disjoint tone bands. Only
- * artistic darkness/width is quantized to 16 levels; the caller's certified
+ * artistic darkness/width is quantized to the selected palette; the caller's certified
  * owner clip contains the FULL strokes and preserves scientific occlusion.
  * Shadow discovery matches halftone: one local binary sampled contour per
  * potentially shadowed source, never an atlas dependency or per-line ray grid.
@@ -107,6 +108,7 @@ function namespace(prepared: PreparedScene, o: NormalizedOptions, paths: readonl
 export function buildLayeredHatching(
   prepared: PreparedScene, o: NormalizedOptions, visiblePaths: readonly (string | null)[],
 ): LayeredHatchingResult {
+  const TONE_LEVELS = o.shadingLevels;
   const result: LayeredHatchingResult = { defs: '', bySurface: new Map(), skeletonPaths: 0, toneLayers: 0,
     stats: { shadowBuilds: 0, shadowSamples: 0 } };
   if (o.shadingMode !== 'hatch' || o.hatchWidth <= 0 || o.shadingSize === 0) return result;
@@ -125,9 +127,7 @@ export function buildLayeredHatching(
     });
   }
   const physicalThreshold = (darkness: number): number =>
-    1 - 2 * Math.pow(darkness, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
-  const shadowThreshold = (threshold: number): number => o.shadowStrength >= 1
-    ? (threshold > -1 ? Infinity : -Infinity) : (threshold + 1) / (1 - o.shadowStrength) - 1;
+    directLimitForDarkness(darkness,o.shadingContrast/1.2,o.shadingBrightness);
   function clip(id: string, path: string): string {
     definitions.push(`<clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path clip-rule="evenodd" d="${path}"/></clipPath>`);
     return id;
@@ -173,8 +173,8 @@ export function buildLayeredHatching(
       return name;
     }
     function layers(shadow: boolean): string {
-      const transform = shadow ? shadowThreshold : (t: number) => t;
-      const gates = families.map(f => pathClip(tonePath(transform(physicalThreshold((1 - f.limit) / 2)))));
+      const transform = (t:number,strict=false) => facingLimitForDirect(t,shadow?1-o.shadowStrength:1,!strict);
+      const gates = families.map(f => pathClip(tonePath(transform(physicalThreshold((1 - f.limit) / 2),true))));
       const groups: string[] = [];
       for (let level = 1; level <= TONE_LEVELS; level++) {
         // Nested cumulative regions XOR to a disjoint band under evenodd.

@@ -7,10 +7,11 @@ export interface PreparedScene {
     spheres: Sphere[];
     cylinders: Cylinder[];
     scene: Primitive[];
+    /** Illumination callbacks here return physical direct light D in [0,1]. */
     scale: number;
     project: Project;
     illumination: Illumination;
-    /** Physical light without occluders, for reuse with shared shadow regions. */
+    /** Physical direct light without occluders, before artistic transfer. */
     unshadowedIllumination: Illumination;
     /** Cached physical (unshifted) illumination for outward-facing points on source.
      * Source geometry must remain unchanged for the lifetime of this scene. */

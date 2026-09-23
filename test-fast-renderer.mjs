@@ -11,7 +11,11 @@ const {prepareScene}=await load('scene.js'),{normalizeOptions}=await load('optio
 const attr=(svg,name)=>+(svg.match(new RegExp(`\\s${name}="([^"]+)"`))?.[1]??NaN);
 for(const shadingMode of ['hatch','stipple','halftone']){
   const o={labels:true,shadingMode,colorWash:true,quality:'preview',castShadows:false};
-  assert(current.render(current.examples.c60,{...o,labels:false,hatchMode:'continuous'})===before.render(before.examples.c60,{...o,labels:false}),'pinned historical precise no-label parity');
+  // Historical parity is valid for front-lit, unshadowed visible normals: the
+  // new clamp affects only negative n.L and the new attenuation only shadows.
+  const front={...o,labels:false,lightAzimuth:0,lightElevation:0};
+  const legacy={...front,hatchMode:'continuous',atomRadiusScale:1,...(shadingMode==='stipple'?{quantizeShading:false}:{})};
+  assert(current.render(current.examples.c60,legacy)===before.render(before.examples.c60,front),'historical front-lit precise no-label parity');
   for(const atomRadiusScale of [1,.65]){
     const svg=current.render(current.examples.c60,{...o,renderMode:'fast',atomRadiusScale});
     assert.match(svg,/data-render-mode="fast"/);assert.equal(attr(svg,'data-bond-count'),current.examples.c60.bonds.length);
@@ -45,7 +49,8 @@ function cylinderZ(s,x,y){
 let checked=0;
 for(const z of [-.8,.8])for(const quality of ['preview','export']){
   const model={atoms:[{element:'C',position:[-2,0,0],radius:.28},{element:'C',position:[2,0,0],radius:.28},{element:'O',position:[0,0,z],radius:.8}],bonds:[[0,1]]};
-  const o=normalizeOptions({renderMode:'fast',yaw:.25,pitch:.13,labels:true,quality,shadingSize:0}),p=prepareScene(model,o),svg=current.render(model,o);
+  const options={renderMode:'fast',yaw:.25,pitch:.13,labels:true,quality,shadingSize:0};
+  const o=normalizeOptions(options),p=prepareScene(model,o),svg=current.render(model,options);
   const paths=[...svg.matchAll(/<path data-role="bond-fill"[^>]*>/g)].map(m=>m[0].replace('<path ','<path fill="#161616" ')).join('');assert(paths);
   const shapes=marks(`<g fill="#161616" stroke="none">${paths}</g>`),origin=p.project([0,0,0]);
   const truth=(x,y)=>{const wx=(x-origin[0])/p.scale,wy=(origin[1]-y)/p.scale,bz=cylinderZ(p.cylinders[0],wx,wy);if(!Number.isFinite(bz))return false;return p.spheres.every(s=>{const q=s.r*s.r-(wx-s.c[0])**2-(wy-s.c[1])**2;return q<0||s.c[2]+Math.sqrt(q)<=bz+1e-9;});};

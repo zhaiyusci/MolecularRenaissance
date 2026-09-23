@@ -5,7 +5,7 @@ export interface SharedStippleOptions {
     /** Bitmap paint tiles. Without them the tile content stays vector subpaths. */
     tiles?: StippleTileSet | null;
 }
-/** Render the opt-in shared 16-level atlas, using world-space contour clips.
+/** Render the shared selected-level atlas, using world-space contour clips.
  * `radius` is the final SVG-space dot radius.
  * Returns defs + bodies, or defs only when emitSurface is supplied. Include the
  * returned defs exactly once in the SVG containing the emitted surface bodies.

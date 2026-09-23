@@ -46,7 +46,9 @@ const {coverage}=require('./test-style-coverage.cjs');
     const before=await historicalRenderer();
     const reports=[];
     for(const castShadows of [false,true]){
-      const options={...plain,castShadows},a=before.render(before.examples.sphere,options),b=current.render(current.examples.sphere,{...options,atomRadiusScale:1});
+      // Restrict the historical comparison to unchanged front-lit surfaces.
+      // The new clamp/attenuation intentionally changes backlit/shadowed ink.
+      const options={...plain,castShadows,lightAzimuth:0,lightElevation:0},a=before.render(before.examples.sphere,options),b=current.render(current.examples.sphere,{...options,atomRadiusScale:1});
       // Both renderers explicitly use the current canvas-centered projection.
       const box=[400,300,500,400],mask=(x,y)=>(x-450)**2+(y-350)**2<45.4**2;
       const oldInk=coverage(a,box,mask),newInk=coverage(b,box,mask);
@@ -60,7 +62,7 @@ const {coverage}=require('./test-style-coverage.cjs');
     for(const name of ['sphere','ethanol','c60']){
       // The historical engine predates the 0.75 default, so pin the multiplier and
       // the continuous stream; the quantized default has its own coverage parity.
-      const options={...plain,shadingMode:'stipple',castShadows:false,atomRadiusScale:1};
+      const options={...plain,shadingMode:'stipple',castShadows:false,lightAzimuth:0,lightElevation:0,atomRadiusScale:1};
       assert.deepEqual(disks(current.render(current.examples[name],{...options,quantizeShading:false})),disks(before.render(before.examples[name],options)),`${name}: non-repeating disk coordinates and radii are identical`);
     }
     console.log('Hatch baseline comparison:',reports);

@@ -4,7 +4,7 @@
  * Bond/atom ownership is LOCAL sampled vector geometry; sub-grid islands can
  * disappear and contours approximate curved crossings between discovered edges.
  */
-import type { Molecule, Primitive, Vector, Illumination, Project } from './types.js';
+import type { Molecule, Primitive, Sphere, Vector, Illumination, Project } from './types.js';
 import type { NormalizedOptions } from './options.js';
 import { prepareScene, depthAt } from './scene.js';
 import { add, mul, cross, norm, dot, escapeXml as esc } from './math.js';
@@ -15,29 +15,52 @@ import { projectedCircle, projectedLine, trigSpans, intersectSpans } from './hat
 import { sampledTonePaths } from './halftone.js';
 import { buildDots } from './dots.js';
 import { hatchCoverage } from './coverage.js';
+import { buildLayeredHatching } from './layered-hatching.js';
+import { buildSharedStipple } from './stipple-atlas.js';
+import { STIPPLE_TILE_SETS } from './stipple-tiles.generated.js';
+import { artisticLightSignal, directLimitForDarkness, facingLimitForDirect } from './lighting-transfer.js';
 
 type Bounds = [number, number, number, number];
 
 /** Already-normalized options; the public renderer owns eligibility/dispatch. */
-export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): string {
-  const { spheres, cylinders, project, scale, lightDirection, unshadowedIllumination } = prepareScene(molecule, o);
-  const illumination: Illumination = o.shadingBrightness === 0 ? unshadowedIllumination :
-    (n, p) => Math.max(-1, Math.min(1, unshadowedIllumination(n, p) + 2 * o.shadingBrightness));
-  const threshold = (limit: number) => 1 - 2 * Math.pow((1 - limit) / 2, 1 / (o.shadingContrast / 1.2)) - 2 * o.shadingBrightness;
+export function renderFastPainter(molecule: Molecule, o: NormalizedOptions, explicitQuantization = false): string {
+  const prepared = prepareScene(molecule, o);
+  const { spheres, cylinders, project, scale, lightDirection, unshadowedIllumination } = prepared;
+  const quantizedHatch = o.shadingMode === 'hatch' && o.hatchMode === 'layered' && o.quantizeShading;
+  // Analytic tone bands use conservative local support, then existing atom/bond
+  // clips establish painter ownership. No global visibility or pair tests.
+  const supportPath = (s: Primitive, projection: Project = project): string => {
+    const a = projection(s.kind === 'sphere' ? s.c : s.a);
+    const b = s.kind === 'sphere' ? a : projection(add(s.a, mul(s.u, s.length)));
+    const r = s.r * scale, x = Math.min(a[0], b[0]) - r, y = Math.min(a[1], b[1]) - r;
+    const right = Math.max(a[0], b[0]) + r, bottom = Math.max(a[1], b[1]) + r;
+    return `M${x} ${y}L${right} ${y}L${right} ${bottom}L${x} ${bottom}Z`;
+  };
+  const illumination: Illumination = (n,p)=>artisticLightSignal(unshadowedIllumination(n,p),o.shadingBrightness);
+  const threshold = (limit: number) => facingLimitForDirect(directLimitForDarkness((1-limit)/2,o.shadingContrast/1.2,o.shadingBrightness),1,false);
   const fillFor = (element?: string) => o.colorWash ? elementColor(element, o.washStrength, o.colorSaturation, o.colorScheme) : '#ffffff';
   // Geometry, styles AND title enter the namespace, including texture-only edits.
-  // The layered hatch selector is precise-only; it must not perturb fast IDs.
-  const { hatchMode: _preciseHatchMode, quantizeShading: _sharedSwitch, ...fastOptions } = o;
+  // Omitted selectors keep the legacy namespace; explicit quantization is style.
+  const { hatchMode: _hatchMode, quantizeShading: _quantizeShading, shadingLevels: _shadingLevels, ...legacyStyle } = o;
+  const fastOptions = { ...legacyStyle, ...(explicitQuantization ? { quantizeShading: o.quantizeShading, hatchMode: o.hatchMode } : {}),
+    ...(o.quantizeShading && o.shadingLevels !== 16 ? { shadingLevels: o.shadingLevels } : {}) };
   let hash1 = 2166136261, hash2 = 5381;
   for (const ch of JSON.stringify([molecule, fastOptions])) {
     const n = ch.charCodeAt(0); hash1 = Math.imul(hash1 ^ n, 16777619); hash2 = Math.imul(hash2, 33) ^ n;
   }
   const prefix = 'fast-painter-' + (hash1 >>> 0).toString(16) + '-' + (hash2 >>> 0).toString(16);
   const definitions: string[] = [], layers: string[] = [], paths: string[] = [];
+  // Keep per-owner pattern coordinates/clips, but embed each immutable bitmap
+  // only once per document. A use inherits the pattern's user-space transform.
+  const sharedImages = new Map<string, string>();
   const elements = o.elementTextures ? createElementTextures(spheres.map(s => s.element!), o.elementTextureScale) : null;
   if (elements) definitions.push(elements.definitions);
-  const counts = { templates: 0, hatchCurves: 0, hatchPaths: 0, labels: 0, masks: 0, maskTiles: 0,
+  const counts = { templates: 0, atomInstances: 0, bondTextureBuilds: 0, quantizedHatchBuilds: 0, dotTextureBuilds: 0,
+    hatchCurves: 0, hatchPaths: 0, labels: 0, masks: 0, maskTiles: 0,
     visibleBonds: 0, emptyBonds: 0, containedBonds: 0, maskSamples: 0, atomDepthTests: 0, candidatePairs: 0 };
+  // Every expensive atom texture is generated on its own positive local canvas.
+  // Only placement varies between equal-radius spheres; styles are render-global.
+  const atomTemplates = new Map<number, { id: string; origin: number }>();
   const localProject: Project = p => [p[0] * scale, -p[1] * scale];
   const neverVisible = () => { throw new Error('Fast painter must not query global visibility'); };
   const curve = createCurveRenderer({ options: o, project: localProject, illumination, paths, visible: neverVisible });
@@ -45,11 +68,12 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
   const coverage = hatchCoverage(scale, o);
   const engraving = (body: string) => `<g data-role="engraving" fill="none" stroke="#161616" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
 
-  // Reuse the standard texture engine with exactly ONE primitive. It cannot
-  // perform sphere/sphere or bond/atom visibility here. Visibility is the outer
-  // local clip. Global cell coordinates preserve nonrepeating stipple seeds.
-  function dots(s: Primitive, projection: Project, namespace: string): string {
+  // Reuse the standard texture engine with exactly ONE primitive. Atom screen
+  // phase is local to the shared template; bonds retain their world-space phase.
+  // Visibility belongs to the surrounding local circle or existing bond mask.
+  function dots(s: Primitive, projection: Project, namespace: string, settings = o): string {
     if (o.shadingMode === 'hatch' || o.dotSize === 0) return '';
+    counts.dotTextureBuilds++;
     const center = s.kind === 'sphere' ? projection(s.c) : null;
     const regions = center ? { query: (x: number, y: number) => {
       const clearance = s.r * scale - Math.hypot(x - center[0], y - center[1]);
@@ -63,16 +87,28 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
     // additionally clips against its EXACT projected single-primitive silhouette;
     // coordinate-pair bounds extraction there must not receive SVG arc operands.
     const support = `M${left} ${top}L${right} ${top}L${right} ${bottom}L${left} ${bottom}Z`;
+    const bitmap = explicitQuantization && o.shadingMode === 'stipple' && o.quantizeShading && o.stippleFill === 'bitmap';
     const result = buildDots([s], depthAt, projection, scale, illumination,
-      o, regions, coverage,
-      { compactStipple: true, paths: [support], light: lightDirection,
+      bitmap ? { ...settings, shadingMode: 'halftone' } : settings, regions, coverage,
+      { renderPatterns: bitmap ? (data, emit) => buildSharedStipple(data, o.dotSize, { emitSurface: emit, tiles: STIPPLE_TILE_SETS[o.shadingLevels] }) : undefined,
+        compactStipple: true, paths: [support], light: lightDirection, directLighting: true,
         illumination: (_source, n, p) => illumination(n, p) });
     // buildDots owns content-derived pattern IDs, but namespacing also separates
     // otherwise equal local geometry under different fast-painter options.
-    return result.replace(/mp-screen-[\w-]+/g, id => namespace + '-' + id);
+    const namespaced = result.replace(/mp-(?:screen|stipple)-[\w-]+/g, id => namespace + '-' + id);
+    if (!bitmap) return namespaced;
+    return namespaced.replace(/<image\b[^>]*href="data:image\/png;base64,[^"]+"[^>]*\/>/g, image => {
+      let id = sharedImages.get(image);
+      if (!id) {
+        id = `${prefix}-shared-image-${sharedImages.size}`;
+        sharedImages.set(image, id);
+        definitions.push(image.replace('<image ', `<image id="${id}" `));
+      }
+      return `<use href="#${id}"/>`;
+    });
   }
 
-  function sphereTemplate(radius: number): string {
+  function continuousSphereTemplate(radius: number): string {
     const cached = templates.get(radius); if (cached !== undefined) return cached;
     paths.length = 0;
     function hatch(axis: Vector, count: number, secondary: boolean): void {
@@ -100,15 +136,53 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
     }
     counts.hatchPaths += paths.length;
     const id = `${prefix}-texture-${counts.templates++}`;
-    definitions.push(`<g id="${id}">${engraving(paths.join(''))}</g>`);
+    definitions.push(`<clipPath id="${id}-circle" clipPathUnits="userSpaceOnUse"><circle cx="0" cy="0" r="${radius * scale}"/></clipPath>`);
+    definitions.push(`<g id="${id}" data-role="atom-texture-template" data-template-radius="${radius}" data-template-origin="0" clip-path="url(#${id}-circle)">${engraving(paths.join(''))}</g>`);
     templates.set(radius, id); return id;
+  }
+
+  function hoistDefinitions(svg: string): string {
+    return svg.replace(/<defs\b[^>]*>[\s\S]*?<\/defs>/g, defs => { definitions.push(defs); return ''; });
+  }
+
+  function layeredTexture(s: Primitive, projection: Project, settings: NormalizedOptions, namespace: string): string {
+    counts.quantizedHatchBuilds++;
+    // Reuse the prepared light without re-preparing or rotating a singleton model.
+    // Fast eligibility guarantees shadows are off, so none of the old scene's
+    // visibility closures can be consulted by the local layered texture builder.
+    const local = { ...prepared, scene: [s], spheres: s.kind === 'sphere' ? [s] : [],
+      cylinders: s.kind === 'cylinder' ? [s] : [], project: projection };
+    const texture = buildLayeredHatching(local, settings, [supportPath(s, projection)]);
+    const qualify = (svg: string) => svg.replace(/lh-[\w-]+/g, id => namespace + '-' + id);
+    definitions.push(qualify(texture.defs));
+    return qualify(texture.bySurface.get(s) || '');
+  }
+
+  function atomTemplate(radius: number): { id: string; origin: number } | null {
+    if (o.shadingSize === 0 || (o.shadingMode === 'hatch' ? o.hatchWidth <= 0 : o.dotSize <= 0)) return null;
+    const cached = atomTemplates.get(radius); if (cached) return cached;
+    if (o.shadingMode === 'hatch' && !quantizedHatch) {
+      const value = { id: continuousSphereTemplate(radius), origin: 0 };
+      atomTemplates.set(radius, value); return value;
+    }
+    const r = radius * scale, margin = Math.max(2, o.hatchWidth * 2, o.dotSize * 2);
+    const origin = r + margin, size = 2 * origin;
+    const projection: Project = p => [origin + p[0] * scale, origin - p[1] * scale];
+    const local: Sphere = { kind: 'sphere', c: [0, 0, 0], r: radius };
+    const settings = { ...o, width: size, height: size };
+    const id = `${prefix}-texture-${counts.templates++}`, clip = id + '-circle';
+    const body = quantizedHatch ? layeredTexture(local, projection, settings, id)
+      : hoistDefinitions(dots(local, projection, id, settings));
+    definitions.push(`<clipPath id="${clip}" clipPathUnits="userSpaceOnUse"><circle cx="${origin}" cy="${origin}" r="${r}"/></clipPath>`);
+    definitions.push(`<g id="${id}" data-role="atom-texture-template" data-template-radius="${radius}" data-template-origin="${origin}" clip-path="url(#${clip})">${body}</g>`);
+    const value = { id, origin }; atomTemplates.set(radius, value); return value;
   }
 
   for (const { s, id } of spheres.map((s, id) => ({ s, id })).sort((a, b) => a.s.c[2] - b.s.c[2] || a.id - b.id)) {
     const [x, y] = project(s.c), radius = s.r * scale, fill = fillFor(s.element);
-    const circle = `cx="${x}" cy="${y}" r="${radius}"`, template = o.shadingMode==='hatch'?sphereTemplate(s.r):null, clipId = `${prefix}-atom-${id}`;
-    definitions.push(`<clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><circle ${circle}/></clipPath>`);
-    const texture = `<g clip-path="url(#${clipId})">${template?`<use href="#${template}" transform="translate(${x} ${y})"/>`:''}${dots(s, project, clipId)}</g>`;
+    const circle = `cx="${x}" cy="${y}" r="${radius}"`, template = atomTemplate(s.r);
+    if (template) counts.atomInstances++;
+    const texture = template ? `<use data-role="atom-texture-instance" href="#${template.id}" transform="translate(${x - template.origin} ${y - template.origin})"/>` : '';
     const outline = o.outlineWidth > 0 ? `<circle data-role="outline" ${circle} fill="none" stroke="#161616" stroke-width="${o.outlineWidth * 1.4}"/>` : '';
     const showLabel = o.labels && (o.labelHydrogens || s.element !== 'H');
     const label = showLabel ? `<text data-role="element-label" data-surface-id="${id}" x="${x.toFixed(2)}" y="${(y + o.labelSize * .3).toFixed(2)}" text-anchor="middle" font-size="${o.labelSize}" font-family="${esc(o.labelFont)}" font-style="${o.labelItalic ? 'italic' : 'normal'}" font-weight="${o.labelBold ? '700' : '400'}" stroke="${o.labelStrokeWidth === 0 ? 'none' : (o.labelMatchFill ? fill : o.labelStrokeColor)}" stroke-width="${o.labelStrokeWidth}" stroke-linejoin="round" paint-order="stroke fill" fill="${o.labelColor}">${esc(s.element)}</text>` : '';
@@ -193,14 +267,17 @@ export function renderFastPainter(molecule: Molecule, o: NormalizedOptions): str
       const edge = norm([-s.u[1], s.u[0], 0]); line(edge, o.outlineWidth * 1.1); line(mul(edge, -1), o.outlineWidth * 1.1);
     }
     const count = Math.max(3, Math.round(density * .8 * s.r / .115));
-    for (let j = 0; o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
+    for (let j = 0; !quantizedHatch && o.shadingMode === 'hatch' && o.hatchWidth > 0 && j < count; j++) {
       const a = j / count * 2 * Math.PI, n = add(mul(e, Math.cos(a)), mul(f, Math.sin(a)));
       if (n[2] > 0) line(n, o.hatchWidth * .68, true);
     }
     const fill = `<g data-role="surface-fill" fill="#ffffff" stroke="none">${maskPaths.map(path => path.replace('<path ', '<path data-role="bond-fill" ')).join('')}</g>`;
-    const texture = dots(s, project, clipId);
+    const shaded = o.shadingSize !== 0 && (o.shadingMode === 'hatch' ? o.hatchWidth > 0 : o.dotSize > 0);
+    if (shaded) counts.bondTextureBuilds++;
+    const texture = shaded ? (quantizedHatch ? layeredTexture(s, project, o, clipId)
+      : hoistDefinitions(dots(s, project, clipId))) : '';
     layers.push(`<g data-role="bond-layer" data-surface-id="${surfaceId}" data-bond-id="${id}" data-mask-empty="false" data-mask-samples="${counts.maskSamples - before}">${fill}<g clip-path="url(#${clipId})">${texture}${engraving(paths.join(''))}</g></g>`);
   }
-  const stats = `data-render-mode="fast" data-sphere-count="${spheres.length}" data-bond-count="${cylinders.length}" data-bond-mask-count="${counts.masks}" data-bond-visible-count="${counts.visibleBonds}" data-bond-empty-count="${counts.emptyBonds}" data-bond-contained-count="${counts.containedBonds}" data-bond-mask-tiles="${counts.maskTiles}" data-bond-mask-samples="${counts.maskSamples}" data-bond-atom-depth-tests="${counts.atomDepthTests}" data-bond-atom-candidates="${counts.candidatePairs}" data-bond-mask-step="${step}" data-bond-mask-bisections="9" data-texture-templates="${counts.templates}" data-hatch-curves="${counts.hatchCurves}" data-hatch-paths="${counts.hatchPaths}" data-whole-labels="${counts.labels}" data-boundary-builds="0" data-sphere-pair-tests="0"`;
+  const stats = `data-render-mode="fast" data-sphere-count="${spheres.length}" data-bond-count="${cylinders.length}" data-bond-mask-count="${counts.masks}" data-bond-visible-count="${counts.visibleBonds}" data-bond-empty-count="${counts.emptyBonds}" data-bond-contained-count="${counts.containedBonds}" data-bond-mask-tiles="${counts.maskTiles}" data-bond-mask-samples="${counts.maskSamples}" data-bond-atom-depth-tests="${counts.atomDepthTests}" data-bond-atom-candidates="${counts.candidatePairs}" data-bond-mask-step="${step}" data-bond-mask-bisections="9" data-texture-templates="${counts.templates}" data-atom-template-count="${atomTemplates.size}" data-atom-template-instances="${counts.atomInstances}" data-bond-texture-builds="${counts.bondTextureBuilds}" data-quantized-hatch-builds="${counts.quantizedHatchBuilds}" data-dot-texture-builds="${counts.dotTextureBuilds}" data-hatch-curves="${counts.hatchCurves}" data-hatch-paths="${counts.hatchPaths}" data-whole-labels="${counts.labels}" data-boundary-builds="0" data-sphere-pair-tests="0"`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="${prefix}-title" ${stats}><title id="${prefix}-title">${esc(molecule.name || 'Molecular engraving')}</title><defs>${definitions.join('')}</defs><rect width="100%" height="100%" fill="white"/>${layers.join('')}</svg>`;
 }

@@ -1,12 +1,13 @@
 import type { RenderOptions } from './types.js';
 import { colorSchemes } from './palette.js';
+import { validateShadingLevels } from './tone-levels.js';
 import { normalizeOrientation } from './orientation.js';
 export type NormalizedOptions = Required<Omit<RenderOptions,'shadingDensity'|'shadingSize'|'orientation'>> & Pick<RenderOptions,'shadingDensity'|'shadingSize'|'orientation'>;
 const defaults: NormalizedOptions = {
   renderMode:'precise',
   width:900,height:700,scale:60,atomRadiusScale:.75,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
   castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
-  variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',hatchMode:'layered',quantizeShading:true,stippleFill:'bitmap',textureScale:1,elementTextures:false,elementTextureScale:1,shadingBrightness:0,shadingContrast:1.2,
+  variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',hatchMode:'layered',quantizeShading:true,shadingLevels:16,stippleFill:'bitmap',textureScale:1,elementTextures:false,elementTextureScale:1,shadingBrightness:0,shadingContrast:1.2,
   dotSpacing:2.5,dotSize:.5,dotContrast:1.2,crossHatch:true,colorWash:false,colorScheme:'jmol',washStrength:1,
   colorSaturation:1,labelMatchFill:false,labels:false,labelHydrogens:true,labelSize:17,labelStrokeWidth:4,labelStrokeColor:'#ffffff',
   labelColor:'#161616',labelFont:"Georgia, 'Times New Roman', serif",labelBold:false,labelItalic:true
@@ -62,7 +63,10 @@ export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   if(options.quantizeShading===undefined)o.quantizeShading=defaults.quantizeShading;
   if(typeof o.quantizeShading!=='boolean')throw new Error('Invalid quantizeShading');
   if(!['marks','bitmap'].includes(o.stippleFill))throw new Error('Invalid stippleFill: expected marks or bitmap');
-  if(o.renderMode==='fast'&&options.quantizeShading!==undefined)throw new Error('16-level shading switch requires precise rendering');
+  if(options.shadingLevels===undefined)o.shadingLevels=defaults.shadingLevels;
+  validateShadingLevels(o.shadingLevels);
+  // Preserve omitted fast hatch behavior; explicit true selects layered local textures.
+  if(o.renderMode==='fast'&&options.quantizeShading===true&&options.hatchMode===undefined)o.hatchMode='layered';
   if(o.shadingMode==='hatch'&&o.renderMode!=='fast'){
     const selected=o.quantizeShading?'layered':'continuous';
     if(options.quantizeShading!==undefined){
@@ -70,7 +74,8 @@ export function normalizeOptions(options: RenderOptions): NormalizedOptions {
       o.hatchMode=selected;
     }else o.quantizeShading=o.hatchMode==='layered';
   }
-  if(o.renderMode==='fast'&&o.hatchMode==='layered')throw new Error('Layered hatching requires precise rendering');
+  if(o.renderMode==='fast'&&o.hatchMode==='layered'&&options.quantizeShading!==true)throw new Error('Layered hatching requires precise rendering');
+  if(o.renderMode==='fast'&&o.shadingMode==='hatch'&&options.quantizeShading===true&&options.hatchMode==='continuous')throw new Error('Conflicting quantizeShading and hatchMode');
   if(o.dotSpacing<.3||o.dotSpacing>19||o.dotSize<0||o.dotSize>4||o.dotContrast<.5||o.dotContrast>2.5)throw new Error('Invalid dot settings');
   if(o.width<200||o.height<200||o.lineWidth<0||o.outlineWidth<0||o.hatchWidth<0)throw new Error('Invalid output dimensions or line width');
   if(o.colorSaturation<0||o.colorSaturation>4)throw new Error('colorSaturation must be between 0 and 4');

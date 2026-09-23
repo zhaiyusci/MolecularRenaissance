@@ -8,30 +8,41 @@ flush();assert.equal(calls.at(-1).renderMode,'precise');
 for(const id of ['point-light','light-distance','light-distance-value','light-attenuation','light-attenuation-value'])assert.equal(elements[id],undefined);
 assert.equal(calls.at(-1).castShadows,true);
 assert.equal(calls.at(-1).quantizeShading,true);
-assert.equal(elements['quantized-shading'].checked,true,'16-level shading is the default');
-assert.equal(elements['quantized-shading'].disabled,false);
-for(const preference of [true,false]){
-check('quantized-shading',preference);
+assert.equal(elements['quantized-shading'],undefined,'obsolete quantization checkbox removed');
+assert.equal(elements['shading-levels'].tagName,'SELECT');
+assert.equal(elements['shading-levels'].value,'16','16 shading levels is the default');
+assert.equal(calls.at(-1).shadingLevels,16);
+assert.equal(elements['shading-levels'].disabled,false);
+assert.deepEqual(elements['shading-levels'].querySelectorAll('option').map(n=>n.value),['4','8','16','32','64']);
+for(const levels of [4,8,16,32,64]){
+ui.change('shading-levels',String(levels));flush();
 for(const fast of [false,true,false]){
   check('fast-overlay',fast);
   for(const mode of ['hatch','stipple','halftone','hatch']){
     elements['shading-mode'].value=mode;elements['shading-mode'].listeners.change();flush();
-    const expected=!fast?preference:undefined;
-    assert.equal(calls.at(-1).quantizeShading,expected);
-    assert.equal(elements['quantized-shading'].disabled,fast);
-    assert.equal(elements['quantized-shading'].checked,preference,'style and fast switches retain either preference');
-    elements.download.listeners.click();assert.equal(calls.at(-1).quality,'export');assert.equal(calls.at(-1).quantizeShading,expected);
+    assert.equal(calls.at(-1).quantizeShading,true);
+    assert.equal(calls.at(-1).shadingLevels,levels);
+    assert.equal(elements['shading-levels'].disabled,false);
+    assert.equal(elements['shading-levels'].value,String(levels),'style and fast switches retain the level selection');
+    const preview={...calls.at(-1)};
+    elements.download.listeners.click();assert.deepEqual(calls.at(-1),{...preview,quality:'export'});
     check('shading-enabled',false);
-    assert(elements['quantized-shading'].disabled);assert.equal(elements['quantized-shading'].checked,preference);
-    assert.equal(calls.at(-1).shadingSize,0);assert.equal(calls.at(-1).quantizeShading,expected);
+    assert(elements['shading-levels'].disabled);assert.equal(elements['shading-levels'].value,String(levels));
+    assert.equal(calls.at(-1).shadingSize,0);assert.equal(calls.at(-1).quantizeShading,true);assert.equal(calls.at(-1).shadingLevels,levels);
     check('shading-enabled',true);
-    assert.equal(elements['quantized-shading'].disabled,fast);
+    assert.equal(elements['shading-levels'].disabled,false);
   }
-  assert.equal(calls.at(-1).castShadows,!fast,'hatch preference does not change shadow restoration');
+  assert.equal(calls.at(-1).castShadows,!fast,'level preference does not change shadow restoration');
 }
 }
-check('fast-overlay',true);elements.reset.listeners.click();flush();
-assert.equal(elements['quantized-shading'].checked,true);assert.equal(elements['quantized-shading'].disabled,false);
+check('fast-overlay',true);ui.change('shading-levels','8');flush();
+assert.equal(calls.at(-1).shadingLevels,8,'level selection remains editable in fast mode');
+check('shading-enabled',false);check('fast-overlay',false);check('fast-overlay',true);
+assert(elements['shading-levels'].disabled);assert.equal(elements['shading-levels'].value,'8');
+elements.reset.listeners.click();flush();
+assert.equal(elements['shading-levels'].value,'16');assert.equal(elements['shading-levels'].disabled,false);
+assert.equal(calls.at(-1).shadingLevels,16);
+const resetPreview={...calls.at(-1)};elements.download.listeners.click();assert.deepEqual(calls.at(-1),{...resetPreview,quality:'export'});
 assert.equal(calls.at(-1).quantizeShading,true);assert.equal(calls.at(-1).castShadows,true);
 check('fast-overlay',true);
 assert.equal(calls.at(-1).renderMode,'fast');assert.equal(calls.at(-1).castShadows,false);
@@ -99,7 +110,8 @@ assert.match(html,/\.help:focus-within \.help-tooltip/);
 check('shading-enabled',false);elements.reset.listeners.click();flush();
 assert(elements['shading-enabled'].checked);assert(elements['label-hydrogens'].checked);
 assert(!elements['fast-overlay'].checked);assert.equal(calls.at(-1).renderMode,'precise');assert.equal(calls.at(-1).castShadows,true);
-assert(ui.calls.filter(call=>call.options.renderMode==='fast').every(call=>!Object.hasOwn(call.options,'quantizeShading')),'fast mode omits the switch');
-assert(ui.calls.filter(call=>call.options.renderMode==='precise').every(call=>typeof call.options.quantizeShading==='boolean'),'all precise textures forward the switch');
+assert(ui.calls.every(call=>call.options.quantizeShading===true),'all GUI frames and exports use quantization, including fast mode');
+assert(ui.calls.every(call=>[4,8,16,32,64].includes(call.options.shadingLevels)),'all GUI frames forward numeric shading levels');
+assert(ui.calls.every(call=>call.options.stippleFill==='bitmap'),'preview and export retain bitmap stippling');
 for(const option of ['hatchMode','lightType','lightDistance','lightAttenuation'])assert(ui.calls.every(call=>!Object.hasOwn(call.options,option)));
 console.log('UI checks passed: fast mode, shading master switch, all textures, parameter restoration, unshaded SVG export, compact help and reset.');

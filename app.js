@@ -45,7 +45,7 @@
   var shadingContrast = byId('shading-contrast');
   var outlineWidth = byId('outline-width');
   var crossHatch = byId('cross-hatch');
-  var quantizedShading = byId('quantized-shading');
+  var shadingLevels = byId('shading-levels');
   var colorWash = byId('color-wash');
   var colorScheme = byId('color-scheme');
   var washStrength = byId('wash-strength');
@@ -300,7 +300,7 @@
     byId('shadow-strength-value').textContent = shadowStrength.value + '%';
     var isHatch = shadingMode.value === 'hatch';
     // Disable without clearing the user's preference when it cannot be used.
-    quantizedShading.disabled = !shadingEnabled.checked || fastOverlay.checked;
+    shadingLevels.disabled = !shadingEnabled.checked;
     [crossHatch, variableWidth].forEach(function (input) {
       input.disabled = !shadingEnabled.checked || !isHatch;
     });
@@ -346,6 +346,8 @@
         castShadows: castShadows.checked,
         shadowStrength: Number(shadowStrength.value) / 100,
         shadingMode: shadingMode.value,
+        quantizeShading: true,
+        shadingLevels: Number(shadingLevels.value),
         textureScale: Number(textureScale.value) / 100,
         shadingBrightness: Number(shadingBrightness.value) / 100,
         shadingContrast: Number(shadingContrast.value),
@@ -367,9 +369,6 @@
         labelBold: labelBold.checked,
         labelItalic: labelItalic.checked
       };
-      if (!fastOverlay.checked) {
-        options.quantizeShading = quantizedShading.checked;
-      }
       // The master switch suppresses shading in BOTH preview and export snapshots.
       if (!shadingEnabled.checked) {
         options.shadingSize = 0;
@@ -413,7 +412,7 @@
   [scale, atomRadiusScale, elementTextureScale, lightAzimuth, lightElevation, shadowStrength, textureScale, shadingBrightness, shadingContrast, outlineWidth, washStrength, colorSaturation, labelSize, labelFont, labelColor, labelStrokeWidth, labelStrokeColor].forEach(function (input) {
     input.addEventListener('input', scheduleRender);
   });
-  [fastOverlay, shadingEnabled, elementTextures, shadingMode, castShadows, variableWidth, crossHatch, quantizedShading, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
+  [fastOverlay, shadingEnabled, elementTextures, shadingMode, castShadows, variableWidth, crossHatch, shadingLevels, colorWash, colorScheme, labelMatchFill, labels, labelHydrogens, labelBold, labelItalic].forEach(function (input) {
     input.addEventListener('change', scheduleRender);
   });
 
@@ -462,7 +461,7 @@
     variableWidth.checked = true;
     outlineWidth.value = '0.8';
     crossHatch.checked = true;
-    quantizedShading.checked = true;
+    shadingLevels.value = '16';
     colorWash.checked = true;
     colorScheme.value = 'jmol';
     washStrength.value = '100';

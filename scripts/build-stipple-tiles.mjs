@@ -1,6 +1,6 @@
 'use strict';
 /*
- Build-time generator for the 16-level stipple fill tiles.
+ Build-time generator for independent 4/8/16/32/64-level stipple fill tiles.
 
  The stipple screen is a texture, so it is rasterized once here instead of being
  re-stroked as vector marks in the browser. Marks are single pixels: a bitmap
@@ -9,7 +9,7 @@
 
  The level model is the classic overlap-corrected coverage law for fixed-size
  marks: coverage c means lambda = -log(1 - c) marks per pixel, so a tile holding
- the marks born at level L reproduces cumulative coverage min(L/16, .995) when
+ the marks born at level L reproduces cumulative coverage min(L/N, .995) when
  levels 1..L are overlaid on the nested tone regions.
 
  Resolution is a build parameter, because a bitmap bakes it in, and it alone
@@ -18,15 +18,17 @@
    node scripts/build-stipple-tiles.mjs --print-width-mm 200 --dpi 300
    node scripts/build-stipple-tiles.mjs --px 1024
 
- Output goes to build/stipple-tiles/ as one 1-bit PNG per level plus a manifest,
- and real byte sizes are printed. Nothing is written into src/.
+ Output goes to build/stipple-tiles/<N>/ as one 1-bit PNG per birth group plus
+ a manifest. src/stipple-tiles.generated.ts embeds all five palettes; real byte
+ sizes are printed. The legacy STIPPLE_TILES export aliases the 16-band palette.
 */
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
-const LEVELS = 16;
+let LEVELS = 16;
+const palettes = [];
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'build', 'stipple-tiles');
 
@@ -150,7 +152,9 @@ function renderLevel(level) {
   return { bits, marks };
 }
 
-fs.mkdirSync(OUT, { recursive: true });
+for (LEVELS of [4, 8, 16, 32, 64]) {
+const paletteOut = path.join(OUT, String(LEVELS));
+fs.mkdirSync(paletteOut, { recursive: true });
 const pxPerUnit = PX / PERIOD;
 const markMm = MARK * 25.4 / dpi;                // one printed mark, square
 console.log(`tile: ${PX}x${PX} px, period ${PERIOD} SVG units, ${CELLS} cells, ${MARK}x${MARK} px marks`);
@@ -165,7 +169,7 @@ for (let level = 1; level <= LEVELS; level++) {
   const { bits, marks } = renderLevel(level);
   const png = encode1Bit(PX, PX, bits);
   const b64 = png.toString('base64');
-  fs.writeFileSync(path.join(OUT, `level-${String(level).padStart(2, '0')}.png`), png);
+  fs.writeFileSync(path.join(paletteOut, `level-${String(level).padStart(2, '0')}.png`), png);
   manifest.levels.push({ level, marks, bytes: png.length, png: b64 });
   const ink = bits.reduce((s, b) => s + popcount(b), 0) / (PX * PX);
   totalPng += png.length; totalB64 += b64.length;
@@ -174,7 +178,10 @@ for (let level = 1; level <= LEVELS; level++) {
   console.log(String(level).padStart(5), String(marks).padStart(8), (PX * PX / 8 / 1024).toFixed(1).padStart(8),
     (png.length / 1024).toFixed(1).padStart(8), (b64.length / 1024).toFixed(1).padStart(8), (ink * 100).toFixed(1).padStart(7));
 }
-fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest));
+fs.writeFileSync(path.join(paletteOut, 'manifest.json'), JSON.stringify(manifest));
+palettes.push({ px: PX, period: PERIOD, cells: CELLS, markPx: MARK, dpi, printWidthMm, levels: manifest.levels.map(entry => `data:image/png;base64,${entry.png}`) });
+}
+
 
 // Emit the committed module the renderer imports. It lives in src/ (not build/)
 // so a clean checkout can typecheck and bundle without running this tool first.
@@ -194,30 +201,14 @@ const ts = [
   '  readonly dpi: number;',
   '  /** Provisional print width this set was sized for, in millimetres. */',
   '  readonly printWidthMm: number;',
-  '  /** One 1-bit PNG data URI per tone level, levels 1..16. */',
+  '  /** Independent Poisson birth-group PNGs for this palette. */',
   '  readonly levels: readonly string[];',
   '}',
-  'export const STIPPLE_TILES: StippleTileSet = {',
-  `  px: ${PX},`,
-  `  period: ${PERIOD},`,
-  `  cells: ${CELLS},`,
-  `  markPx: ${MARK},`,
-  `  dpi: ${dpi},`,
-  `  printWidthMm: ${printWidthMm},`,
-  '  levels: [',
-  ...manifest.levels.map(entry => `    'data:image/png;base64,${entry.png}',`),
-  '  ],',
-  '};',
+  'export const STIPPLE_TILE_SETS: Readonly<Record<4 | 8 | 16 | 32 | 64, StippleTileSet>> = '+JSON.stringify(Object.fromEntries(palettes.map(p => [p.levels.length, p])), null, 2)+';',
+  'export const STIPPLE_TILES: StippleTileSet = STIPPLE_TILE_SETS[16];',
   '',
 ].join('\n');
 fs.writeFileSync(path.join(ROOT, 'src', 'stipple-tiles.generated.ts'), ts);
 console.log(`wrote src/stipple-tiles.generated.ts (${(ts.length / 1024).toFixed(0)} KB)`);
 
-const midMarks = manifest.levels[7].marks;       // level 8 increment
-const tileMm = PX / dpi * 25.4;
-console.log('');
-console.log(`raw (uncompressed 1-bit) would be ${(PX * PX / 8 * LEVELS / 1024).toFixed(0)} KB`);
-console.log(`actual PNG total ${(totalPng / 1024).toFixed(0)} KB -> base64 ${(totalB64 / 1024).toFixed(0)} KB  (compression ${(PX * PX / 8 * LEVELS / totalPng).toFixed(1)}x)`);
-console.log(`tile covers ${tileMm.toFixed(1)} mm, repeats ${(CANVAS_UNITS / PERIOD).toFixed(1)}x across the canvas`);
-console.log(`mid-tone increment ${midMarks} marks in ${tileMm.toFixed(1)} mm square = ${(midMarks / (tileMm * tileMm)).toFixed(1)} marks/mm2`);
-console.log(`marks increase with level: ${monotone ? 'yes' : 'NO (unexpected)'}`);
+console.log('Generated independent 4/8/16/32/64-level palettes.');

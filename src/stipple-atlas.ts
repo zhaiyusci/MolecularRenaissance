@@ -3,11 +3,11 @@ import type { StippleTileSet } from './stipple-tiles.generated.js';
 
 type Bounds = [number, number, number, number];
 type Key = readonly [number, number];
-const LEVELS = 16;
+
 const SIZE = 512;
 const CELL_SIZE = 4;
 const SEED = '1729';
-let cachedPaths: readonly string[] | undefined;
+const cachedPaths = new Map<number, readonly string[]>();
 const cachedPatternContent = new Map<string, string>();
 
 export interface SharedStippleOptions {
@@ -35,20 +35,21 @@ function uniform(key: Key, k: number, stream: number): number {
   const b = mix(key[1] ^ Math.imul(k + 1, 0xc2b2ae35) ^ Math.imul(stream + 1, 0x27d4eb2d));
   return (mix(a ^ b) + .5) / 4294967296;
 }
-function intensity(level: number): number {
+function intensity(level: number, LEVELS: number): number {
   return -Math.log1p(-Math.min(level / LEVELS, .995)) / Math.PI;
 }
 /** Same independent Poisson birth groups as experiments/layered-stipple/screen.cjs.
  * Only normalized texture coordinates are rounded; scientific clips are untouched.
  * Immutable path strings are initialized once per module, never per owner/frame.
  */
-function atlasPaths(): readonly string[] {
-  if (cachedPaths) return cachedPaths;
+function atlasPaths(LEVELS: number): readonly string[] {
+  const cached = cachedPaths.get(LEVELS);
+  if (cached) return cached;
   const paths: string[] = [];
   const first = Math.floor(-1 / CELL_SIZE), last = Math.floor((SIZE + 1) / CELL_SIZE);
   for (let level = 1; level <= LEVELS; level++) {
     const marks: string[] = [];
-    const mu = (intensity(level) - intensity(level - 1)) * CELL_SIZE * CELL_SIZE;
+    const mu = (intensity(level, LEVELS) - intensity(level - 1, LEVELS)) * CELL_SIZE * CELL_SIZE;
     for (let j = first; j <= last; j++) for (let i = first; i <= last; i++) {
       const key = keyHash(JSON.stringify([SEED, i, j, level]));
       const u = uniform(key, 0, 0);
@@ -68,8 +69,8 @@ function atlasPaths(): readonly string[] {
     }
     paths.push(marks.join(''));
   }
-  cachedPaths = Object.freeze(paths);
-  return cachedPaths;
+  cachedPaths.set(LEVELS, Object.freeze(paths));
+  return paths;
 }
 function valid(b: Bounds): boolean {
   return b.every(Number.isFinite) && b[2] > b[0] && b[3] > b[1];
@@ -119,7 +120,7 @@ function pathBounds(path: string, fallback: Bounds): Bounds | null {
   return valid(b) ? b : null;
 }
 
-/** Render the opt-in shared 16-level atlas, using world-space contour clips.
+/** Render the shared selected-level atlas, using world-space contour clips.
  * `radius` is the final SVG-space dot radius.
  * Returns defs + bodies, or defs only when emitSurface is supplied. Include the
  * returned defs exactly once in the SVG containing the emitted surface bodies.
@@ -135,13 +136,15 @@ export function buildSharedStipple(
   radius: number,
   options: SharedStippleOptions = {},
 ): string {
+  const LEVELS = data.shadingLevels ?? 16;
   const emitSurface = options.emitSurface, tiles = options.tiles ?? null;
+  if (tiles && tiles.levels.length !== LEVELS) throw new Error('Stipple tile palette does not match shadingLevels');
   if (!valid(data.bounds)) return '';
   if (!(Number.isFinite(radius) && radius > 0))
     throw new Error('Shared stipple requires a positive finite SVG-space dot radius');
   const fill = tiles ? `bitmap-${tiles.px}-${tiles.markPx}` : 'vector';
   const prefix = 'mp-stipple-' + keyHash(JSON.stringify([
-    SIZE, SEED, radius, fill, data.bounds, data.pitch, data.silhouette, data.layers, data.method,
+    SIZE, SEED, radius, fill, ...(LEVELS === 16 ? [] : [LEVELS]), data.bounds, data.pitch, data.silhouette, data.layers, data.method,
   ])).map(n => n.toString(16).padStart(8, '0')).join('');
   const defs: string[] = [], bodies: { sourceId: number; body: string }[] = [];
   const definitions = new Map<number, string>();
@@ -156,7 +159,7 @@ export function buildSharedStipple(
     if (existing) return existing;
     const id = `${prefix}-atlas-${level}`;
     // Keyed by fill mode as well as level: one page may render both deliveries.
-    const cacheKey = `${fill}:${level}`;
+    const cacheKey = `${fill}:${LEVELS}:${level}`;
     let content = cachedPatternContent.get(cacheKey);
     if (content === undefined) {
       if (tiles) {
@@ -165,7 +168,7 @@ export function buildSharedStipple(
         // preserveAspectRatio="none" keeps the square tile filling the tile box.
         content = `<image x="0" y="0" width="${SIZE}" height="${SIZE}" preserveAspectRatio="none" href="${tiles.levels[level - 1]}"/>`;
       } else {
-        const path = atlasPaths()[level - 1], batches: string[] = [];
+        const path = atlasPaths(LEVELS)[level - 1], batches: string[] = [];
         let start = 0, count = 0;
         for (let i = 1; i <= path.length; i++) {
           if (i !== path.length && path[i] !== 'M') continue;
@@ -226,7 +229,7 @@ export function buildSharedStipple(
     if (!body) continue;
     body = `<g clip-path="url(#${ownerId})">${body}</g>`;
     if (data.silhouette) body = `<g clip-path="url(#${prefix}-silhouette)">${body}</g>`;
-    body = `<g data-role="dots" data-mode="stipple" data-renderer="single-atlas" data-tone-method="${xml(data.method)}" data-tone-levels="16" fill="none" stroke="#161616" stroke-width="${2 * radius}" stroke-linecap="round"><g clip-path="url(#${prefix}-viewport)">${body}</g></g>`;
+    body = `<g data-role="dots" data-mode="stipple" data-renderer="single-atlas" data-tone-method="${xml(data.method)}" data-tone-levels="${LEVELS}" fill="none" stroke="#161616" stroke-width="${2 * radius}" stroke-linecap="round"><g clip-path="url(#${prefix}-viewport)">${body}</g></g>`;
     bodies.push({ sourceId, body });
   }
   if (!bodies.length) return '';

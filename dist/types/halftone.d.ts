@@ -25,5 +25,6 @@ export declare function buildSurfacePatterns(o: {
     silhouette: string;
     layers: readonly SurfacePatternLayer[];
     method: string;
+    shadingLevels?: number;
 }, emitSurface?: (id: number, svg: string) => void): string;
 export {};

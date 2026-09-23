@@ -53,20 +53,21 @@ function samples(s){
   for(const angles of [[0,0],[-.6,.7],[2,-.4]]){
     const o=normalizeOptions({castShadows,shadowStrength,lightAzimuth:angles[0],lightElevation:angles[1],shadingBrightness:.4});
     const prepared=prepareScene(molecule,o),{scene,lightDirection:light,shadowBias:bias}=prepared;
-    // Preserve the original directional formula, independently of surface specialization.
+    // Independent forward physical oracle. Artistic brightness is deliberately
+    // absent here (the options set it to .4 to catch accidental early mapping).
     const oracle=(n,p)=>{
-      const facing=dot(n,light);let lit=facing;
+      const facing=dot(n,light);let direct=Math.max(0,facing);
       if(o.castShadows&&o.shadowStrength>0&&o.shadingSize!==0&&facing>0&&shadowBlocked(scene,p,n,light,bias)){
-        lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;shadowHits++;
+        direct*=1-o.shadowStrength;shadowHits++;
       }else litHits++;
-      return lit;
+      return direct;
     };
     for(const s of scene){
       const lighting=prepared.lightingFor(s);
       assert.equal(lighting,prepared.lightingFor(s),'surface callback identity is cached');
       for(const {n,p} of samples(s)){
         const expected=oracle(n,p);
-        assert.equal(prepared.illumination(n,p),expected,'generic physical arithmetic remains unchanged');
+        assert.equal(prepared.illumination(n,p),expected,'generic lighting is clamped direct irradiance before artistic mapping');
         assert.equal(lighting(n,p),expected,`directional ${s.kind} surface lighting must agree exactly`);checks++;
       }
     }

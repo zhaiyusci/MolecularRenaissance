@@ -4,6 +4,7 @@ import { add, sub, mul, dot, rotate } from './math.js';
 import { atomRadius } from './radii.js';
 import { rotateByOrientation } from './orientation.js';
 import { shadowBlocked, directionalShadowContext } from './shadows.js';
+import { directLight } from './lighting-transfer.js';
 
 /** Frontmost orthographic intersection with a closed sphere/finite cylinder. */
 export function depthAt(s: Primitive,x: number,y: number): number {
@@ -34,8 +35,9 @@ export function depthAt(s: Primitive,x: number,y: number): number {
 }
 export interface PreparedScene {
   spheres: Sphere[]; cylinders: Cylinder[]; scene: Primitive[];
+  /** Illumination callbacks here return physical direct light D in [0,1]. */
   scale: number; project: Project; illumination: Illumination;
-  /** Physical light without occluders, for reuse with shared shadow regions. */
+  /** Physical direct light without occluders, before artistic transfer. */
   unshadowedIllumination: Illumination;
   /** Cached physical (unshifted) illumination for outward-facing points on source.
    * Source geometry must remain unchanged for the lifetime of this scene. */
@@ -71,13 +73,10 @@ export function prepareScene(molecule: Molecule,o: NormalizedOptions): PreparedS
   // generic callback's physical formulas or arithmetic order.
   const lighting=(casters:readonly Primitive[]):Illumination=>(n,p)=>{
     const facing=dot(n,light);
-    let lit=facing;
-    if(casters.length&&traceShadows&&facing>0&&shadowBlocked(casters,p,n,light,shadowBias)){
-      // Signed engraving brightness maps to [0,1] before shadow attenuation.
-      // At strength .8, keep 20% of the local brightness instead of solid black.
-      lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;
-    }
-    return lit;
+    const blocked=casters.length>0&&traceShadows&&facing>0&&shadowBlocked(casters,p,n,light,shadowBias);
+    // Finish the physical model first: no incident direct light on backfaces,
+    // and visibility attenuates direct light only. Artistic lift happens later.
+    return directLight(facing,blocked?1-o.shadowStrength:1);
   };
   const illumination=lighting(scene),unshadowedIllumination=lighting([]),cache=new WeakMap<Primitive,Illumination>();
   const ids=new Map(scene.map((s,id)=>[s,id]));

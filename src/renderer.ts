@@ -13,8 +13,9 @@ import { hatchCoverage } from './coverage.js';
 import { getBoundaries, getDots, getWash } from './runtime.js';
 import { buildLayeredHatching } from './layered-hatching.js';
 import { buildSharedStipple } from './stipple-atlas.js';
-import { STIPPLE_TILES } from './stipple-tiles.generated.js';
-export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, HatchMode, StippleFill, ColorScheme, RenderMode } from './types.js';
+import { STIPPLE_TILE_SETS } from './stipple-tiles.generated.js';
+import { artisticLightSignal, directLimitForDarkness, facingLimitForDirect } from './lighting-transfer.js';
+export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, ShadingLevels, HatchMode, StippleFill, ColorScheme, RenderMode } from './types.js';
 export { normalizeOrientation, rotateOrientation, orientationFromEulerXYZ, orientationToEulerXYZ } from './orientation.js';
 export { examples } from './examples.js';
 export { parseXYZ } from './xyz.js';
@@ -27,22 +28,20 @@ export { elementTexturePattern, elementTextureDefinition, elementTextureSwatch }
 
 export function render(molecule: Molecule,options: RenderOptions={}): string {
   const o=normalizeOptions(options);
-  if(o.renderMode==='fast')return renderFastPainter(molecule,o);
+  if(o.renderMode==='fast')return renderFastPainter(molecule,o,options.quantizeShading!==undefined);
   const prepared=prepareScene(molecule,o);
   const {spheres,cylinders,scene,scale,project,illumination:physicalIllumination,lightDirection,lightingFor,mayShadow,directionalShadows}=prepared;
   let atlas:ReturnType<typeof createSurfaceAtlas>|null=null;
   const physicalFor=(source:Primitive)=>atlas?atlas.lightingFor(source):lightingFor(source);
   // Shift tonal input after lighting/shadows, leaving color fills and outlines alone.
-  const illumination=o.shadingBrightness===0?physicalIllumination:
-    (n:Vector,p:Vector)=>Math.max(-1,Math.min(1,physicalIllumination(n,p)+2*o.shadingBrightness));
+  const illumination=(n:Vector,p:Vector)=>artisticLightSignal(physicalIllumination(n,p),o.shadingBrightness);
   const shiftedLights=new Map<Primitive,Illumination>();
   const lightFor=(source:Primitive):Illumination=>{
-    if(o.shadingBrightness===0)return physicalFor(source);
     let light=shiftedLights.get(source);
-    if(!light){const physical=physicalFor(source);light=(n,p)=>Math.max(-1,Math.min(1,physical(n,p)+2*o.shadingBrightness));shiftedLights.set(source,light);}
+    if(!light){const physical=physicalFor(source);light=(n,p)=>artisticLightSignal(physical(n,p),o.shadingBrightness);shiftedLights.set(source,light);}
     return light;
   };
-  const physicalThreshold=(limit:number)=>1-2*Math.pow((1-limit)/2,1/(o.shadingContrast/1.2))-2*o.shadingBrightness;
+  const physicalThreshold=(limit:number)=>directLimitForDarkness((1-limit)/2,o.shadingContrast/1.2,o.shadingBrightness);
   const paths: string[]=[];
   // Preserve the tolerant legacy oracle for outlines/fallbacks and labels.
   const visible=(p: Vector)=>!scene.some(s=>depthAt(s,p[0],p[1])>p[2]+.00015);
@@ -54,8 +53,8 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   const boundaries=built&&built.validate(elementColor)?built:null;
   // Labels are part of their owner's paint layer, never a final overlay and
   // never clipped text. Certified visible fills preserve intersecting geometry.
-  // Stipple ink has two deliveries. 'marks' (the default) emits flat,
-  // visibility-filtered round-cap marks. 'bitmap' paints the shared 16-level atlas
+  // Stipple ink has two deliveries. 'marks' emits flat,
+  // visibility-filtered round-cap marks. 'bitmap' (default) paints the selected atlas
   // from baked 1-bit PNG tiles, so the browser decodes a tile once and blits it
   // instead of stroking the whole mark set as geometry. The bitmap path needs
   // certified owner clips and falls back to marks without them.
@@ -80,8 +79,9 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     const shadow=sharedShadow!==undefined?sharedShadow:mayShadow(s)?(atlas?g.clip(atlas.shadow(s)):null):[];
     if(shadow===null)return {spans:undefined,breaks:undefined};
     const threshold=physicalThreshold(limit);
-    const darkThreshold=o.shadowStrength>=1?(-1<threshold?Infinity:-Infinity):(threshold+1)/(1-o.shadowStrength)-1;
-    const spans=unionSpans(intersectSpans(tone(threshold),complementSpans(shadow)),intersectSpans(tone(darkThreshold),shadow));
+    const normalThreshold=facingLimitForDirect(threshold,1,false);
+    const darkThreshold=facingLimitForDirect(threshold,1-o.shadowStrength,false);
+    const spans=unionSpans(intersectSpans(tone(normalThreshold),complementSpans(shadow)),intersectSpans(tone(darkThreshold),shadow));
     return {spans,breaks:shadow.flat()};
   }
   let wash: string|null='';
@@ -166,11 +166,12 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
       emitSurface:layerPaths?(id:number,svg:string)=>{ownerDots.set(id,(ownerDots.get(id)||'')+svg);}:undefined,
       paths:bitmapPaths||(o.shadingMode==='halftone'&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null),
       light:lightDirection,
+      directLighting:true,
       illumination:(source:Primitive,n:Vector,p:Vector)=>lightFor(source)(n,p),
       ...((o.shadingMode==='halftone'||sharedStipple)&&o.castShadows&&o.shadowStrength>0?directionalShadows():{})
     };
     dots=dotter.buildDots(scene,depthAt,project,scale,illumination,sharedStipple?{...o,shadingMode:'halftone',quantizeShading:true}:o,regions,hatchCoverage(scale,o),
-      sharedStipple?{...surfaces,renderPatterns:(data,emit)=>buildSharedStipple(data,o.dotSize,{emitSurface:emit,tiles:STIPPLE_TILES})}:surfaces);
+      sharedStipple?{...surfaces,renderPatterns:(data,emit)=>buildSharedStipple(data,o.dotSize,{emitSurface:emit,tiles:STIPPLE_TILE_SETS[o.shadingLevels]})}:surfaces);
   }
   const ownerLabels=new Map<Primitive,string>();
   // If ownership cannot be certified, omit labels rather than float them over

@@ -7,4 +7,4 @@
 import type { Molecule } from './types.js';
 import type { NormalizedOptions } from './options.js';
 /** Already-normalized options; the public renderer owns eligibility/dispatch. */
-export declare function renderFastPainter(molecule: Molecule, o: NormalizedOptions): string;
+export declare function renderFastPainter(molecule: Molecule, o: NormalizedOptions, explicitQuantization?: boolean): string;

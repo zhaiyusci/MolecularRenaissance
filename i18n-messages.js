@@ -9,6 +9,7 @@
     zh[key] = chinese;
   }
   var messages = {
+    'static.shadingLevels': ['Shading levels', '明暗级数'],
     'error.xyzTooLarge': ['XYZ files must be no larger than 2 MiB.', 'XYZ 文件大小不得超过 2 MiB。'],
     'error.parserMissing': ['XYZ parser unavailable. Update renderer.js.', 'XYZ 解析器不可用，请更新 renderer.js。'],
     'error.invalidSVG': ['The renderer returned invalid SVG output.', '渲染器返回了无效的 SVG 输出。'],
@@ -101,9 +102,9 @@
     ['shadowStrength', 'Invalid shadowStrength: expected 0–1', '投影强度无效：必须在 0–1 之间'],
     ['colorScheme', 'Invalid colorScheme', '配色方案无效'],
     ['shadingMode', 'Invalid shadingMode', '明暗纹理模式无效'],
-    ['quantizeShading', 'Invalid quantizeShading', '16级明暗开关设置无效'],
-    ['quantizedPrecise', '16-level shading switch requires precise rendering', '16级明暗开关需要精确渲染'],
-    ['quantizedConflict', 'Conflicting quantizeShading and hatchMode', '16级明暗开关与排线模式冲突'],
+    ['quantizeShading', 'Invalid quantizeShading', '明暗量化设置无效'],
+    ['shadingLevels', 'Invalid shadingLevels: expected 4, 8, 16, 32, or 64', '明暗级数无效：请选择 4、8、16、32 或 64'],
+    ['quantizedConflict', 'Conflicting quantizeShading and hatchMode', '明暗量化与排线模式冲突'],
     ['hatchMode', 'Invalid hatchMode', '排线模式无效'],
     ['layeredPrecise', 'Layered hatching requires precise rendering', '分级排线需要精确渲染'],
     ['dots', 'Invalid dot settings', '网点设置无效'],

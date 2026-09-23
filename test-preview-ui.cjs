@@ -73,22 +73,25 @@ function verifyDownload(){
  assert.ok(links.at(-1).download.endsWith('.svg'));assert.ok(links.at(-1).removed);
 }
 assert.equal(calls.at(-1).options.quantizeShading,true);
-assert(elements['quantized-shading'].checked);verifyDownload();
-assert.equal(document.querySelector('[data-i18n="static.quantizedShading"]').textContent,'16级明暗');
+assert.equal(elements['shading-levels'].value,'16');assert.equal(calls.at(-1).options.shadingLevels,16);verifyDownload();
+assert.equal(document.querySelector('[data-i18n="static.shadingLevels"]').textContent,'明暗级数');
 ui.locale('en');
-assert.equal(document.querySelector('[data-i18n="static.quantizedShading"]').textContent,'16-level shading');
+assert.equal(document.querySelector('[data-i18n="static.shadingLevels"]').textContent,'Shading levels');
 ui.locale('zh-CN');
-for(const mode of ['hatch','stipple','halftone']){
- change('shading-mode',mode,'change');flush();
- assert(!elements['quantized-shading'].disabled);
- for(const preference of [false,true,false]){
-  check('quantized-shading',preference);
-  assert(elements.download.disabled,'checkbox change invalidates the export snapshot');
-  const beforePreview=calls.length;click();assert.equal(calls.length,beforePreview);
-  flush();assert.equal(calls.at(-1).options.quantizeShading,preference);verifyDownload();
-  // Export uses the successful preview snapshot, not an unannounced checkbox edit.
-  elements['quantized-shading'].checked=!preference;click();assert.equal(calls.at(-1).options.quantizeShading,preference);
-  elements['quantized-shading'].checked=preference;
+for(const fast of [false,true,false]){
+ check('fast-overlay',fast);flush();
+ for(const mode of ['hatch','stipple','halftone']){
+  change('shading-mode',mode,'change');flush();
+  assert(!elements['shading-levels'].disabled);
+  for(const levels of [4,8,16,32,64]){
+   change('shading-levels',String(levels),'change');
+   assert(elements.download.disabled,'level selection invalidates the export snapshot');
+   const beforePreview=calls.length;click();assert.equal(calls.length,beforePreview);
+   flush();assert.equal(calls.at(-1).options.quantizeShading,true);assert.equal(calls.at(-1).options.shadingLevels,levels);verifyDownload();
+   // Export uses the successful preview snapshot, not an unannounced select edit.
+   elements['shading-levels'].value=levels===4?'64':'4';click();assert.equal(calls.at(-1).options.shadingLevels,levels);
+   elements['shading-levels'].value=String(levels);
+  }
  }
 }
 change('shading-mode','hatch','change');flush();
@@ -170,9 +173,12 @@ for(const id of ['scale','atom-radius-scale','light-azimuth','light-elevation','
 check('shading-enabled',false);flush();pointer('scale','pointerdown');flush();pointer('window','pointerup');flush();
 assert.equal(calls.at(-1).options.shadingSize,0,'release preserves intentionally disabled shading');assert.equal(calls.at(-1).options.textureScale,.8);verifyDownload();
 pointer('scale','pointerdown');flush();elements.reset.listeners.click();flush();restored(1);
-assert(elements['quantized-shading'].checked);assert.equal(calls.at(-1).options.quantizeShading,true);
+assert.equal(elements['shading-levels'].value,'16');assert.equal(calls.at(-1).options.shadingLevels,16);assert.equal(calls.at(-1).options.quantizeShading,true);
 change('shading-mode','stipple','change');flush();
-assert(!elements['quantized-shading'].disabled);assert.equal(calls.at(-1).options.quantizeShading,true);verifyDownload();
+assert(!elements['shading-levels'].disabled);assert.equal(calls.at(-1).options.quantizeShading,true);verifyDownload();
+assert(calls.every(call=>call.options.quantizeShading===true));
+assert(calls.every(call=>[4,8,16,32,64].includes(call.options.shadingLevels)));
+assert(calls.every(call=>call.options.stippleFill==='bitmap'));
 assert(calls.every(call=>!Object.hasOwn(call.options,'hatchMode')));
 nearQuaternion(calls.at(-1).options.orientation,initialOrientation());
 assert.equal(elements['rotation-step'],undefined);

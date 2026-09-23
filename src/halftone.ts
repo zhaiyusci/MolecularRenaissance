@@ -139,12 +139,13 @@ export interface SurfacePatternLayer {
 }
 
 /** Paint precomputed geometric contours with a shared aligned pattern palette. */
-export function buildSurfacePatterns(o:{bounds:Bounds;pitch:number;silhouette:string;layers:readonly SurfacePatternLayer[];method:string},emitSurface?:(id:number,svg:string)=>void):string{
+export function buildSurfacePatterns(o:{bounds:Bounds;pitch:number;silhouette:string;layers:readonly SurfacePatternLayer[];method:string;shadingLevels?:number},emitSurface?:(id:number,svg:string)=>void):string{
+  const LEVELS = o.shadingLevels ?? 16;
   const [left,top,right,bottom]=o.bounds;
   if(!(right>left&&bottom>top))return '';
   const used=new Set<number>();let hash1=2166136261,hash2=5381;
   const hash=(text:string)=>{for(let i=0;i<text.length;i++){const n=text.charCodeAt(i);hash1=Math.imul(hash1^n,16777619);hash2=Math.imul(hash2,33)^n;}};
-  hash(o.bounds.join(',')+','+o.pitch+o.silhouette);
+  hash(o.bounds.join(',')+','+o.pitch+o.silhouette+(LEVELS===16?'':','+LEVELS));
   function collect(layer:SurfacePatternLayer):void{
     hash(layer.clip);
     layer.tones.forEach((path,i)=>{hash(path);if(path&&path!==layer.tones[i+1])used.add(i+1);});

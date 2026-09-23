@@ -56,7 +56,7 @@ for (const renderMode of ['precise','fast']) for (const shadingMode of ['hatch',
   const start=svg.indexOf('<g data-role="surface-layer"');assert(start>=0);
   const layer=svg.slice(start), paint=layer.indexOf('data-role="element-texture"'), label=layer.indexOf('data-role="element-label"');
   assert(paint>=0&&label>paint,'labels remain above carbon mesh');
-  const lighting=renderMode==='precise'?layer.indexOf('data-role="engraving"'):layer.indexOf('<g clip-path=');
+  const lighting=renderMode==='precise'?layer.indexOf('data-role="engraving"'):layer.indexOf('data-role="atom-texture-instance"');
   assert(lighting>paint&&lighting<label,'carbon mesh paints before illumination and labels');
 }
 const supported=Object.keys(api.covalentRadii);

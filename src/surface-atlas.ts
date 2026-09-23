@@ -3,6 +3,7 @@ import { depthAt, type PreparedScene } from './scene.js';
 import type { NormalizedOptions } from './options.js';
 import { sampledTonePaths } from './halftone.js';
 import { regionFromPath } from './region-clipping.js';
+import { directLight } from './lighting-transfer.js';
 
 /** One visible-region index and one lazily extracted binary shadow per surface.
  * Discovery is local and resolution-limited; no ray tracing in subsequent
@@ -43,7 +44,7 @@ export function createSurfaceAtlas(prepared:PreparedScene,regions:DotRegions,o:N
     const light:Illumination=(n,p)=>{
       let lit=unshadowedIllumination(n,p);
       const xy=project(p);
-      if(region.contains(xy[0],xy[1]))lit=(Math.max(-1,Math.min(1,lit))+1)*(1-o.shadowStrength)-1;
+      if(region.contains(xy[0],xy[1]))lit=directLight(lit,1-o.shadowStrength);
       return lit;
     };
     lightCache.set(s,light);return light;

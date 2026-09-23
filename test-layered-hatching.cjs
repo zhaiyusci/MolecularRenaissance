@@ -164,8 +164,8 @@ function contains(loops,x,y){let inside=false;for(const loop of loops)for(let i=
     const byLevel=new Map(groups.map(g=>[+g.attrs['data-tone-level'],polygons(clipPath(tree,clipId(g)))]));
     for(let ix=-4;ix<=4;ix++)for(let iy=-4;iy<=4;iy++){
       const x=ix*.17,y=iy*.17;if(x*x+y*y>.7)continue;
-      const n=[x,-y,Math.sqrt(1-x*x-y*y)];let lit=n.reduce((a,v,i)=>a+v*L[i],0);
-      if(shadowStrength!==null)lit=(Math.max(-1,Math.min(1,lit))+1)*(1-shadowStrength)-1;
+      const n=[x,-y,Math.sqrt(1-x*x-y*y)];let lit=Math.max(0,n.reduce((a,v,i)=>a+v*L[i],0));
+      if(shadowStrength!==null)lit*=1-shadowStrength;
       const darkness=((1-Math.max(-1,Math.min(1,lit+2*f.o.shadingBrightness)))/2)**(f.o.shadingContrast/1.2);
       const farFromBands=Array.from({length:16},(_,i)=>(i+.5)/16).every(t=>Math.abs(darkness-t)>=.006);
       let memberships=0;
@@ -182,7 +182,7 @@ function contains(loops,x,y){let inside=false;for(const loop of loops)for(let i=
       if(farFromBands)assert(memberships<=1,'disjoint bands must not repeatedly paint antialiased strokes at the same point');
     }
   }
-  for(const shadingBrightness of [-.35,0,.35])for(const shadingContrast of [.6,1.2,2])checkTones(direct({shadingBrightness,shadingContrast,lightAzimuth:.6,lightElevation:.3}));
+  for(const shadingBrightness of [-.35,0,.35])for(const shadingContrast of [.6,1.2,2])for(const [lightAzimuth,lightElevation] of [[.6,.3],[2.7,-.4]])checkTones(direct({shadingBrightness,shadingContrast,lightAzimuth,lightElevation}));
   for(const strength of [.4,1])for(const shadingBrightness of [0,.3]){
     const f=certified(sphere,{...base,hatchMode:'layered',castShadows:true,shadowStrength:strength,shadingBrightness,lightAzimuth:0,lightElevation:0});
     // A controlled full-front shadow isolates attenuation inversion. Supplied

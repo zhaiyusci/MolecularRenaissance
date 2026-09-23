@@ -75,19 +75,25 @@ async function main(){
     const before=await require('./test-fixtures/historical-renderer.cjs').historicalRenderer();
     const {coverage}=require('./test-style-coverage.cjs');
     for(const name of ['ethanol','c60']){
-      // Historical ribbon coverage uses a path-only oracle, not layered use/clip expansion.
-      // The historical engine predates the 0.75 atom radius default, so pin it.
-      const options={hatchMode:'continuous',shadingMode:'hatch',castShadows:true,quality:'preview',textureScale:1};
-      const old=before.render(before.examples[name],options),next=current.render(current.examples[name],{...options,atomRadiusScale:1});
-      const a=coverage(old,[200,100,700,600]),b=coverage(next,[200,100,700,600]);
-      assert(Math.abs(a-b)<.01,`${name}: shadowed hatch ink stays within one percentage point in the same window`);
-      console.log('Shadowed hatch window coverage:',{name,before:a,after:b});
+      // Preserve historical geometry without requiring the retired lighting law.
+      const options={hatchMode:'continuous',shadingMode:'hatch',castShadows:true,quality:'export',textureScale:1};
+      const geometry={...options,shadingSize:0};
+      assert.equal(current.render(current.examples[name],{...geometry,atomRadiusScale:1}),before.render(before.examples[name],geometry),`${name}: lighting migration does not change unshaded geometry`);
+      // Compare optimized/unoptimized ribbons under the SAME new illumination.
+      // This coverage oracle expands paths, not layered use/clip instances.
+      const unoptimized=current.render(current.examples[name],{...options,atomRadiusScale:1,optimizePaths:false});
+      const optimized=current.render(current.examples[name],{...options,atomRadiusScale:1,optimizePaths:true});
+      const a=coverage(unoptimized,[200,100,700,600]),b=coverage(optimized,[200,100,700,600]);
+      assert(Math.abs(a-b)<.01,`${name}: fitting preserves shadowed hatch coverage within one percentage point`);
+      console.log('Shadowed hatch fitting coverage:',{name,unoptimized:a,optimized:b});
     }
     for(const name of ['sphere','ethanol','c60']){
       // The historical engine predates tone quantization and the 0.75 radius
       // default, so this position/radius guard pins both; the quantized default is
       // checked below on the same pinned geometry.
-      const options={shadingMode:'stipple',castShadows:false,quality:'preview',textureScale:1};
+      // Front-lit visible normals never enter the intentionally changed negative
+      // half-space; historical exact mark positions/radii remain meaningful here.
+      const options={shadingMode:'stipple',castShadows:false,lightAzimuth:0,lightElevation:0,quality:'preview',textureScale:1};
       const old=before.render(before.examples[name],options),next=current.render(current.examples[name],{...options,quantizeShading:false,atomRadiusScale:1});
       const oldDisks=disks(old),newDisks=disks(next);assert(oldDisks.length>1000);
       if(name==='sphere')for(const disk of newDisks){

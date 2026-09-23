@@ -13,6 +13,7 @@ import { mul, cross, norm, dot, escapeXml as esc } from './math.js';
 import { elementColor } from './palette.js';
 import { createCurveRenderer } from './strokes.js';
 import { projectedCircle, trigSpans, intersectSpans } from './hatch-curves.js';
+import { artisticLightSignal, directLimitForDarkness, facingLimitForDirect } from './lighting-transfer.js';
 
 /** Hard bound on this quadratic first experiment; larger scenes use normal render. */
 export const PAINTER_MAX_SPHERES = 2048;
@@ -155,9 +156,8 @@ export function renderPainter(molecule: Molecule, options: RenderOptions = {}, e
   const counters = {hatchCurves: 0, hatchPaths: 0, hatchTemplates: 0, paintedSpheres: 0, wholeLabels: 0, ownSilhouetteClips: 0};
   if (plan.route === 'fallback') return {...plan, ...counters, svg: render(molecule,options), boundaryBuilds: null, sceneVisibilityTests: null};
   const {spheres,project,scale,lightDirection,unshadowedIllumination} = prepared;
-  const illumination: Illumination = o.shadingBrightness === 0 ? unshadowedIllumination :
-    (n,p) => Math.max(-1,Math.min(1,unshadowedIllumination(n,p)+2*o.shadingBrightness));
-  const threshold = (limit: number) => 1-2*Math.pow((1-limit)/2,1/(o.shadingContrast/1.2))-2*o.shadingBrightness;
+  const illumination: Illumination = (n,p)=>artisticLightSignal(unshadowedIllumination(n,p),o.shadingBrightness);
+  const threshold = (limit:number)=>facingLimitForDirect(directLimitForDarkness((1-limit)/2,o.shadingContrast/1.2,o.shadingBrightness),1,false);
   const fillFor = (s: Sphere) => o.colorWash ? elementColor(s.element,o.washStrength,o.colorSaturation,o.colorScheme) : '#ffffff';
   const paths: string[] = [], layers: string[] = [], definitions: string[] = [];
   // Inline experiments with different geometry/options must not share defs IDs.

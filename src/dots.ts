@@ -2,7 +2,8 @@
 import type { Scene, Primitive, Vector, DepthAt, Project, Illumination, DotRegions, DotOptions, SurfaceToneContext } from './types';
 import { buildSurfacePatterns, sampledTonePaths, projectedSilhouette, halftoneRadiusRatio, type SurfacePatternLayer } from './halftone.js';
 import { directionalTonePath } from './surface-tones.js';
-import { TONE_LEVELS } from './tone-levels.js';
+import { validateShadingLevels } from './tone-levels.js';
+import { artisticLightSignal, directLimitForDarkness, facingLimitForDirect } from './lighting-transfer.js';
 interface Hit { id: number; s: Primitive; p: Vector; clearance?: number; }
 /** One equal-radius round-cap batch. `level` is 0 for continuous tone. */
 interface StippleBatch { r:number; level:number; points:string[] }
@@ -15,9 +16,11 @@ function hash(x:number,y:number,salt:number){
 }
 export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:number,illumination:Illumination,options?:DotOptions,regions:DotRegions|null=null,referenceCoverage?: (s:Primitive,n:Vector,lit:number)=>number,surfaces?:SurfaceToneContext):string{
   const o={shadingMode:'stipple',dotSpacing:2.5,dotSize:.5,dotContrast:1.2,...options};
+  const TONE_LEVELS = o.shadingLevels === undefined ? 16 : o.shadingLevels;
+  validateShadingLevels(TONE_LEVELS);
   if(o.quantizeShading!==undefined&&typeof o.quantizeShading!=='boolean')throw new Error('Invalid quantizeShading');
   const continuousHalftone=o.shadingMode==='halftone'&&o.quantizeShading===false;
-  // Sixteen-level stippling is explicit here; an omitted switch keeps the legacy
+  // Selected-level stippling is explicit here; an omitted switch keeps the legacy
   // continuous stream byte-identical for direct low-level callers.
   const quantizedStipple=o.shadingMode==='stipple'&&o.quantizeShading===true;
   if(!['stipple','halftone'].includes(o.shadingMode))throw new Error('Invalid dot mode');
@@ -178,8 +181,11 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       };
       if(surfaces?.light&&visiblePath){
         const light=surfaces.light;
-        const threshold=(ink:number)=>1-2*Math.pow(ink/toneGain,1/exponent)-2*brightness;
-        const layer:SurfacePatternLayer={sourceId:id,clip:visiblePath,bounds:box,tones:thresholds.map(t=>t>toneGain?'':directionalTonePath(s,project,light,threshold(t)))};
+        const threshold=(ink:number)=>directLimitForDarkness(ink/toneGain,exponent,brightness);
+        const facingThreshold=(ink:number,transmission=1)=>surfaces.directLighting
+          ? facingLimitForDirect(threshold(ink),transmission)
+          : transmission===1?threshold(ink):(threshold(ink)+1)/transmission-1;
+        const layer:SurfacePatternLayer={sourceId:id,clip:visiblePath,bounds:box,tones:thresholds.map(t=>t>toneGain?'':directionalTonePath(s,project,light,facingThreshold(t)))};
         // Only one binary shadow contour is sampled locally. Its shaded tone
         // boundaries remain analytic, with the shadow attenuation inverted.
         if(surfaces.shadowed&&surfaces.mayShadow?.[id]){
@@ -187,10 +193,10 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
           const mask=sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h&&shadowed(id,normal(h),h.p)?1:0;},step,[.5],true)[0];
           if(mask){
             const strength=o.shadowStrength??.8;
-            const constant=clamp(toneGain*smoothTone(clamp(-1+2*brightness,-1,1)),0,1);
+            const constant=clamp(toneGain*smoothTone(artisticLightSignal(surfaces.directLighting?0:-1,brightness)),0,1);
             layer.shadow={sourceId:id,clip:mask,bounds:box,tones:thresholds.map(t=>{
               if(strength>=1)return constant>=t?visiblePath:'';
-              return t>toneGain?'':directionalTonePath(s,project,light,(threshold(t)+1)/(1-strength)-1);
+              return t>toneGain?'':directionalTonePath(s,project,light,facingThreshold(t,1-strength));
             })};
           }
         }
@@ -198,11 +204,11 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       }else{
         // Unsupported visibility arrangements and custom low-level light
         // callbacks stay local to each primitive.
-        layers.push({sourceId:id,clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step)});
+        layers.push({sourceId:id,clip:visiblePath,bounds:box,tones:sampledTonePaths(box,(x,y)=>{const h=onSurface(x,y);return h?coverage(h):null;},step,thresholds)});
       }
     }
     const renderPatterns=surfaces?.renderPatterns||buildSurfacePatterns;
-    return renderPatterns({bounds,pitch:g*Math.SQRT2/5,silhouette:projectedSilhouette(scene,project,scale),layers,
+    return renderPatterns({bounds,shadingLevels:TONE_LEVELS,pitch:g*Math.SQRT2/5,silhouette:projectedSilhouette(scene,project,scale),layers,
       method:surfaces?.paths?(surfaces.light?(surfaces.shadowed?'analytic-local-shadows':'analytic'):'surface-sampled'):'local-fallback'},surfaces?.emitSurface);
   }
   const circles:string[]=[],batches=surfaces?.compactStipple?new Map<number,StippleBatch>():null;
@@ -247,7 +253,7 @@ export function buildDots(scene:Scene,depthAt:DepthAt,project:Project,scale:numb
       // Equal-radius Poisson marks. Account for overlap using
       // coverage = 1-exp(-numberDensity * diskArea), rather than adding areas.
       const rawInk=Math.min(.995,coverage(h));if(rawInk<=0)continue;
-      // Sixteen-level stippling snaps local tone to the shared 16-band palette with
+      // Selected-level stippling snaps local tone to the selected shared palette with
       // the same nearest-band rule halftone uses. Level 0 leaves paper untouched, so
       // quantization stays unbiased and cross-style mean coverage still agrees.
       const level=quantizedStipple?Math.round(rawInk*TONE_LEVELS):0;

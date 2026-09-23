@@ -121,7 +121,11 @@ if(!process.argv.includes('--dots-only')){
   assert.equal(render(model,{...base,shadingMode:'halftone',hatchMode:'layered',quantizeShading:false}),render(model,{...base,shadingMode:'halftone',quantizeShading:false}),'legacy hatch alias does not conflict outside hatch style');
   for(const q of [null,0,'false',{},[]])assert.throws(()=>render(model,{...base,quantizeShading:q}),/Invalid.*quantizeShading/);
   for(const q of [true,false]){
-    for(const shadingMode of ['hatch','halftone','stipple'])assert.throws(()=>render(model,{...base,shadingMode,renderMode:'fast',quantizeShading:q}),/quantizeShading|unsupported|requires precise/i);
+    for(const shadingMode of ['hatch','halftone','stipple']){
+      const fast=render(model,{...base,shadingMode,renderMode:'fast',quantizeShading:q});
+      assert.match(fast,/data-render-mode="fast"/,'fast accepts explicit quantized and legacy continuous routes');
+      assert.notEqual(fast,render(model,{...base,shadingMode,renderMode:'fast',quantizeShading:!q}),shadingMode+': fast quantization changes actual output');
+    }
     const hatchMode=q?'layered':'continuous';
     assert.equal(render(model,{...base,quantizeShading:q,hatchMode}),render(model,{...base,quantizeShading:q}),'consistent legacy hatch alias accepted');
     assert.throws(()=>render(model,{...base,quantizeShading:q,hatchMode:q?'continuous':'layered'}),/Conflicting.*quantizeShading.*hatchMode/);

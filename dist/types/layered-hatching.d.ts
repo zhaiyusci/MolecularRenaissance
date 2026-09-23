@@ -15,7 +15,7 @@ export interface LayeredHatchingResult {
 }
 /**
  * Reuse fixed curved skeletons beneath analytic disjoint tone bands. Only
- * artistic darkness/width is quantized to 16 levels; the caller's certified
+ * artistic darkness/width is quantized to the selected palette; the caller's certified
  * owner clip contains the FULL strokes and preserves scientific occlusion.
  * Shadow discovery matches halftone: one local binary sampled contour per
  * potentially shadowed source, never an atlas dependency or per-line ray grid.

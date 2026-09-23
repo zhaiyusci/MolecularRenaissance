@@ -55,19 +55,31 @@ const svg = render(examples.c60, { colorWash: true });
 
 **`dist/molplotter.mjs` 是独立单文件**，内部已包含几何、排线、填色和网点实现，不需再加载其他模块。浏览器以模块方式加载时，应遵守浏览器的模块 URL/CORS 限制；直接双击的现有 GUI 仍使用下面的经典脚本方案。
 
-## 16级明暗与兼容选项
+## 可选级数量化明暗与兼容选项
 
-`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线、规则网点与点刻。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻在 `true` 时把局部明暗量化为共享的 16 档密度。默认交付 `stippleFill: 'marks'`：圆点半径保持 `dotSize` 不变、只有点数随档位变化，输出扁平、按「半径 + 出生档位」分批的圆头零长子路径，不含 pattern 瓦片也不含逐原子 clip，渲染器因此保留已认证的点区域加速，标记为 `data-stipple-mode="quantized"`。可选 `stippleFill: 'bitmap'`：把同一套 16 档改为**烘焙的 1-bit PNG 瓦片**，浏览器解码一次后直接平铺，不再逐点描边；该路径需要已认证的 owner clip，无法认证时回退到 `'marks'`，标记为 `data-stipple-mode="bitmap"`。瓦片由 `npm run build:tiles` 生成（`scripts/build-stipple-tiles.mjs`），分辨率按**印刷目标**参数化——`--print-width-mm` 与 `--dpi` 推出瓦片像素数，标记为方形像素块（`--mark-px`，默认 2，即 300 dpi 下 0.17 mm），因此**一个瓦片集只对应一个印刷目标**；输出写入 `src/stipple-tiles.generated.ts`（已提交，干净检出也能构建）。瓦片载荷是固定成本，所以 bitmap 只在扁平标记集超过它时才更小（实测 c60 约 0.31×、葡萄糖 0.50×，而单球约 1.07×）。`<image>` 目前只写 `href`（SVG 2），个别老式印刷工具可能仍需 `xlink:href`。
+`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线、规则网点与点刻。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻在 `true` 时把局部明暗量化为共享的 16 档密度。可选矢量交付 `stippleFill: 'marks'`：圆点半径保持 `dotSize` 不变、只有点数随档位变化，输出扁平、按「半径 + 出生档位」分批的圆头零长子路径，不含 pattern 瓦片也不含逐原子 clip，渲染器因此保留已认证的点区域加速，标记为 `data-stipple-mode="quantized"`。默认 `stippleFill: 'bitmap'`（GUI 固定使用）：把同一套 16 档改为**烘焙的 1-bit PNG 瓦片**，浏览器解码一次后直接平铺，不再逐点描边；该路径需要已认证的 owner clip，无法认证时回退到 `'marks'`，标记为 `data-stipple-mode="bitmap"`。瓦片由 `npm run build:tiles` 生成（`scripts/build-stipple-tiles.mjs`），分辨率按**印刷目标**参数化——`--print-width-mm` 与 `--dpi` 推出瓦片像素数，标记为方形像素块（`--mark-px`，默认 2，即 300 dpi 下 0.17 mm），因此**一个瓦片集只对应一个印刷目标**；输出写入 `src/stipple-tiles.generated.ts`（已提交，干净检出也能构建）。瓦片载荷是固定成本，所以 bitmap 只在扁平标记集超过它时才更小（实测 c60 约 0.31×、葡萄糖 0.50×，而单球约 1.07×）。`<image>` 目前只写 `href`（SVG 2），个别老式印刷工具可能仍需 `xlink:href`。
 
-GUI 控件现名 **16级明暗**（英文 **16-level shading**，旧名16级排线）；默认与重置均开启。仅在关闭光影或使用快速模式时禁用，切换风格保留两种勾选偏好；精确排线、规则网点与点刻均可用。界面为所有精确纹理发送该布尔值；快速模式省略，不再发送 `hatchMode`。
+GUI 不再提供连续绘制开关，精确与快速覆盖均发送 `quantizeShading: true`。**明暗级数**（英文 **Shading levels**）选择器提供 **4、8、16、32、64**，默认和重置为16；对应 `shadingLevels?: 4 | 8 | 16 | 32 | 64`。仅在关闭光影时禁用，切换纹理或快速覆盖保留级数，预览／下载一致。沿用原16级语义：N 表示 N 个正墨量档，另有不涂墨的纸白0档；不是含纸白共 N 档。非法级数报错 `Invalid shadingLevels: expected 4, 8, 16, 32, or 64`。上文16级说明为默认档位；排线宽度、网点覆盖率、点刻密度及位图瓦片均按选择的级数生成，而不是只更改显示标签。
 
-旧 `hatchMode: 'layered' | 'continuous'` 仍是仅作用于排线样式的兼容别名，分别对应 `true`／`false`，不改变网点算法；排线中同时显式提供两项且不一致时，报错 `Conflicting quantizeShading and hatchMode`。非布尔 `quantizeShading` 报错 `Invalid quantizeShading`。快速模式显式提供任一布尔值均报错 `16-level shading switch requires precise rendering`；请省略或使用 `undefined`，例如 `{ renderMode: 'fast', castShadows: false }`。旧的显式 fast＋layered 错误 `Layered hatching requires precise rendering` 仍保留，快速模式默认排线仍为 continuous。
+旧 `hatchMode: 'layered' | 'continuous'` 仍保留为排线兼容选项。非布尔 `quantizeShading` 报错 `Invalid quantizeShading`，显式冲突的排线选择器仍拒绝。快速模式现在接受 `quantizeShading: true` 量化所有三种纹理，也接受 `false` 使用旧连续路线；省略该参数时保留历史快速模式行为。GUI 使用 `{ renderMode: 'fast', castShadows: false, quantizeShading: true, shadingLevels: 16 }`。后端兼容入口未从 API 删除。精确排线在可见区域无法认证时仍走内部 `data-hatch-mode="continuous-fallback"` 安全回退；GUI 移除连续绘制入口，不移除几何认证失败的保护逻辑。
 
 历史 continuous／layered 性能与默认效果批准记录见 [LAYERED-HATCHING.md](LAYERED-HATCHING.md)，不代表本次共享开关及连续网点的新测量或完整验证结果。
+
+## 光照与美术映射的顺序
+
+先完成简化光照，再做美术处理；不模拟环境光、二次反射或间接照明：
+
+1. 物理直射量 `D = max(0, n·L)`。被遮挡时只对该直射量乘 `1 - shadowStrength`；背光面与完全遮光处均为 `D = 0`。
+2. 保留现有美术基线 `B = (D + 1) / 2`，再施加 `shadingBrightness`、明暗对比度与纹理覆盖率校准。这是图版明暗映射，不是物理环境光；因此零直射处在成图中仍可被提亮。
+3. 最后按 `shadingLevels` 量化，交给排线、点刻或规则网点绘制。连续后端也使用同一光照顺序。
+
+投影不再衰减美术映射中的提亮偏移，避免表面跨过 `n·L = 0` 时突然解除这部分衰减而产生反常亮边。精确／快速、预览／导出共用此约定；快速模式仍不计算投射阴影。解析明暗分区和采样回退都使用相同的光照阈值含义。现有 GUI 亮度、对比度控件及默认值不变；本次光照修正会改变阴影和背光处的旧视觉结果，不能再以旧版完整渲染字节作为这些区域的正确性依据。
 
 ## 平行光与已移除选项
 
 仅支持平行光；`lightAzimuth`、`lightElevation` 控制方向（弧度），精确模式支持 `castShadows` 和 `shadowStrength`。快速模式要求 `castShadows: false`，否则报错 `Fast rendering requires castShadows=false`。GUI 在退出快速模式时仅恢复先前的投影开关。
+
+快速模式对每种实际球半径仅构建一次完整明暗模板（含明暗分区、裁剪与纹理），其余原子通过 SVG `use` 平移复用；不同半径不通过缩放纹理混用。底色、元素图案、标签与深度覆盖仍按实例处理。点刻／网点在副本间使用相同的局部相位，这是快速副本模式的取舍，精确模式不变。模板缓存限于单次渲染，因此改变光源、级数或美术参数不会命中旧样式。键仍需独立的方向纹理和局部可见性检查，但被埋或不可见的键不构建明暗纹理。`data-atom-template-count`、`data-atom-template-instances` 和 `data-bond-texture-builds` 可用于核对实际工作量。
 
 `lightType`、`lightDistance`、`lightAttenuation` 已从公共 API 删除。显式提供其中任一键都会报错 `Removed lighting option: ${key}; only directional lighting is supported`，包括 `lightType: 'directional'`；迁移时删除这些键，不要传入替代值。
 

@@ -59,16 +59,22 @@ const digest=svg=>crypto.createHash('sha256').update(svg).digest('hex');
   assert.ok(api.render(frozen,Object.freeze({quality:'preview'})).startsWith('<svg'));
   console.log(`PASS ${label}: ${cases.length} module parity cases, physical scale/projection, validation, immutable input`);
  }
- // Independent pinned historical implementation: only its approved projection
- // change is isolated. Mandatory baseline; a missing ignored file cannot pass.
+ // The physical irradiance law deliberately changed. Preserve historical byte
+ // oracles where it cannot change output: unshaded geometry and front-lit,
+ // no-shadow visible surfaces (n.L>=0). The baseline remains mandatory.
  const before=await historicalRenderer('pre-labels');
- for(const name of ['sphere','ethanol','c60'])for(const shadingMode of ['hatch','stipple','halftone']){
-  const options={labels:false,shadingMode,castShadows:true,colorWash:true,quality:'preview'};
-  // Stipple tone quantization and the 0.75 atom radius default are deliberate
-  // post-baseline changes: pin both here and leave the shipped defaults to the
-  // tests that own them.
+ for(const name of ['sphere','ethanol','c60'])for(const shadingMode of ['hatch','stipple','halftone'])for(const geometryOnly of [false,true]){
+  const options={labels:false,shadingMode,castShadows:false,lightAzimuth:0,lightElevation:0,colorWash:true,quality:'preview',...(geometryOnly?{shadingSize:0}:{})};
   const legacy={...options,hatchMode:'continuous',atomRadiusScale:1,...(shadingMode==='stipple'?{quantizeShading:false}:{})};
-  assert.equal(digest(cjs.render(cjs.examples[name],legacy)),digest(before.render(before.examples[name],options)),`${name}/${shadingMode}: pinned historical no-label parity`);
+  assert.equal(digest(cjs.render(cjs.examples[name],legacy)),digest(before.render(before.examples[name],options)),`${name}/${shadingMode}: historical ${geometryOnly?'unshaded geometry':'unchanged front-lit'} parity`);
+ }
+ // Public formats must agree on the NEW back-facing/shadowed physical signal
+ // followed by artistic brightness/contrast, not just historical front lighting.
+ for(const shadingMode of ['hatch','stipple','halftone'])for(const renderMode of ['precise','fast']){
+  const options={shadingMode,renderMode,quantizeShading:true,shadingLevels:4,castShadows:renderMode==='precise',shadowStrength:1,lightAzimuth:2.7,shadingBrightness:-.2,shadingContrast:1.7,quality:'preview'};
+  const expected=cjs.render(cjs.examples.ethanol,options);
+  assert.equal(esm.render(esm.examples.ethanol,options),expected,'new lighting ESM parity');
+  assert.equal(browser.MolEngraver.render(browser.MolEngraver.examples.ethanol,options),expected,'new lighting classic parity');
  }
  // Test package self-resolution and the shipped declaration graph as an actual
  // strict consumer, with neither DOM nor Node ambient type libraries installed.
@@ -78,5 +84,5 @@ const digest=svg=>crypto.createHash('sha256').update(svg).digest('hex');
  });
  const errors=ts.getPreEmitDiagnostics(program);
  assert.equal(errors.length,0,ts.formatDiagnosticsWithColorAndContext(errors,{getCanonicalFileName:x=>x,getCurrentDirectory:()=>process.cwd(),getNewLine:()=> '\n'}));
- console.log('PASS pinned historical parity, shipped declarations, typed package imports and negative API cases without DOM');
+ console.log('PASS historical front-lit/unshaded parity, new lighting module-format parity, shipped declarations, typed package imports and negative API cases without DOM');
 })().catch(error=>{console.error(error);process.exitCode=1;});

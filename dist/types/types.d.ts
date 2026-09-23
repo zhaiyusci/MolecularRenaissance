@@ -17,6 +17,7 @@ export interface Molecule {
     bonds: readonly Bond[];
 }
 export type ShadingMode = 'hatch' | 'stipple' | 'halftone';
+export type ShadingLevels = 4 | 8 | 16 | 32 | 64;
 export type HatchMode = 'continuous' | 'layered';
 export type StippleFill = 'marks' | 'bitmap';
 export type RenderQuality = 'preview' | 'export';
@@ -46,19 +47,19 @@ export interface RenderOptions {
     shadowStrength?: number;
     quality?: RenderQuality;
     shadingMode?: ShadingMode;
-    /** Defaults to layered (16-tone shared curved hatches) in precise mode and
+    /** Defaults to layered (shared curved tone-band hatches) in precise mode and
      * continuous in fast mode. Explicit continuous retains the legacy ribbons;
      * uncertified visible-region geometry also uses the continuous path. */
     hatchMode?: HatchMode;
-    /** Shared precise-mode hatch/halftone/stipple tone quantization, default true.
-     * True snaps stippling density to the same 16 shared tone levels while leaving
-     * the dot radius fixed; stipple marks stay flat, radius-and-level batched round
-     * caps, with no texture tile and no per-owner clip. False uses continuous hatch
-     * widths, continuous-radius halftone dots, or the original continuous-density
-     * stipple. Explicit values require precise mode; a conflicting explicit
-     * hatchMode is rejected for hatch shading. */
+    /** Shared tone quantization, default true in precise mode. Explicit true also
+     * enables fast quantized hatches and bitmap stipple. False retains continuous
+     * hatch widths, continuous-radius halftone and continuous-density stipple.
+     * Omitted fast mode keeps legacy hatches and dot delivery. An explicit
+     * conflicting hatchMode is rejected for hatch shading. */
     quantizeShading?: boolean;
-    /** Stipple ink delivery, default 'marks'. 'bitmap' paints the shared 16-level
+    /** Positive tone bands (plus unpainted paper), default 16. Ignored for continuous shading. */
+    shadingLevels?: ShadingLevels;
+    /** Stipple ink delivery, default 'bitmap'. 'bitmap' paints the selected shared
      * atlas from baked 1-bit PNG tiles, so the browser blits a decoded image
      * instead of stroking the mark set as geometry. It needs certified owner clips
      * and falls back to 'marks' without them. The tile set bakes one print target
@@ -148,7 +149,7 @@ export interface DotRegions {
     /** When available, null means the owner is fully hidden. */
     surface?(id: number): SurfaceRegion | null;
 }
-export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast' | 'width' | 'height' | 'quality' | 'shadingBrightness' | 'shadowStrength' | 'quantizeShading'>;
+export type DotOptions = Pick<RenderOptions, 'shadingMode' | 'dotSpacing' | 'dotSize' | 'dotContrast' | 'width' | 'height' | 'quality' | 'shadingBrightness' | 'shadowStrength' | 'quantizeShading' | 'shadingLevels'>;
 /** Internal geometric context; custom low-level callbacks may omit it. */
 export interface SurfaceToneContext {
     paths: readonly (string | null)[] | null;
@@ -163,6 +164,9 @@ export interface SurfaceToneContext {
     illumination?: (source: Primitive, n: Vector, p: Vector) => number;
     /** Present only for a directional light, in view coordinates. */
     light?: Vector;
+    /** Renderer light follows max(0,n.L), with visibility applied before art.
+     * Omitted by legacy custom callbacks whose analytic input is raw n.L. */
+    directLighting?: boolean;
     mayShadow?: readonly boolean[];
     shadowed?: (id: number, normal: Vector, position: Vector) => boolean;
 }

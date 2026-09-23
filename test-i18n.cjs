@@ -10,11 +10,12 @@ function verifyStatic(ui,locale){
  const header=ui.document.querySelector('header').textContent;
  assert(!header.includes(locale==='en'?'分子文艺复兴':'Molecular Renaissance'),'no bilingual header');
  assert.equal(ui.elements.language.value,locale);
- assert.equal(i.t('static.quantizedShading'),locale==='en'?'16-level shading':'16级明暗');
+ assert.equal(i.t('static.shadingLevels'),locale==='en'?'Shading levels':'明暗级数');
+ assert.deepEqual(ui.elements['shading-levels'].querySelectorAll('option').map(n=>n.textContent),['4','8','16','32','64']);
  for(const [english,chinese] of [
-  ['Invalid quantizeShading','16级明暗开关设置无效'],
-  ['16-level shading switch requires precise rendering','16级明暗开关需要精确渲染'],
-  ['Conflicting quantizeShading and hatchMode','16级明暗开关与排线模式冲突'],
+  ['Invalid quantizeShading','明暗量化设置无效'],
+  ['Invalid shadingLevels: expected 4, 8, 16, 32, or 64','明暗级数无效：请选择 4、8、16、32 或 64'],
+  ['Conflicting quantizeShading and hatchMode','明暗量化与排线模式冲突'],
   ['Invalid hatchMode','排线模式无效'],
   ['Layered hatching requires precise rendering','分级排线需要精确渲染']
  ])assert.equal(i.error(new Error(english)),locale==='en'?english:chinese);
@@ -29,10 +30,11 @@ function verifyStatic(ui,locale){
  assert.equal(e['molecule-caption'].textContent,'Water');
  const root=e.preview.querySelector('svg'),n=ui.calls.length;
  e['scale'].value='87';e['scale'].listeners.input();ui.flush();
- ui.change('fast-overlay',true);ui.flush();ui.change('shading-enabled',false);ui.flush();ui.change('label-hydrogens',false);ui.flush();
+ ui.change('fast-overlay',true);ui.flush();ui.change('shading-levels','32');ui.flush();ui.change('shading-enabled',false);ui.flush();ui.change('label-hydrogens',false);ui.flush();
  const count=ui.calls.length,options=JSON.stringify(ui.calls.at(-1).options);
  ui.locale('zh-CN');verifyStatic(ui,'zh-CN');assert.equal(ui.calls.length,count,'locale switch must not regenerate geometry');
  assert.equal(e.scale.value,'87');assert(e['fast-overlay'].checked);assert(!e['shading-enabled'].checked);assert(!e['label-hydrogens'].checked);
+ assert.equal(e['shading-levels'].value,'32');assert(e['shading-levels'].disabled);assert.equal(ui.calls.at(-1).options.shadingLevels,32);assert.equal(ui.calls.at(-1).options.quantizeShading,true);
  assert.equal(e['molecule-caption'].textContent,'水');assert.equal(e.preview.querySelector('svg').querySelector('title').textContent,'水');
  e.download.click();assert.equal(ui.calls.at(-1).model.name,'水');assert.equal(ui.calls.at(-1).options.quality,'export');
  ui.locale('en');verifyStatic(ui,'en');e.download.click();assert.equal(ui.calls.at(-1).model.name,'Water');

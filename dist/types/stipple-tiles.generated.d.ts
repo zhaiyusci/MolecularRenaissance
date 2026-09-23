@@ -9,7 +9,8 @@ export interface StippleTileSet {
     readonly dpi: number;
     /** Provisional print width this set was sized for, in millimetres. */
     readonly printWidthMm: number;
-    /** One 1-bit PNG data URI per tone level, levels 1..16. */
+    /** Independent Poisson birth-group PNGs for this palette. */
     readonly levels: readonly string[];
 }
+export declare const STIPPLE_TILE_SETS: Readonly<Record<4 | 8 | 16 | 32 | 64, StippleTileSet>>;
 export declare const STIPPLE_TILES: StippleTileSet;
