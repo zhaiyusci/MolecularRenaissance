@@ -56,9 +56,9 @@ click();assert.equal(calls.length,0,'no export before first preview');
 flush();assert.equal(calls.at(-1).options.quality,'preview');
 assert.equal(calls.at(-1).options.scale,60);
 assert.match(html,/id="scale"[^>]*min="20"[^>]*max="200"[^>]*value="60"/);
-assert.equal(calls.at(-1).options.atomRadiusScale,1);
-assert.equal(elements['atom-radius-scale-value'].textContent,'1.00×');
-assert.match(html,/id="atom-radius-scale"[^>]*type="range"[^>]*min="0.2"[^>]*max="2"[^>]*step="0.05"[^>]*value="1"/);
+assert.equal(calls.at(-1).options.atomRadiusScale,.75);
+assert.equal(elements['atom-radius-scale-value'].textContent,'0.75×');
+assert.match(html,/id="atom-radius-scale"[^>]*type="range"[^>]*min="0.2"[^>]*max="2"[^>]*step="0.05"[^>]*value="0.75"/);
 assert.equal(document.querySelector('[data-i18n="static.atomRadius"]').textContent,ui.context.MolI18n.t('static.atomRadius'));
 function verifyDownload(){
  const previewCall=calls.at(-1),display=elements.preview.innerHTML,previous=blobs.length;
@@ -177,7 +177,7 @@ assert(calls.every(call=>!Object.hasOwn(call.options,'hatchMode')));
 nearQuaternion(calls.at(-1).options.orientation,initialOrientation());
 assert.equal(elements['rotation-step'],undefined);
 assert.equal(calls.at(-1).options.scale,60);assert.equal(elements.scale.value,'60');assert.equal(elements['scale-value'].textContent,'60');
-assert.equal(calls.at(-1).options.atomRadiusScale,1);assert.equal(elements['atom-radius-scale'].value,'1');assert.equal(elements['atom-radius-scale-value'].textContent,'1.00×');verifyDownload();
+assert.equal(calls.at(-1).options.atomRadiusScale,.75);assert.equal(elements['atom-radius-scale'].value,'0.75');assert.equal(elements['atom-radius-scale-value'].textContent,'0.75×');verifyDownload();
 (async()=>{
  for(const [name,expected] of [['../CON:<bad>|?.xyz','mol-CON--bad.svg'],['... .xyz','mol-molecule.svg'],['ＡＵＸ.xyz','mol-AUX.svg'],['x'.repeat(100)+'.xyz','mol-'+ 'x'.repeat(72)+'.svg']]){
   await ui.upload(name,'1\nfixture\nC 0 0 0\n');flush();verifyDownload();assert.equal(links.at(-1).download,expected,'sanitize local filenames');

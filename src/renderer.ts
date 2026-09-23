@@ -12,7 +12,9 @@ import { createElementTextures, sampledElementTextures } from './element-texture
 import { hatchCoverage } from './coverage.js';
 import { getBoundaries, getDots, getWash } from './runtime.js';
 import { buildLayeredHatching } from './layered-hatching.js';
-export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, HatchMode, ColorScheme, RenderMode } from './types.js';
+import { buildSharedStipple } from './stipple-atlas.js';
+import { STIPPLE_TILES } from './stipple-tiles.generated.js';
+export type { Atom, Bond, Molecule, Vec3, Quaternion, RenderOptions, RenderQuality, ShadingMode, HatchMode, StippleFill, ColorScheme, RenderMode } from './types.js';
 export { normalizeOrientation, rotateOrientation, orientationFromEulerXYZ, orientationToEulerXYZ } from './orientation.js';
 export { examples } from './examples.js';
 export { parseXYZ } from './xyz.js';
@@ -52,11 +54,16 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   const boundaries=built&&built.validate(elementColor)?built:null;
   // Labels are part of their owner's paint layer, never a final overlay and
   // never clipped text. Certified visible fills preserve intersecting geometry.
-  // Sixteen-level stippling quantizes dot density on the flat, visibility-filtered
-  // mark path below. A shared texture tile was tried and rejected: a per-atom
-  // clipped tile costs the browser far more to rasterize than the flat marks it
-  // replaced, and it defeated the certified dot-region acceleration entirely.
+  // Stipple ink has two deliveries. 'marks' (the default) emits flat,
+  // visibility-filtered round-cap marks. 'bitmap' paints the shared 16-level atlas
+  // from baked 1-bit PNG tiles, so the browser decodes a tile once and blits it
+  // instead of stroking the whole mark set as geometry. The bitmap path needs
+  // certified owner clips and falls back to marks without them.
   const wantsQuantizedStipple=o.shadingMode==='stipple'&&!!o.quantizeShading;
+  const wantsBitmapStipple=wantsQuantizedStipple&&o.stippleFill==='bitmap';
+  const bitmapPaths=wantsBitmapStipple&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
+  const sharedStipple=!!bitmapPaths;
+  const stippleMode=sharedStipple?'bitmap':(wantsQuantizedStipple?'quantized':'');
   const wantsLayered=o.shadingMode==='hatch'&&o.hatchMode==='layered';
   const layerPaths=(o.labels||o.elementTextures||wantsLayered)&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null;
   // Never substitute approximate ownership for the layered full-stroke clips.
@@ -66,7 +73,7 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
   // fallback. Do not promote sampled paths to certified whole-label layers.
   const fallbackElements=elements&&!layerPaths?sampledElementTextures(scene,depthAt,project,scale,o.width,o.height,o.quality,elements):'';
   const ownerEngraving=new Map<Primitive,string>(),ownerDots=new Map<number,string>();
-  const regions=!layered&&(o.shadingMode!=='halftone'||!o.quantizeShading)&&o.shadingSize!==0&&boundaries?.dotRegions?boundaries.dotRegions():null;
+  const regions=!layered&&!sharedStipple&&(o.shadingMode!=='halftone'||!o.quantizeShading)&&o.shadingSize!==0&&boundaries?.dotRegions?boundaries.dotRegions():null;
   if(regions?.surface)atlas=createSurfaceAtlas(prepared,regions,o);
   // Shadow boundaries are solved per surface, not rediscovered along each line.
   function tonalSpans(s:Primitive,g:ProjectedCurve,tone:(limit:number)=>Intervals,limit:number,sharedShadow?:Intervals|null){
@@ -157,12 +164,13 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     const surfaces={
       compactStipple:true,
       emitSurface:layerPaths?(id:number,svg:string)=>{ownerDots.set(id,(ownerDots.get(id)||'')+svg);}:undefined,
-      paths:o.shadingMode==='halftone'&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null,
+      paths:bitmapPaths||(o.shadingMode==='halftone'&&boundaries?.surfacePaths?boundaries.surfacePaths(false):null),
       light:lightDirection,
       illumination:(source:Primitive,n:Vector,p:Vector)=>lightFor(source)(n,p),
-      ...(o.shadingMode==='halftone'&&o.castShadows&&o.shadowStrength>0?directionalShadows():{})
+      ...((o.shadingMode==='halftone'||sharedStipple)&&o.castShadows&&o.shadowStrength>0?directionalShadows():{})
     };
-    dots=dotter.buildDots(scene,depthAt,project,scale,illumination,o,regions,hatchCoverage(scale,o),surfaces);
+    dots=dotter.buildDots(scene,depthAt,project,scale,illumination,sharedStipple?{...o,shadingMode:'halftone',quantizeShading:true}:o,regions,hatchCoverage(scale,o),
+      sharedStipple?{...surfaces,renderPatterns:(data,emit)=>buildSharedStipple(data,o.dotSize,{emitSurface:emit,tiles:STIPPLE_TILES})}:surfaces);
   }
   const ownerLabels=new Map<Primitive,string>();
   // If ownership cannot be certified, omit labels rather than float them over
@@ -189,6 +197,6 @@ export function render(molecule: Molecule,options: RenderOptions={}): string {
     }).join('');
   }
   const hatchInfo=wantsLayered?` data-hatch-mode="${layered?'layered':'continuous-fallback'}"${layered?'':' data-hatch-fallback="uncertified-visible-regions"'}`:'';
-  const stippleInfo=wantsQuantizedStipple?' data-stipple-mode="quantized"':'';
+  const stippleInfo=stippleMode?` data-stipple-mode="${stippleMode}"`:'';
   return `<svg xmlns="http://www.w3.org/2000/svg"${hatchInfo}${stippleInfo} width="${o.width}" height="${o.height}" viewBox="0 0 ${o.width} ${o.height}" role="img" aria-labelledby="title"><title id="title">${esc(molecule.name||'Molecular engraving')}</title>${layered?.defs||''}${elements?`<defs>${elements.definitions}</defs>`:''}<rect width="100%" height="100%" fill="white"/>${artwork}</svg>`;
 }

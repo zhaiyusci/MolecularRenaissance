@@ -6,7 +6,7 @@ const defaults: NormalizedOptions = {
   renderMode:'precise',
   width:900,height:700,scale:60,atomRadiusScale:1,yaw:.25,pitch:-.16,lightAzimuth:-29*Math.PI/180,lightElevation:32*Math.PI/180,
   castShadows:false,shadowStrength:.8,density:24,lineWidth:.8,outlineWidth:.8,hatchWidth:.8,
-  variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',hatchMode:'layered',quantizeShading:true,textureScale:1,elementTextures:false,elementTextureScale:1,shadingBrightness:0,shadingContrast:1.2,
+  variableWidth:true,optimizePaths:true,quality:'export',shadingMode:'hatch',hatchMode:'layered',quantizeShading:true,stippleFill:'marks',textureScale:1,elementTextures:false,elementTextureScale:1,shadingBrightness:0,shadingContrast:1.2,
   dotSpacing:2.5,dotSize:.5,dotContrast:1.2,crossHatch:true,colorWash:false,colorScheme:'jmol',washStrength:1,
   colorSaturation:1,labelMatchFill:false,labels:false,labelHydrogens:true,labelSize:17,labelStrokeWidth:4,labelStrokeColor:'#ffffff',
   labelColor:'#161616',labelFont:"Georgia, 'Times New Roman', serif",labelBold:false,labelItalic:true
@@ -61,6 +61,7 @@ export function normalizeOptions(options: RenderOptions): NormalizedOptions {
   if(!['continuous','layered'].includes(o.hatchMode))throw new Error('Invalid hatchMode');
   if(options.quantizeShading===undefined)o.quantizeShading=defaults.quantizeShading;
   if(typeof o.quantizeShading!=='boolean')throw new Error('Invalid quantizeShading');
+  if(!['marks','bitmap'].includes(o.stippleFill))throw new Error('Invalid stippleFill: expected marks or bitmap');
   if(o.renderMode==='fast'&&options.quantizeShading!==undefined)throw new Error('16-level shading switch requires precise rendering');
   if(o.shadingMode==='hatch'&&o.renderMode!=='fast'){
     const selected=o.quantizeShading?'layered':'continuous';

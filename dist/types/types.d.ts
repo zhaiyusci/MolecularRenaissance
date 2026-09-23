@@ -18,6 +18,7 @@ export interface Molecule {
 }
 export type ShadingMode = 'hatch' | 'stipple' | 'halftone';
 export type HatchMode = 'continuous' | 'layered';
+export type StippleFill = 'marks' | 'bitmap';
 export type RenderQuality = 'preview' | 'export';
 export type ColorScheme = 'jmol' | 'rasmol' | 'pymol' | 'ortep' | 'greenCarbon' | 'cyanCarbon' | 'magentaCarbon';
 export type RenderMode = 'precise' | 'fast';
@@ -57,6 +58,12 @@ export interface RenderOptions {
      * stipple. Explicit values require precise mode; a conflicting explicit
      * hatchMode is rejected for hatch shading. */
     quantizeShading?: boolean;
+    /** Stipple ink delivery, default 'marks'. 'bitmap' paints the shared 16-level
+     * atlas from baked 1-bit PNG tiles, so the browser blits a decoded image
+     * instead of stroking the mark set as geometry. It needs certified owner clips
+     * and falls back to 'marks' without them. The tile set bakes one print target
+     * (tile pixels and mark millimetres), so treat it as a build parameter. */
+    stippleFill?: StippleFill;
     /** Joint spacing and mark-size scale, 0.2–2.5; larger means coarser at similar mean coverage. */
     textureScale?: number;
     /** Independent categorical sphere patterns, default false; unaffected by lighting/shading. */

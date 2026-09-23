@@ -57,7 +57,7 @@ const svg = render(examples.c60, { colorWash: true });
 
 ## 16级明暗与兼容选项
 
-`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线、规则网点与点刻。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻在 `true` 时把局部明暗量化为共享的 16 档密度；圆点半径保持 `dotSize` 不变，只有点数随档位变化。两种模式都输出扁平、按「半径 + 出生档位」分批的圆头零长子路径，不含 pattern 瓦片也不含逐原子 clip，渲染器因此始终保留已认证的点区域加速；量化态另以 `data-stipple-mode="quantized"` 标记。共享纹理图集曾是本开关的实现，现已弃用并保留为实验模块 `src/stipple-atlas.ts`：逐原子裁剪的瓦片在浏览器里比它替换掉的扁平标记贵得多，且会让点区域加速失效。
+`renderMode` 默认 `'precise'`；共享选项 `quantizeShading?: boolean` 在精确模式默认 `true`（省略或 `undefined`），用于排线、规则网点与点刻。开启时，排线在固定曲线骨架上按 **16 个互不重叠的明暗带** 裁切，网点使用16级共享 pattern。设为 `false` 时，排线使用旧版连续变宽、端部收尖算法；规则网点则在45°规则网格上逐点输出连续半径，边缘仍收缩圆点以容纳完整标记。这不是分档 pattern 的逐像素等价替代，逐点输出也可能更大。点刻在 `true` 时把局部明暗量化为共享的 16 档密度。默认交付 `stippleFill: 'marks'`：圆点半径保持 `dotSize` 不变、只有点数随档位变化，输出扁平、按「半径 + 出生档位」分批的圆头零长子路径，不含 pattern 瓦片也不含逐原子 clip，渲染器因此保留已认证的点区域加速，标记为 `data-stipple-mode="quantized"`。可选 `stippleFill: 'bitmap'`：把同一套 16 档改为**烘焙的 1-bit PNG 瓦片**，浏览器解码一次后直接平铺，不再逐点描边；该路径需要已认证的 owner clip，无法认证时回退到 `'marks'`，标记为 `data-stipple-mode="bitmap"`。瓦片由 `npm run build:tiles` 生成（`scripts/build-stipple-tiles.mjs`），分辨率按**印刷目标**参数化——`--print-width-mm` 与 `--dpi` 推出瓦片像素数，标记为方形像素块（`--mark-px`，默认 2，即 300 dpi 下 0.17 mm），因此**一个瓦片集只对应一个印刷目标**；输出写入 `src/stipple-tiles.generated.ts`（已提交，干净检出也能构建）。瓦片载荷是固定成本，所以 bitmap 只在扁平标记集超过它时才更小（实测 c60 约 0.31×、葡萄糖 0.50×，而单球约 1.07×）。`<image>` 目前只写 `href`（SVG 2），个别老式印刷工具可能仍需 `xlink:href`。
 
 GUI 控件现名 **16级明暗**（英文 **16-level shading**，旧名16级排线）；默认与重置均开启。仅在关闭光影或使用快速模式时禁用，切换风格保留两种勾选偏好；精确排线、规则网点与点刻均可用。界面为所有精确纹理发送该布尔值；快速模式省略，不再发送 `hatchMode`。
 

@@ -330,6 +330,10 @@
       var options = {
         quality: 'preview',
         renderMode: fastOverlay.checked ? 'fast' : 'precise',
+        // Stipple ink is delivered as baked bitmap tiles, which the browser blits
+        // instead of stroking every mark. Preview and export share the delivery so
+        // what is shown is what is exported; the tiles bake one print resolution.
+        stippleFill: 'bitmap',
         elementTextures: elementTextures.checked,
         elementTextureScale: Number(elementTextureScale.value) / 100,
         width: 900,
@@ -439,7 +443,7 @@
     endControl();
     model.value = keys[0];
     scale.value = '60';
-    atomRadiusScale.value = '1';
+    atomRadiusScale.value = '0.75';
     orientation = initialOrientation();
     rotationGizmo.cancel();
     lightAzimuth.value = '-29';

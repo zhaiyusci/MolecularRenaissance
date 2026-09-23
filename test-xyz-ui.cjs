@@ -10,7 +10,7 @@ function pending(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=
  flush();const examplesCount=elements.model.children.length;
  await upload('water.xyz',water);flush();const importedKey=elements.model.value;
  assert.equal(elements['xyz-file'].value,'');assert.equal(calls.at(-1).model.name,'water.xyz');assert.equal(calls.at(-1).model.bonds.length,2);
- assert.equal(calls.at(-1).options.scale,60);assert.equal(calls.at(-1).options.atomRadiusScale,1);
+ assert.equal(calls.at(-1).options.scale,60);assert.equal(calls.at(-1).options.atomRadiusScale,.75);
  elements.download.listeners.click();assert.equal(downloads.at(-1),'mol-water.svg');assert.equal(calls.at(-1).options.quality,'export');
  assert(!elements['xyz-infer-bonds'],'bond inference is automatic, not an extra control');
  assert.equal(calls.at(-1).model.bonds.length,2,'export keeps automatically inferred bonds');
