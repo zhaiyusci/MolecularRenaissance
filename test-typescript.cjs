@@ -3,6 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const crypto=require('node:crypto'),ts=require('typescript');
 const cases=require('./test-fixtures/renderer-cases.cjs');
 const {historicalRenderer}=require('./test-fixtures/historical-renderer.cjs');
+const {assertHalftonePaintMigration}=require('./test-fixtures/halftone-parity.cjs');
 const cjs=require('./renderer.js');
 const legacyAtoms=require('./test-fixtures/legacy-atoms.cjs'),legacyScales=require('./test-fixtures/legacy-scales.json');
 const digest=svg=>crypto.createHash('sha256').update(svg).digest('hex');
@@ -66,7 +67,11 @@ const digest=svg=>crypto.createHash('sha256').update(svg).digest('hex');
  for(const name of ['sphere','ethanol','c60'])for(const shadingMode of ['hatch','stipple','halftone'])for(const geometryOnly of [false,true]){
   const options={labels:false,shadingMode,castShadows:false,lightAzimuth:0,lightElevation:0,colorWash:true,quality:'preview',...(geometryOnly?{shadingSize:0}:{})};
   const legacy={...options,hatchMode:'continuous',atomRadiusScale:1,...(shadingMode==='stipple'?{quantizeShading:false}:{})};
-  assert.equal(digest(cjs.render(cjs.examples[name],legacy)),digest(before.render(before.examples[name],options)),`${name}/${shadingMode}: historical ${geometryOnly?'unshaded geometry':'unchanged front-lit'} parity`);
+  const actual=cjs.render(cjs.examples[name],legacy),expected=before.render(before.examples[name],options);
+  // Only quantized halftone's cumulative paint delivery intentionally changed;
+  // its palette and all non-texture SVG remain exact historical byte oracles.
+  if(shadingMode==='halftone'&&!geometryOnly)assertHalftonePaintMigration(actual,expected,`${name}/halftone historical front-lit`);
+  else assert.equal(digest(actual),digest(expected),`${name}/${shadingMode}: historical ${geometryOnly?'unshaded geometry':'unchanged front-lit'} parity`);
  }
  // Public formats must agree on the NEW back-facing/shadowed physical signal
  // followed by artistic brightness/contrast, not just historical front lighting.

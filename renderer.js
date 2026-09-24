@@ -1170,16 +1170,39 @@ var MolEngraver = (function (exports) {
         function clip(id, path) { defs.push(`<clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path clip-rule="evenodd" fill-rule="evenodd" d="${path}"/></clipPath>`); }
         function paint(layer, index) {
             const [left, top, right, bottom] = layer.bounds || o.bounds;
+            const frame = `M${fmt$1(left)} ${fmt$1(top)}L${fmt$1(right)} ${fmt$1(top)}L${fmt$1(right)} ${fmt$1(bottom)}L${fmt$1(left)} ${fmt$1(bottom)}Z`;
             let body = '';
             layer.tones.forEach((path, i) => {
-                if (!path || path === layer.tones[i + 1])
+                const next = layer.tones[i + 1];
+                if (!path || path === next)
                     return;
                 const id = prefix + '-tone-' + index + '-' + i;
                 clip(id, path);
-                body += `<rect data-tone-level="${i + 1}" x="${fmt$1(left)}" y="${fmt$1(top)}" width="${fmt$1(right - left)}" height="${fmt$1(bottom - top)}" fill="url(#${prefix}-${i + 1})" clip-path="url(#${id})"/>`;
+                let band = `<rect data-tone-level="${i + 1}" x="${fmt$1(left)}" y="${fmt$1(top)}" width="${fmt$1(right - left)}" height="${fmt$1(bottom - top)}" fill="url(#${prefix}-${i + 1})" clip-path="url(#${id})"/>`;
+                // Cumulative contours choose a SINGLE full-coverage screen per band.
+                // Repainting all nested disks geometrically unions to the largest disk,
+                // but source-over antialias accumulates ink as the level count increases.
+                // Intersect Pi with the complement of Pnext rather than XORing them:
+                // a numerical contour overhang must never create ink outside Pi.
+                if (next) {
+                    const inverse = id + '-next-outside';
+                    clip(inverse, frame + next);
+                    band = `<g clip-path="url(#${inverse})">${band}</g>`;
+                }
+                body += band;
             });
-            if (layer.shadow)
+            if (layer.shadow) {
+                // The binary shadow replaces the normal screen, including paper-white
+                // shadow tones. Never leave the normal pattern underneath its AA edge.
+                if (body && layer.shadow.clip) {
+                    const inverse = prefix + '-shadow-outside-' + index;
+                    clip(inverse, frame + layer.shadow.clip);
+                    body = `<g clip-path="url(#${inverse})">${body}</g>`;
+                }
+                else
+                    body = ''; // An unbounded shadow layer replaces the complete domain.
                 body += paint(layer.shadow, index + 's');
+            }
             if (body && layer.clip) {
                 const id = prefix + '-face-' + index;
                 clip(id, layer.clip);

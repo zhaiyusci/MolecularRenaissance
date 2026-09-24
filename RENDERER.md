@@ -61,6 +61,8 @@ const svg = render(examples.c60, { colorWash: true });
 
 GUI 不再提供连续绘制开关，精确与快速覆盖均发送 `quantizeShading: true`。**明暗级数**（英文 **Shading levels**）选择器提供 **4、8、16、32、64**，默认和重置为16；对应 `shadingLevels?: 4 | 8 | 16 | 32 | 64`。仅在关闭光影时禁用，切换纹理或快速覆盖保留级数，预览／下载一致。沿用原16级语义：N 表示 N 个正墨量档，另有不涂墨的纸白0档；不是含纸白共 N 档。非法级数报错 `Invalid shadingLevels: expected 4, 8, 16, 32, or 64`。上文16级说明为默认档位；排线宽度、网点覆盖率、点刻密度及位图瓦片均按选择的级数生成，而不是只更改显示标签。
 
+规则网点（halftone）的完整覆盖率图案只绘入各自的互斥明暗带：用当前累计区域减去下一档区域，普通照明与投射阴影区域也分别绘制。不能把所有累计档的完整网点直接叠画，否则半透明抗锯齿边缘会反复加深，导致64级比4级明显偏黑。此修正不改变光照、亮度／对比度、覆盖率校准、网点半径或纹理相位；不同级数仍存在正常的量化差异，不保证任意分子的总墨量完全相同。结构／几何回归见 `test-halftone-bands.cjs`。浏览器加载 `halftone-levels-browser-test.js` 后调用 `await runHalftoneLevelBrowserTests()`，检查共同覆盖率平台在各级数下的实际像素墨量；其中 Canvas 仅用于测试读回 SVG 像素，不是 GUI 的预览或输出路径。
+
 旧 `hatchMode: 'layered' | 'continuous'` 仍保留为排线兼容选项。非布尔 `quantizeShading` 报错 `Invalid quantizeShading`，显式冲突的排线选择器仍拒绝。快速模式现在接受 `quantizeShading: true` 量化所有三种纹理，也接受 `false` 使用旧连续路线；省略该参数时保留历史快速模式行为。GUI 使用 `{ renderMode: 'fast', castShadows: false, quantizeShading: true, shadingLevels: 16 }`。后端兼容入口未从 API 删除。精确排线在可见区域无法认证时仍走内部 `data-hatch-mode="continuous-fallback"` 安全回退；GUI 移除连续绘制入口，不移除几何认证失败的保护逻辑。
 
 历史 continuous／layered 性能与默认效果批准记录见 [LAYERED-HATCHING.md](LAYERED-HATCHING.md)，不代表本次共享开关及连续网点的新测量或完整验证结果。

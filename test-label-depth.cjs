@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {historicalRenderer}=require('./test-fixtures/historical-renderer.cjs');
+const {assertHalftonePaintMigration}=require('./test-fixtures/halftone-parity.cjs');
 const {marks}=require('./test-style-coverage.cjs');
 const {disks}=require('./test-shared-regions.cjs');
 const attrs=tag=>Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
@@ -64,8 +65,12 @@ const allDisks=svg=>[...svg.matchAll(/<g data-role="dots"[\s\S]*?<\/g>/g)].flatM
       // old and new physical lighting agree. Keep that historical no-label
       // contract; the shadowed/backlit appearance intentionally changed.
       const legacy={...options,hatchMode:'continuous',atomRadiusScale:1,...(shadingMode==='stipple'?{quantizeShading:false}:{})};
-      assert.equal(current.render(current.examples[name],legacy),before.render(before.examples[name],options),`${name}/${shadingMode}: no-label SVG unchanged`);
+      const actual=current.render(current.examples[name],legacy),expected=before.render(before.examples[name],options);
+      // Exclusive halftone bands intentionally replace cumulative repainting.
+      // Keep exact palette and ALL non-texture no-label geometry/metadata guards.
+      if(shadingMode==='halftone')assertHalftonePaintMigration(actual,expected,`${name}/halftone no-label`);
+      else assert.equal(actual,expected,`${name}/${shadingMode}: no-label SVG unchanged`);
     }
   }
-  console.log(`Label depth checks passed: ${cases} overlap cases, three C60 styles, identical no-label output, no text clipping.`);
+  console.log(`Label depth checks passed: ${cases} overlap cases, three C60 styles, unchanged no-label geometry/palettes, no text clipping.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -163,13 +163,28 @@ export function buildSurfacePatterns(o:{bounds:Bounds;pitch:number;silhouette:st
   function clip(id:string,path:string):void{defs.push(`<clipPath id="${id}" clipPathUnits="userSpaceOnUse"><path clip-rule="evenodd" fill-rule="evenodd" d="${path}"/></clipPath>`);}
   function paint(layer:SurfacePatternLayer,index:string):string{
     const [left,top,right,bottom]=layer.bounds||o.bounds;
+    const frame=`M${fmt(left)} ${fmt(top)}L${fmt(right)} ${fmt(top)}L${fmt(right)} ${fmt(bottom)}L${fmt(left)} ${fmt(bottom)}Z`;
     let body='';
     layer.tones.forEach((path,i)=>{
-      if(!path||path===layer.tones[i+1])return;
+      const next=layer.tones[i+1];
+      if(!path||path===next)return;
       const id=prefix+'-tone-'+index+'-'+i;clip(id,path);
-      body+=`<rect data-tone-level="${i+1}" x="${fmt(left)}" y="${fmt(top)}" width="${fmt(right-left)}" height="${fmt(bottom-top)}" fill="url(#${prefix}-${i+1})" clip-path="url(#${id})"/>`;
+      let band=`<rect data-tone-level="${i+1}" x="${fmt(left)}" y="${fmt(top)}" width="${fmt(right-left)}" height="${fmt(bottom-top)}" fill="url(#${prefix}-${i+1})" clip-path="url(#${id})"/>`;
+      // Cumulative contours choose a SINGLE full-coverage screen per band.
+      // Repainting all nested disks geometrically unions to the largest disk,
+      // but source-over antialias accumulates ink as the level count increases.
+      // Intersect Pi with the complement of Pnext rather than XORing them:
+      // a numerical contour overhang must never create ink outside Pi.
+      if(next){const inverse=id+'-next-outside';clip(inverse,frame+next);band=`<g clip-path="url(#${inverse})">${band}</g>`;}
+      body+=band;
     });
-    if(layer.shadow)body+=paint(layer.shadow,index+'s');
+    if(layer.shadow){
+      // The binary shadow replaces the normal screen, including paper-white
+      // shadow tones. Never leave the normal pattern underneath its AA edge.
+      if(body&&layer.shadow.clip){const inverse=prefix+'-shadow-outside-'+index;clip(inverse,frame+layer.shadow.clip);body=`<g clip-path="url(#${inverse})">${body}</g>`;}
+      else body=''; // An unbounded shadow layer replaces the complete domain.
+      body+=paint(layer.shadow,index+'s');
+    }
     if(body&&layer.clip){const id=prefix+'-face-'+index;clip(id,layer.clip);body=`<g clip-path="url(#${id})">${body}</g>`;}
     return body;
   }
